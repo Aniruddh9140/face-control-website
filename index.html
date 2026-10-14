@@ -11,8 +11,8 @@
 -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src ws://localhost:* ws://127.0.0.1:* wss://localhost:* wss://127.0.0.1:*; base-uri 'none'; form-action 'none'; object-src 'none'; require-trusted-types-for 'script'">
 <meta name="referrer" content="no-referrer">
-<title>Face Control</title>
-<meta name="description" content="Control dashboard for the Face Control eye-tracker: live gaze cursor, WebSocket link and 9-point calibration.">
+<title>EyeSync</title>
+<meta name="description" content="EyeSync: the control dashboard for your eye-tracker, with a live gaze cursor, WebSocket link and 9-point calibration.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%233498db'/%3E%3Cpath d='M3 16Q16 4 29 16Q16 28 3 16Z' fill='%231b1f23'/%3E%3Ccircle cx='16' cy='16' r='5.5' fill='%233498db'/%3E%3Ccircle cx='16' cy='16' r='2.2' fill='%231b1f23'/%3E%3C/svg%3E">
 <style>
 /* Layout: one 1160px column under a slab top bar; views are flat bordered panels on a charcoal ground;
@@ -379,14 +379,14 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 
 <header class="topbar">
   <div class="wrap topbar-inner">
-    <a class="brand" href="#home" aria-label="Face Control home">
+    <a class="brand" href="#home" aria-label="EyeSync home">
       <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
         <rect class="bm-fill" width="32" height="32"></rect>
         <path class="bm-cut" d="M3 16Q16 4 29 16Q16 28 3 16Z"></path>
         <circle class="bm-fill" cx="16" cy="16" r="5.5"></circle>
         <circle class="bm-cut" cx="16" cy="16" r="2.2"></circle>
       </svg>
-      <span><span class="brand-name">Face Control</span><span class="brand-sub">Eye-tracker console</span></span>
+      <span><span class="brand-name">EyeSync</span><span class="brand-sub">Eye-tracker console</span></span>
     </a>
     <nav class="nav" id="nav" aria-label="Main" hidden>
       <a class="btn btn-quiet" href="#dashboard" data-nav="dashboard">Dashboard</a>
@@ -406,7 +406,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 
 <main id="main" tabindex="-1">
   <div class="wrap">
-    <noscript><p class="notice">Face Control needs JavaScript to run. Turn it on for this page and reload.</p></noscript>
+    <noscript><p class="notice">EyeSync needs JavaScript to run. Turn it on for this page and reload.</p></noscript>
 
     <!-- Home -->
     <section class="view view-home" data-view="home" hidden aria-labelledby="home-title">
@@ -414,7 +414,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
         <div class="hero-copy">
           <p class="eyebrow">Hardware eye-tracker console</p>
           <h1 id="home-title" tabindex="-1">See where your eyes land, live.</h1>
-          <p class="lede">Face Control is the browser dashboard for the Face Control eye-tracker. It connects to the tracker on your computer, draws your gaze as a live cursor, and guides you through a 9-point calibration so the cursor lands exactly where you look.</p>
+          <p class="lede">EyeSync is the browser dashboard for your eye-tracker. It connects to the tracker on your computer, draws your gaze as a live cursor, and guides you through a 9-point calibration so the cursor lands exactly where you look.</p>
           <div class="hero-actions js-guest">
             <a class="btn btn-primary btn-lg" href="#register">Create an account</a>
             <a class="btn btn-lg" href="#login">Sign in</a>
@@ -460,7 +460,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
           <article class="feature">
             <span class="feature-mark" aria-hidden="true"></span>
             <h3>9-point calibration</h3>
-            <p>Targets light up one at a time in the corners, along the edges and in the centre. Face Control measures how far your gaze lands from each one, in pixels.</p>
+            <p>Targets light up one at a time in the corners, along the edges and in the centre. EyeSync measures how far your gaze lands from each one, in pixels.</p>
           </article>
           <article class="feature">
             <span class="feature-mark" data-tone="warn" aria-hidden="true"></span>
@@ -506,7 +506,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
           <p class="eyebrow">Privacy</p>
           <h2 id="privacy-title">Your data stays on this computer</h2>
           <ul class="ticks">
-            <li>There is no Face Control server. The whole app runs in your browser.</li>
+            <li>There is no EyeSync server. The whole app runs in your browser.</li>
             <li>Passwords are salted and hashed with PBKDF2-SHA-256 (600,000 rounds). The password itself is never saved.</li>
             <li>Gaze data travels only between your tracker and this page, and is never stored.</li>
             <li>The dashboard only connects to trackers on this computer (localhost).</li>
@@ -550,9 +550,9 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
       <div class="auth-grid">
         <div class="auth-intro">
           <p class="eyebrow">Welcome back</p>
-          <h1 id="login-title" tabindex="-1">Sign in to Face Control</h1>
+          <h1 id="login-title" tabindex="-1">Sign in to EyeSync</h1>
           <p class="lede">Sign in to see your live gaze cursor, check the tracker connection and run calibration. Your account and settings stay in this browser.</p>
-          <div class="row"><a class="btn btn-quiet" href="#home">What is Face Control?</a></div>
+          <div class="row"><a class="btn btn-quiet" href="#home">What is EyeSync?</a></div>
         </div>
 
         <form class="panel panel-strong auth-form stack" id="login-form" novalidate>
@@ -572,7 +572,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
           <p class="form-error" tabindex="-1" role="alert" hidden></p>
           <button class="btn btn-primary btn-block" type="submit">Sign in</button>
           <a class="btn btn-block" href="#register">Create an account</a>
-          <p class="hint">Face Control never stores your password. It keeps only a salted PBKDF2-SHA-256 hash on this device.</p>
+          <p class="hint">EyeSync never stores your password. It keeps only a salted PBKDF2-SHA-256 hash on this device.</p>
         </form>
       </div>
     </section>
@@ -582,7 +582,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
       <div class="auth-grid">
         <div class="auth-intro">
           <p class="eyebrow">New account</p>
-          <h1 id="register-title" tabindex="-1">Create your Face Control account</h1>
+          <h1 id="register-title" tabindex="-1">Create your EyeSync account</h1>
           <p class="lede">Your account lives only in this browser. Your password is salted and hashed with SHA-256 (PBKDF2, 600,000 rounds) before anything is saved.</p>
           <dl class="kv panel">
             <dt>Stored</dt><dd>username, salt, hash, agreement record</dd>
@@ -840,7 +840,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 
 <footer class="footer">
   <div class="wrap footer-inner">
-    <p class="hint">Face Control runs in your browser. No server, no trackers.</p>
+    <p class="hint">EyeSync runs in your browser. No server, no trackers.</p>
     <nav aria-label="Legal">
       <a class="btn btn-quiet" href="#cookies">Cookie Policy</a>
       <a class="btn btn-quiet" href="#terms">Terms and Conditions</a>
@@ -857,7 +857,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
   <div class="wrap cookie-inner">
     <div class="cookie-text">
       <h2 id="cookie-title">Your storage choice</h2>
-      <p>Face Control keeps your account on this device so you can sign in. With your permission it also remembers your theme, tracker and cursor settings. Nothing is tracked or shared.</p>
+      <p>EyeSync keeps your account on this device so you can sign in. With your permission it also remembers your theme, tracker and cursor settings. Nothing is tracked or shared.</p>
       <p class="hint" id="cookie-current" hidden></p>
     </div>
     <div class="cookie-actions">
@@ -883,7 +883,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 <template id="tpl-cookies">
   <div class="policy">
     <p class="meta">Version 1.0 · Last updated 14 October 2026</p>
-    <p>Face Control sets no HTTP cookies and loads nothing from other websites. It does use your browser's local storage and session storage, which privacy laws such as the EU ePrivacy Directive and UK PECR treat the same way as cookies. This policy lists every item it stores and why.</p>
+    <p>EyeSync sets no HTTP cookies and loads nothing from other websites. It does use your browser's local storage and session storage, which privacy laws such as the EU ePrivacy Directive and UK PECR treat the same way as cookies. This policy lists every item it stores and why.</p>
     <h2>What is stored on your device</h2>
     <div class="table-wrap">
       <table>
@@ -902,7 +902,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
     <h2>Gaze data</h2>
     <p>Gaze coordinates travel from the tracker software on your own computer to this page over a local WebSocket (localhost or 127.0.0.1 only). They are processed in memory to draw the cursor and are never stored or sent anywhere else. With preference storage on, only a summary of your last calibration is saved.</p>
     <h2>Hosting</h2>
-    <p>The page is served by GitHub Pages. GitHub may log technical data such as your IP address when it delivers the page; see the <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener noreferrer">GitHub General Privacy Statement</a>. Face Control has no server of its own and receives none of your data.</p>
+    <p>The page is served by GitHub Pages. GitHub may log technical data such as your IP address when it delivers the page; see the <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener noreferrer">GitHub General Privacy Statement</a>. EyeSync has no server of its own and receives none of your data.</p>
     <h2>Changing your choice or deleting your data</h2>
     <ul>
       <li>Change your choice at any time with “Cookie settings” at the bottom of every page.</li>
@@ -916,9 +916,9 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 <template id="tpl-terms">
   <div class="policy">
     <p class="meta">Version 1.0 · Last updated 14 October 2026</p>
-    <p>These terms apply when you create an account on, or use, the Face Control dashboard (“the dashboard”) published by the Face Control project maintainers. By creating an account you agree to them.</p>
+    <p>These terms apply when you create an account on, or use, the EyeSync dashboard (“the dashboard”) published by the EyeSync project maintainers. By creating an account you agree to them.</p>
     <h2>1. What the dashboard does</h2>
-    <p>The dashboard runs entirely in your web browser. It connects to eye-tracker software on your own computer, shows where you are looking, and runs a 9-point calibration. There is no Face Control server: your account and settings live only in this browser on this device.</p>
+    <p>The dashboard runs entirely in your web browser. It connects to eye-tracker software on your own computer, shows where you are looking, and runs a 9-point calibration. There is no EyeSync server: your account and settings live only in this browser on this device.</p>
     <h2>2. Not a medical or safety device</h2>
     <p>The dashboard is not a medical device and is not designed to diagnose, treat or monitor any condition. Do not rely on it as your only way to communicate or to call for help. Keep another way to reach help available at all times.</p>
     <h2>3. Your account</h2>
@@ -949,12 +949,12 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 
 <script type="module">
 /* ==========================================================================
-   Face Control dashboard: single-file SPA.
+   EyeSync dashboard: single-file SPA.
    Modules (plain objects in one ES module): Store, Consent, Prefs, Theme,
    Crypto, Auth, Router, GazeLink, Simulator, Gaze/Render, Dwell, Calibration.
    ========================================================================== */
 
-const APP = 'Face Control';
+const APP = 'EyeSync';
 const CONSENT_VERSION = 1;
 const TERMS_VERSION = '1.0';
 const COOKIE_POLICY_VERSION = '1.0';
@@ -2058,9 +2058,9 @@ function framedElsewhere() {
 function boot() {
   if (framedElsewhere()) {   // basic clickjacking guard: GitHub Pages can't send frame-ancestors headers
     document.body.replaceChildren(h('main', { class: 'framed panel panel-strong' },
-      h('h1', { text: 'Open Face Control in its own tab' }),
+      h('h1', { text: 'Open EyeSync in its own tab' }),
       h('p', { text: 'For your security, sign-in is turned off when this page is embedded in another site.' }),
-      h('a', { class: 'btn btn-primary', href: location.href, target: '_top', rel: 'noopener', text: 'Open Face Control' })));
+      h('a', { class: 'btn btn-primary', href: location.href, target: '_top', rel: 'noopener', text: 'Open EyeSync' })));
     return;
   }
   Prefs.load();

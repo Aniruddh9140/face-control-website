@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Mock eye-tracker for the Face Control dashboard.
+"""Mock eye-tracker for the EyeSync dashboard.
 
 Streams gaze frames such as {"x": 400, "y": 300, "blink": false} over a local
 WebSocket so you can test the dashboard without hardware. It also prints the
