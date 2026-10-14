@@ -250,11 +250,11 @@ select.input { padding-block: 0; cursor: pointer; }
 .pill { display: inline-flex; align-items: center; gap: 10px; justify-self: start; max-width: 100%; min-height: 40px; padding: 4px 12px; background: var(--bg); border: var(--bw) solid var(--line-soft); font: 700 0.9375rem/1.2 var(--font-mono); }
 .pill-mark { width: 12px; height: 12px; flex: none; background: var(--ink-2); }
 .pill[data-state="open"], .pill[data-state="good"] { background: var(--ok); border-color: var(--ok); color: var(--on-color); }
-.pill[data-state="connecting"], .pill[data-state="reconnecting"], .pill[data-state="stale"], .pill[data-state="fair"] { background: var(--warn); border-color: var(--warn); color: var(--on-color); }
+.pill[data-state="connecting"], .pill[data-state="reconnecting"], .pill[data-state="stale"], .pill[data-state="searching"], .pill[data-state="fair"] { background: var(--warn); border-color: var(--warn); color: var(--on-color); }
 .pill[data-state="sim"] { background: var(--accent); border-color: var(--accent); color: var(--on-color); }
 .pill[data-state="poor"] { background: var(--danger); border-color: var(--danger); color: var(--on-color); }
 .pill[data-state="open"] .pill-mark, .pill[data-state="good"] .pill-mark, .pill[data-state="connecting"] .pill-mark,
-.pill[data-state="reconnecting"] .pill-mark, .pill[data-state="stale"] .pill-mark, .pill[data-state="fair"] .pill-mark,
+.pill[data-state="reconnecting"] .pill-mark, .pill[data-state="stale"] .pill-mark, .pill[data-state="searching"] .pill-mark, .pill[data-state="fair"] .pill-mark,
 .pill[data-state="sim"] .pill-mark, .pill[data-state="poor"] .pill-mark { background: var(--on-color); }
 .status-line { padding: 12px 14px; background: var(--bg); border-left: 6px solid var(--line-soft); }
 
@@ -470,7 +470,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
           <article class="feature">
             <span class="feature-mark" data-tone="ok" aria-hidden="true"></span>
             <h3>Connection health</h3>
-            <p>See whether the tracker is connected, how many frames arrive each second, and why a frame was rejected. Dropped connections retry on their own.</p>
+            <p>EyeSync finds your tracker on its own and reconnects if it drops or restarts. See how many frames arrive each second, and why a frame was rejected.</p>
           </article>
         </div>
       </section>
@@ -490,7 +490,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
           <li class="step">
             <span class="step-n" aria-hidden="true">2</span>
             <h3>Sign in and connect</h3>
-            <p>Create an account, open the Dashboard and press Connect. The cursor appears as soon as frames arrive. No tracker yet? Run the built-in simulator to try everything first.</p>
+            <p>Create an account and open the Dashboard. EyeSync finds the tracker running on this computer and connects by itself, and the cursor appears as soon as frames arrive. No tracker yet? Run the built-in simulator to try everything first.</p>
           </li>
           <li class="step">
             <span class="step-n" aria-hidden="true">3</span>
@@ -666,10 +666,15 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
               </div>
               <div class="row">
                 <button class="btn btn-primary" id="btn-connect" type="submit">Connect</button>
+                <button class="btn" id="btn-find" type="button">Find tracker</button>
                 <button class="btn" id="btn-disconnect" type="button" hidden>Disconnect</button>
                 <button class="btn" id="btn-sim" type="button" aria-pressed="false">Run simulator</button>
               </div>
               <p class="status-line" id="link-detail" role="status">Start your tracker script, then connect.</p>
+              <div class="field">
+                <label class="check" for="auto-connect"><input type="checkbox" id="auto-connect" aria-describedby="auto-connect-hint"><span>Find and connect to the tracker automatically</span></label>
+                <p class="hint" id="auto-connect-hint">The dashboard checks this computer for a tracker that sends gaze frames: the last address that worked, then ports 8765 to 8770, 8080 and 8000. If none answers, it keeps looking in the background. If you quit EyeSync on purpose, searching won't restart it; press Find tracker for that.</p>
+              </div>
             </form>
             <dl class="kv">
               <dt>Frames received</dt><dd id="m-total">0</dd>
@@ -1072,6 +1077,7 @@ const Consent = {
 const PREF_DEFAULTS = {
   theme: 'system', wsUrl: 'ws://localhost:8765', mapMode: 'frame', frameW: 800, frameH: 600,
   smoothing: 'low', showCursor: true, dwell: false, dwellMs: 1200, calDwellMs: 2000, calFill: true, lastCal: null,
+  autoConnect: true,
 };
 const intIn = (v, lo, hi) => Number.isInteger(v) && v >= lo && v <= hi;
 function sanitizePrefs(d) {
@@ -1083,7 +1089,7 @@ function sanitizePrefs(d) {
   if (intIn(d.frameW, 1, 20000)) out.frameW = d.frameW;
   if (intIn(d.frameH, 1, 20000)) out.frameH = d.frameH;
   if (['off', 'low', 'high'].includes(d.smoothing)) out.smoothing = d.smoothing;
-  for (const k of ['showCursor', 'dwell', 'calFill']) if (typeof d[k] === 'boolean') out[k] = d[k];
+  for (const k of ['showCursor', 'dwell', 'calFill', 'autoConnect']) if (typeof d[k] === 'boolean') out[k] = d[k];
   if ([800, 1200, 1600, 2000].includes(d.dwellMs)) out.dwellMs = d.dwellMs;
   if ([1500, 2000, 3000, 4000].includes(d.calDwellMs)) out.calDwellMs = d.calDwellMs;
   if (isObj(d.lastCal) && typeof d.lastCal.at === 'string') out.lastCal = d.lastCal;
@@ -1313,6 +1319,7 @@ const Router = {
     window.scrollTo(0, 0);
     $(`[data-view="${name}"] h1`)?.focus({ preventScroll: true });
     syncCursor();
+    Discovery.kick();
   },
 };
 
@@ -1337,17 +1344,25 @@ function renderLoginNotice() {
 }
 
 function signOut(reason) {
+  Discovery.cancel();
+  Discovery.paused = false;
   Calibration.stop('signout');
-  Simulator.stop();
+  Auth.end();                                    // end first so nothing below restarts a search
+  Simulator.stop(false);
   Link.disconnect();
   Gaze.reset();
-  Auth.end();
   Router.notice = reason === 'expired' ? 'You were signed out after 30 minutes without activity.' : '';
   Router.go('login', true);
   if (reason !== 'expired') toast('Signed out.');
 }
 
 /* ---------- Gaze link: WebSocket client with validation and reconnect ---------- */
+// EyeSync's standby (E:\EyeSync site_access.py) treats two tries within 0.75 s as a click on
+// Connect and restarts EyeSync. Automatic tries therefore stay AUTO_GAP_MS apart; only the
+// Connect and Find tracker buttons make tries close together.
+const AUTO_GAP_MS = 1500;
+let lastTrackerTry = -Infinity;                   // performance.now() of the last connection attempt
+const isRefusal = (code) => code === 1008 || (code >= 4000 && code < 5000);   // e.g. EyeSync's 4001
 class GazeLink extends EventTarget {
   #ws = null; #url = ''; #want = false; #retry = 0; #timer = 0; #opened = false;
   state = 'idle'; retryDelay = 0; lastError = ''; openedAt = 0;
@@ -1361,6 +1376,7 @@ class GazeLink extends EventTarget {
     return { url: u.pathname === '/' && !u.search ? `${u.protocol}//${u.host}` : u.href };
   }
   get url() { return this.#url; }
+  get retries() { return this.#retry; }
   connect(url) {
     this.disconnect(true);
     this.#want = true; this.#url = url; this.#retry = 0; this.lastError = '';
@@ -1368,6 +1384,7 @@ class GazeLink extends EventTarget {
   }
   #open() {
     this.#opened = false;
+    lastTrackerTry = performance.now();
     this.#set('connecting');
     let ws;
     try { ws = new WebSocket(this.#url); } catch {
@@ -1385,7 +1402,8 @@ class GazeLink extends EventTarget {
     ws.addEventListener('close', (ev) => {
       if (this.#ws !== ws) return;
       this.#ws = null;
-      this.lastError = this.#opened ? `The connection dropped (code ${ev.code}).` : `No tracker answered at ${this.#url}.`;
+      this.lastError = isRefusal(ev.code) ? `The tracker at ${this.#url} refused this page${ev.reason ? ` (${ev.reason})` : ''}.`
+        : this.#opened ? `The connection dropped (code ${ev.code}).` : `No tracker answered at ${this.#url}.`;
       if (this.#want) this.#retryLater(); else this.#set('idle');
     });
   }
@@ -1458,7 +1476,13 @@ function ingest(raw) {
   Render.kick();
 }
 Link.addEventListener('frame', (e) => ingest(e.detail));
-Link.addEventListener('state', () => { renderLink(); Calibration.renderIdle(); });
+Link.addEventListener('state', () => {
+  // After three failed reconnects the tracker may have moved to another port: search again instead.
+  if (Link.state === 'reconnecting' && Link.retries >= 3 && Prefs.get('autoConnect') && !Discovery.paused) { Link.disconnect(); return; }
+  renderLink();
+  Calibration.renderIdle();
+  if (Link.state === 'idle') Discovery.kick();
+});
 
 function sourceSize() {
   return Prefs.get('mapMode') === 'viewport' ? { w: vw(), h: vh() } : { w: Prefs.get('frameW'), h: Prefs.get('frameH') };
@@ -1478,6 +1502,7 @@ function toSource(p) {
 const Simulator = {
   running: false, timer: 0, t0: 0, x: 0, y: 0,
   start() {
+    Discovery.cancel();
     Link.disconnect();
     const { w, h: hh } = sourceSize();
     Object.assign(this, { running: true, t0: performance.now(), x: w / 2, y: hh / 2 });
@@ -1486,12 +1511,13 @@ const Simulator = {
     renderLink();
     Calibration.renderIdle();
   },
-  stop() {
+  stop(resumeSearch = true) {
     if (!this.running) return;
     clearInterval(this.timer);
     this.running = false;
     renderLink();
     Calibration.renderIdle();
+    if (resumeSearch) Discovery.kick();
   },
   tick() {
     const t = (performance.now() - this.t0) / 1000;
@@ -1511,6 +1537,131 @@ const Simulator = {
     ingest(JSON.stringify({ x: Math.round(this.x + noise()), y: Math.round(this.y + noise()), blink }));
   },
 };
+
+/* ---------- Discovery: find the tracker's WebSocket server on this computer ---------- */
+const DISCOVERY_PORTS = [8765, 8766, 8767, 8768, 8769, 8770, 8080, 8000];
+const EYESYNC_PORTS = new Set(['8765', '8080']);   // where EyeSync and its standby listen
+// How long a port may take to accept the WebSocket. Generous on purpose: Windows takes ~2 s to
+// refuse a closed loopback port, and Chrome slows new sockets while several are pending.
+const PROBE_OPEN_MS = 6000;
+const PROBE_FRAME_MS = 1500;   // how long an open socket may take to send its first gaze frame
+const portOf = (url) => { try { return new URL(url).port; } catch { return ''; } };
+
+// Opens a short-lived socket. Resolves { url, verified, refused } if it opened (verified = it sent
+// a valid gaze frame; refused = it closed us out with a reason), or null if nothing answered.
+// The probe never sends anything to the server.
+function probeTracker(url) {
+  lastTrackerTry = performance.now();
+  return new Promise((resolve) => {
+    let ws, timer = 0, opened = false, done = false;
+    const finish = (result) => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      try { ws?.close(); } catch { /* ignore */ }
+      resolve(result);
+    };
+    try { ws = new WebSocket(url); } catch { resolve(null); return; }
+    timer = setTimeout(() => finish(opened ? { url, verified: false } : null), PROBE_OPEN_MS);
+    ws.addEventListener('open', () => {
+      opened = true;
+      clearTimeout(timer);
+      timer = setTimeout(() => finish({ url, verified: false }), PROBE_FRAME_MS);
+    });
+    ws.addEventListener('message', (ev) => {
+      if (typeof ev.data !== 'string' || ev.data.length > MAX_FRAME_CHARS) return;
+      try { if (parseSample(JSON.parse(ev.data))) finish({ url, verified: true }); } catch { /* not a gaze frame */ }
+    });
+    ws.addEventListener('close', (ev) => {
+      if (!opened) { finish(null); return; }
+      finish(isRefusal(ev.code) ? { url, verified: false, refused: ev.reason || `code ${ev.code}` } : { url, verified: false });
+    });
+  });
+}
+
+const Discovery = {
+  running: false, paused: false, missed: false, attempt: 0, timer: 0, generation: 0, nextSecs: 0, checked: 0, refused: null,
+  candidates() {
+    const saved = Prefs.get('wsUrl');
+    return [...new Set([saved, ...DISCOVERY_PORTS.map((p) => `ws://localhost:${p}`)].filter(Boolean))];
+  },
+  // Auto search runs only while signed in, on the dashboard or calibration, with nothing connected.
+  wanted() {
+    return Prefs.get('autoConnect') && !this.paused && !!Auth.current && !Simulator.running
+      && Link.state === 'idle' && (Router.current === 'dashboard' || Router.current === 'calibration');
+  },
+  kick() {
+    if (this.running || !this.wanted()) return;
+    const wait = lastTrackerTry + AUTO_GAP_MS - performance.now();   // never right after another try
+    clearTimeout(this.timer);
+    if (wait > 0) this.timer = setTimeout(() => this.run(), wait);
+    else this.run();
+  },
+  cancel() { this.generation++; this.running = false; this.missed = false; clearTimeout(this.timer); },
+  // manual = the Find tracker button: probes everything at once, which EyeSync's standby reads as a
+  // click and may start EyeSync. Automatic searches space EyeSync's ports AUTO_GAP_MS apart.
+  async run(manual = false) {
+    if (this.running) return;
+    clearTimeout(this.timer);
+    if (manual ? !(Auth.current && Link.state === 'idle' && !Simulator.running) : !this.wanted()) return;
+    const gen = ++this.generation;
+    const list = this.candidates();
+    this.running = true; this.missed = false; this.refused = null; this.checked = list.length;
+    renderLink();
+    const found = await new Promise((resolve) => {
+      const opened = [];
+      let pending = list.length, settled = false, slot = 0;
+      const settle = (r) => { if (!settled) { settled = true; resolve(r); } };
+      const done = (i, r) => {
+        if (r?.verified) settle(r);                        // the first server sending real gaze frames wins
+        else if (r) opened[i] = r;
+        if (--pending === 0) {
+          // Nothing sent gaze frames. Fall back to a server that at least opened (and didn't refuse
+          // us), but only on the last address that worked or the standard port.
+          this.refused = opened.find((o) => o?.refused) || null;
+          settle(opened.find((o) => o && !o.refused && (o.url === list[0] || portOf(o.url) === '8765')) || null);
+        }
+      };
+      list.forEach((url, i) => {
+        const delay = !manual && EYESYNC_PORTS.has(portOf(url)) ? AUTO_GAP_MS * slot++ : 0;
+        setTimeout(() => {
+          if (settled || gen !== this.generation) { done(i, null); return; }
+          probeTracker(url).then((r) => done(i, r));
+        }, delay);
+      });
+    });
+    if (gen !== this.generation) return;                   // cancelled while probing
+    this.running = false;
+    if (!Auth.current || Simulator.running || Link.state !== 'idle') { renderLink(); return; }
+    if (found) {
+      this.attempt = 0;
+      connectTo(found.url);
+      toast(`Found your tracker at ${found.url}.`, 'ok');
+    } else {
+      this.attempt++;
+      this.missed = true;
+      this.schedule();
+      renderLink();
+    }
+  },
+  schedule() {
+    clearTimeout(this.timer);
+    if (!Prefs.get('autoConnect') || this.paused) return;
+    const delay = Math.min(15000, 5000 * 2 ** Math.max(0, this.attempt - 1));   // 5 s, 10 s, then every 15 s
+    this.nextSecs = Math.round(delay / 1000);
+    this.timer = setTimeout(() => this.run(), delay);
+  },
+};
+
+function connectTo(url) {
+  Discovery.cancel();
+  Discovery.paused = false;
+  Simulator.stop(false);
+  $('#ws-url').value = url;
+  setError($('#ws-url'), '');
+  Prefs.set('wsUrl', url);
+  Link.connect(url);
+}
 
 /* ---------- Render loop: cursor position via top/left, batched per animation frame ---------- */
 const cursorEl = $('#gaze-cursor');
@@ -1600,12 +1751,20 @@ function updateReadouts() {
   }
 }
 
-const LINK_TEXT = { idle: 'Not connected', connecting: 'Connecting…', open: 'Connected', stale: 'No data', reconnecting: 'Retrying', sim: 'Simulator' };
+const LINK_TEXT = { idle: 'Not connected', searching: 'Searching…', connecting: 'Connecting…', open: 'Connected', stale: 'No data', reconnecting: 'Retrying', sim: 'Simulator' };
+function idleDetail() {
+  if (Discovery.paused) return 'Automatic search is paused. Press Find tracker to search this computer, or enter an address and press Connect.';
+  if (Discovery.missed && Discovery.refused) return `A tracker at ${Discovery.refused.url} refused this page (${Discovery.refused.refused}). EyeSync accepts its own website, or an address that ends in ?key= followed by its API key. Searching again in ${Discovery.nextSecs} s.`;
+  if (Discovery.missed) return `No tracker found on this computer yet. Searching again in ${Discovery.nextSecs} s. If you closed EyeSync, press Find tracker to start it again.`;
+  if (Link.lastError) return Link.lastError;
+  return Prefs.get('autoConnect') ? 'Start your tracker script. EyeSync will find it and connect automatically.' : 'Start your tracker script, then press Find tracker or Connect.';
+}
 function renderLink() {
-  const state = Simulator.running ? 'sim' : Link.state;
+  const state = Simulator.running ? 'sim' : Link.state === 'idle' && Discovery.running ? 'searching' : Link.state;
   $$('.js-link-pill').forEach((p) => { p.dataset.state = state; $('.js-link-text', p).textContent = LINK_TEXT[state]; });
   const detail = {
-    idle: Link.lastError || 'Start your tracker script, then connect.',
+    idle: idleDetail(),
+    searching: `Searching this computer for your tracker (${Discovery.checked} addresses)…`,
     connecting: `Opening ${Link.url}…`,
     open: `Receiving gaze frames from ${Link.url}.`,
     stale: `Connected to ${Link.url}, but no gaze frames arrived in the last 3 seconds.`,
@@ -1616,6 +1775,10 @@ function renderLink() {
   const linked = ['connecting', 'open', 'stale', 'reconnecting'].includes(state);
   $('#btn-connect').hidden = linked;
   $('#btn-disconnect').hidden = !linked;
+  const find = $('#btn-find');
+  find.hidden = linked;
+  find.disabled = state === 'searching';
+  find.textContent = state === 'searching' ? 'Searching…' : 'Find tracker';
   const sim = $('#btn-sim');
   sim.setAttribute('aria-pressed', String(Simulator.running));
   sim.textContent = Simulator.running ? 'Stop simulator' : 'Run simulator';
@@ -1665,6 +1828,7 @@ function bindSettings() {
     dms.value = String(Prefs.get('dwellMs'));
     $('#cal-dwell').value = String(Prefs.get('calDwellMs'));
     $('#cal-fill').checked = Prefs.get('calFill');
+    $('#auto-connect').checked = Prefs.get('autoConnect');
     $('#frame-fields').hidden = Prefs.get('mapMode') !== 'frame';
     updateMapAspect();
   };
@@ -1690,6 +1854,11 @@ function bindSettings() {
     toast(dw.checked ? 'Dwell selection is on. Hold your gaze on a button to press it.' : 'Dwell selection is off.');
   });
   dms.addEventListener('change', () => { const n = Number(dms.value); if ([800, 1200, 1600, 2000].includes(n)) Prefs.set('dwellMs', n); });
+  $('#auto-connect').addEventListener('change', (e) => {
+    Prefs.set('autoConnect', e.target.checked);
+    if (e.target.checked) { Discovery.paused = false; Discovery.kick(); } else { Discovery.cancel(); }
+    renderLink();
+  });
   $('#cal-dwell').addEventListener('change', (e) => { const n = Number(e.target.value); if ([1500, 2000, 3000, 4000].includes(n)) Prefs.set('calDwellMs', n); });
   $('#cal-fill').addEventListener('change', (e) => Prefs.set('calFill', e.target.checked));
   sync();
@@ -1970,14 +2139,21 @@ function bindForms() {
     const input = $('#ws-url');
     const res = GazeLink.check(input.value);
     if (res.error) { setError(input, res.error); input.focus(); return; }
-    setError(input, '');
-    input.value = res.url;
-    Prefs.set('wsUrl', res.url);
-    Simulator.stop();
-    Link.connect(res.url);
+    connectTo(res.url);
     $('#btn-disconnect').focus();
   });
-  $('#btn-disconnect').addEventListener('click', () => { Link.disconnect(); $('#btn-connect').focus(); });
+  $('#btn-disconnect').addEventListener('click', () => {
+    Discovery.paused = true;                     // a manual disconnect stops automatic search until asked again
+    Discovery.cancel();
+    Link.disconnect();
+    $('#btn-find').focus();
+  });
+  $('#btn-find').addEventListener('click', () => {
+    Discovery.paused = false;
+    Discovery.cancel();
+    Simulator.stop(false);
+    Discovery.run(true);
+  });
   $('#btn-sim').addEventListener('click', () => {
     if (Simulator.running) { Simulator.stop(); toast('Simulator stopped.'); }
     else { Simulator.start(); toast('Simulator running. Watch the red crosshair.', 'ok'); }
@@ -1997,8 +2173,10 @@ function bindForms() {
       deleteTimer = setTimeout(disarmDelete, 10000);
       return;
     }
-    Calibration.stop('signout'); Simulator.stop(); Link.disconnect(); Gaze.reset();
+    Discovery.cancel();
+    Calibration.stop('signout');
     Auth.deleteAccount();
+    Simulator.stop(false); Link.disconnect(); Gaze.reset();
     disarmDelete();
     syncSettings();
     Theme.apply(Prefs.get('theme'));

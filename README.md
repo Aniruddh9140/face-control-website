@@ -10,7 +10,8 @@
 - **Brute-force slowdown.** After 5 failed sign-ins, that username is locked for 30 s, doubling on each further failure up to 15 minutes.
 - **Cookie consent.** A banner appears on the first visit. Optional preference storage (`fc.prefs`) stays in memory until the visitor chooses **Accept**. Choosing **Essential only** deletes it. The Cookie Policy and Terms and Conditions open as pages (`#cookies`, `#terms`) or as dialogs from the registration form.
 - **Mandatory agreement.** The registration form has an unchecked "I agree to the Terms and Conditions and Cookie Policy" checkbox. No account is created unless it is checked, and the versions agreed to are recorded with the account.
-- **Live gaze.** A WebSocket client connects to `ws://localhost:8765` (configurable, loopback addresses only). It validates every frame, reconnects with exponential backoff, and flags a stale stream. The red crosshair is positioned with CSS `top`/`left` from each `{"x", "y", "blink"}` frame.
+- **Live gaze.** A WebSocket client connects to the tracker (loopback addresses only). It validates every frame, reconnects with exponential backoff, and flags a stale stream. The red crosshair is positioned with CSS `top`/`left` from each `{"x", "y", "blink"}` frame.
+- **Automatic discovery.** On the Dashboard and Calibration pages, the dashboard looks for the tracker on this computer and connects to the first server that sends a valid gaze frame. It checks the last address that worked, then `ws://localhost` ports 8765–8770, 8080 and 8000. If nothing answers, it searches again after 5 s, 10 s, then every 15 s, so a tracker started later is picked up. After three failed reconnects it searches again, in case the tracker moved to another port. **Disconnect** pauses searching; **Find tracker** searches right away. The setting can be turned off under Tracker connection.
 - **9-point calibration.** Targets in the corners, edges, and centre light up one at a time. While each target is showing, the dashboard measures the gaze error at that target and sends calibration events back to the tracker.
 - **Assistive extras.** Every control is at least 56 px with solid colour-inversion hover states. Optional dwell-to-select lets you press any button by holding your gaze on it. Light and dark themes are both included, and reduced-motion preferences are respected.
 
@@ -54,6 +55,15 @@ The mock streams 60 frames per second on `ws://localhost:8765` and prints the ca
 ```
 
 `source` is the target position in tracker-frame coordinates. Your tracker can ignore these messages if it doesn't calibrate.
+
+### Working with the EyeSync app's standby
+
+The EyeSync app (`E:\EyeSync`, see its `WEBSITE.md`) keeps a small standby listener on ports 8765 and 8080 while it is closed, and answers with HTTP 503. It starts EyeSync when this website is opened, with one exception: after you quit EyeSync on purpose, it only restarts on two tries within 0.75 s, which is what a click on **Connect** produces. To respect that:
+
+- automatic searches and reconnects always keep tries to ports 8765 and 8080 at least 1.5 s apart (`AUTO_GAP_MS`), so they never restart EyeSync after you quit it;
+- **Connect** and **Find tracker** make their tries close together, so pressing either one starts EyeSync again.
+
+A server that opens the socket and then closes it with code 4001 or 1008 (EyeSync does this for pages it doesn't recognise) is reported as a refusal, with its reason, and isn't retried as a match.
 
 ### Browser notes
 
