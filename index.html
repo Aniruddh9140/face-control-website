@@ -258,6 +258,19 @@ select.input { padding-block: 0; cursor: pointer; }
 .pill[data-state="sim"] .pill-mark, .pill[data-state="poor"] .pill-mark { background: var(--on-color); }
 .status-line { padding: 12px 14px; background: var(--bg); border-left: 6px solid var(--line-soft); }
 
+/* Tracker address: filled in by discovery, colour-coded by state */
+.addr { display: grid; gap: 6px; padding: 16px 18px; background: var(--bg); border: var(--bw) solid var(--line-soft); }
+.addr-value { font: 700 1.375rem/1.2 var(--font-mono); overflow-wrap: anywhere; }
+.addr-source { display: flex; align-items: center; gap: 8px; font-size: 0.9375rem; color: var(--ink-2); }
+.addr-source::before { content: ""; width: 10px; height: 10px; flex: none; background: var(--line-soft); }
+.addr[data-state="found"] { border-color: var(--ok); }
+.addr[data-state="found"] .addr-source::before { background: var(--ok); }
+.addr[data-state="detecting"] .addr-source::before, .addr[data-state="waiting"] .addr-source::before { background: var(--warn); }
+.addr[data-state="sim"] .addr-source::before { background: var(--accent); }
+.manual > summary { list-style: none; cursor: pointer; }
+.manual > summary::-webkit-details-marker { display: none; }
+.manual[open] > summary { margin-bottom: 18px; }
+
 /* Key/value lists */
 .kv { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 18px; margin: 0; }
 .kv dt { color: var(--ink-2); }
@@ -657,25 +670,33 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
         <div class="col">
           <section class="panel panel-strong" aria-labelledby="conn-title">
             <h2 id="conn-title">Tracker connection</h2>
-            <form id="conn-form" class="stack" novalidate>
-              <div class="field">
-                <label for="ws-url">WebSocket address</label>
-                <input class="input mono" id="ws-url" name="url" inputmode="url" autocapitalize="none" spellcheck="false" maxlength="200" aria-describedby="ws-url-hint ws-url-error">
-                <p class="hint" id="ws-url-hint">Only trackers on this computer are allowed: localhost or 127.0.0.1.</p>
-                <p class="error" id="ws-url-error" hidden></p>
-              </div>
-              <div class="row">
-                <button class="btn btn-primary" id="btn-connect" type="submit">Connect</button>
-                <button class="btn" id="btn-find" type="button">Find tracker</button>
-                <button class="btn" id="btn-disconnect" type="button" hidden>Disconnect</button>
-                <button class="btn" id="btn-sim" type="button" aria-pressed="false">Run simulator</button>
-              </div>
-              <p class="status-line" id="link-detail" role="status">Start your tracker script, then connect.</p>
-              <div class="field">
-                <label class="check" for="auto-connect"><input type="checkbox" id="auto-connect" aria-describedby="auto-connect-hint"><span>Find and connect to the tracker automatically</span></label>
-                <p class="hint" id="auto-connect-hint">The dashboard checks this computer for a tracker that sends gaze frames: the last address that worked, then ports 8765 to 8770, 8080 and 8000. If none answers, it keeps looking in the background. If you quit EyeSync on purpose, searching won't restart it; press Find tracker for that.</p>
-              </div>
-            </form>
+            <div class="addr" id="addr" data-state="detecting">
+              <span class="label">Tracker address</span>
+              <span class="addr-value" id="addr-value">Detecting…</span>
+              <span class="addr-source" id="addr-source">Looking for your tracker on this computer</span>
+            </div>
+            <div class="row">
+              <button class="btn btn-primary" id="btn-find" type="button">Find tracker</button>
+              <button class="btn" id="btn-disconnect" type="button" hidden>Disconnect</button>
+              <button class="btn" id="btn-sim" type="button" aria-pressed="false">Run simulator</button>
+            </div>
+            <p class="status-line" id="link-detail" role="status">Looking for your tracker on this computer.</p>
+            <div class="field">
+              <label class="check" for="auto-connect"><input type="checkbox" id="auto-connect" aria-describedby="auto-connect-hint"><span>Find and connect to the tracker automatically</span></label>
+              <p class="hint" id="auto-connect-hint">The dashboard checks this computer for a tracker that sends gaze frames: the last address that worked, then ports 8765 to 8770, 8080 and 8000. If none answers, it keeps looking in the background. If you quit EyeSync on purpose, searching won't restart it; press Find tracker for that.</p>
+            </div>
+            <details class="manual" id="manual-entry">
+              <summary class="btn btn-quiet">Enter an address yourself</summary>
+              <form id="conn-form" class="stack" novalidate>
+                <div class="field">
+                  <label for="ws-url">WebSocket address</label>
+                  <input class="input mono" id="ws-url" name="url" inputmode="url" autocapitalize="none" spellcheck="false" maxlength="200" aria-describedby="ws-url-hint ws-url-error">
+                  <p class="hint" id="ws-url-hint">Only needed if your tracker uses a port the dashboard doesn't check. Only addresses on this computer are allowed: localhost or 127.0.0.1.</p>
+                  <p class="error" id="ws-url-error" hidden></p>
+                </div>
+                <div class="row"><button class="btn" id="btn-connect" type="submit">Connect to this address</button></div>
+              </form>
+            </details>
             <dl class="kv">
               <dt>Frames received</dt><dd id="m-total">0</dd>
               <dt>Frames rejected</dt><dd id="m-rejected">0</dd>
@@ -1635,7 +1656,7 @@ const Discovery = {
     if (!Auth.current || Simulator.running || Link.state !== 'idle') { renderLink(); return; }
     if (found) {
       this.attempt = 0;
-      connectTo(found.url);
+      connectTo(found.url, 'auto');
       toast(`Found your tracker at ${found.url}.`, 'ok');
     } else {
       this.attempt++;
@@ -1653,7 +1674,9 @@ const Discovery = {
   },
 };
 
-function connectTo(url) {
+let linkSource = 'auto';                          // how the current address was chosen: 'auto' or 'manual'
+function connectTo(url, source = 'manual') {
+  linkSource = source;
   Discovery.cancel();
   Discovery.paused = false;
   Simulator.stop(false);
@@ -1700,7 +1723,7 @@ function syncCursor() {
 }
 
 /* ---------- Dwell selection: hold the gaze on a control to press it ---------- */
-const DWELL_SELECTOR = 'button:not([disabled]), a[href], label.check, [data-dwell]';
+const DWELL_SELECTOR = 'button:not([disabled]), a[href], label.check, summary, [data-dwell]';
 const Dwell = {
   el: null, start: 0,
   reset() {
@@ -1753,11 +1776,32 @@ function updateReadouts() {
 
 const LINK_TEXT = { idle: 'Not connected', searching: 'Searching…', connecting: 'Connecting…', open: 'Connected', stale: 'No data', reconnecting: 'Retrying', sim: 'Simulator' };
 function idleDetail() {
-  if (Discovery.paused) return 'Automatic search is paused. Press Find tracker to search this computer, or enter an address and press Connect.';
+  if (Discovery.paused) return 'Automatic search is paused. Press Find tracker to search this computer, or enter an address yourself.';
   if (Discovery.missed && Discovery.refused) return `A tracker at ${Discovery.refused.url} refused this page (${Discovery.refused.refused}). EyeSync accepts its own website, or an address that ends in ?key= followed by its API key. Searching again in ${Discovery.nextSecs} s.`;
   if (Discovery.missed) return `No tracker found on this computer yet. Searching again in ${Discovery.nextSecs} s. If you closed EyeSync, press Find tracker to start it again.`;
   if (Link.lastError) return Link.lastError;
-  return Prefs.get('autoConnect') ? 'Start your tracker script. EyeSync will find it and connect automatically.' : 'Start your tracker script, then press Find tracker or Connect.';
+  return Prefs.get('autoConnect') ? 'Start your tracker script. EyeSync will find it and connect automatically.' : 'Automatic search is off. Start your tracker script, then press Find tracker.';
+}
+// The "Tracker address" box: what address is in use and how it was found.
+function renderAddress(state) {
+  const box = $('#addr');
+  const set = (boxState, value, source) => {
+    box.dataset.state = boxState;
+    $('#addr-value').textContent = value;
+    $('#addr-source').textContent = source;
+  };
+  if (state === 'sim') return set('sim', 'Simulator', 'Built-in practice data, no tracker needed');
+  if (state === 'open' || state === 'stale') {
+    return set('found', Link.url, linkSource === 'auto' ? 'Found automatically' : 'Entered by you');
+  }
+  if (state === 'connecting' || state === 'reconnecting') {
+    return set('waiting', Link.url, linkSource === 'auto' ? 'Found automatically, connecting' : 'Entered by you, connecting');
+  }
+  if (state === 'searching') return set('detecting', 'Detecting…', `Checking ${Discovery.checked} addresses on this computer`);
+  if (Discovery.paused) return set('off', 'Not connected', 'Automatic search is paused');
+  if (!Prefs.get('autoConnect')) return set('off', 'Not connected', 'Automatic search is off');
+  if (Discovery.missed) return set('detecting', 'Detecting…', `Not found yet, checking again in ${Discovery.nextSecs} s`);
+  return set('detecting', 'Detecting…', 'Looking for your tracker on this computer');
 }
 function renderLink() {
   const state = Simulator.running ? 'sim' : Link.state === 'idle' && Discovery.running ? 'searching' : Link.state;
@@ -1772,6 +1816,7 @@ function renderLink() {
     sim: 'The simulator is sending 60 frames per second. Stop it to use your tracker.',
   }[state];
   $('#link-detail').textContent = detail;
+  renderAddress(state);
   const linked = ['connecting', 'open', 'stale', 'reconnecting'].includes(state);
   $('#btn-connect').hidden = linked;
   $('#btn-disconnect').hidden = !linked;
@@ -2139,7 +2184,8 @@ function bindForms() {
     const input = $('#ws-url');
     const res = GazeLink.check(input.value);
     if (res.error) { setError(input, res.error); input.focus(); return; }
-    connectTo(res.url);
+    connectTo(res.url, 'manual');
+    $('#manual-entry').open = false;
     $('#btn-disconnect').focus();
   });
   $('#btn-disconnect').addEventListener('click', () => {
