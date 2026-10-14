@@ -4,6 +4,7 @@ Control dashboard for the Face Control eye-tracker. It is a single static page (
 
 ## What it does
 
+- **Home page.** Visitors land on an introduction (`#home`) covering what Face Control does, a simulated gaze preview, how to get started, and the privacy and accessibility approach. Buttons there lead to sign-in and registration.
 - **Accounts in the browser.** Registration and sign-in use the Web Crypto API. Passwords are salted (16 random bytes) and hashed with PBKDF2-HMAC-SHA-256 at 600,000 rounds before anything is saved. Plain-text passwords are never stored.
 - **Session lock.** A successful sign-in creates a random 32-byte session token, kept in `sessionStorage` for this tab only. The account record stores just the SHA-256 of that token. Protected views (`#dashboard`, `#calibration`) check the token on every navigation, and the session expires after 30 minutes without activity.
 - **Brute-force slowdown.** After 5 failed sign-ins, that username is locked for 30 s, doubling on each further failure up to 15 minutes.

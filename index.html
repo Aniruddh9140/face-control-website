@@ -153,13 +153,58 @@ main:focus { outline: none; }
   .auth-grid { grid-template-columns: minmax(0, 1fr); gap: 28px; }
   .auth-form { justify-self: stretch; max-width: none; }
 }
-.flow { margin: 0; display: flex; flex-wrap: wrap; align-items: stretch; gap: 10px; }
-.flow-node { display: grid; gap: 4px; padding: 12px 14px; min-width: 0; background: var(--surface); border: var(--bw) solid var(--line-soft); }
-.flow-node .mono { font-size: 0.9375rem; overflow-wrap: anywhere; }
-.flow-node.is-here { border-color: var(--accent); }
-.flow-arrow { align-self: center; font: 700 1.5rem/1 var(--font-mono); color: var(--accent-ink); }
-.payload { display: grid; gap: 8px; }
-.payload code { display: block; padding: 14px 16px; overflow-x: auto; white-space: pre; background: var(--bg); border: var(--bw) solid var(--accent); font-size: 1rem; }
+
+/* Home */
+.view-home { gap: 80px; }
+.hero { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 56px; align-items: center; padding-top: 8px; }
+.hero-copy { display: grid; gap: 24px; justify-items: start; }
+.hero h1 { max-width: 15ch; font-size: clamp(2.25rem, 1.5rem + 2.8vw, 3.5rem); letter-spacing: -0.02em; }
+.hero-actions { display: flex; flex-wrap: wrap; gap: 14px; }
+.btn-lg { min-height: 64px; padding: 10px 28px; font-size: 1.1875rem; }
+.hero-facts { display: flex; flex-wrap: wrap; gap: 10px 22px; margin: 0; padding: 0; list-style: none; font: 700 0.875rem/1.3 var(--font-mono); color: var(--ink-2); }
+.hero-facts li { display: flex; align-items: center; gap: 8px; }
+.hero-facts li::before { content: ""; width: 10px; height: 10px; flex: none; background: var(--ok); }
+@media (max-width: 900px) { .hero { grid-template-columns: minmax(0, 1fr); gap: 40px; } }
+
+.preview { display: grid; justify-items: center; margin: 0; min-width: 0; }
+.preview-screen { position: relative; width: 100%; max-width: 100%; aspect-ratio: 4 / 3; overflow: hidden; background: var(--bg); border: 6px solid var(--line); box-shadow: var(--drop-lg); }
+.preview-tracker { display: flex; align-items: center; justify-content: center; gap: 18px; width: 46%; height: 20px; margin-top: 12px; background: var(--ink); }
+.preview-tracker span { width: 8px; height: 8px; border-radius: 50%; background: var(--danger); }
+.preview-tracker .lens { width: 12px; height: 12px; background: var(--bg); box-shadow: 0 0 0 2px var(--line-soft); }
+.pv-tag { position: absolute; left: 12px; top: 10px; font: 700 0.75rem/1 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); }
+.pv-target { position: absolute; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%; border: 3px solid var(--line-soft); background: var(--surface); }
+.pv-target.is-near { background: var(--accent); border-color: var(--ink); }
+.pv-c0 { left: 10%; } .pv-c1 { left: 50%; } .pv-c2 { left: 90%; }
+.pv-r0 { top: 12%; } .pv-r1 { top: 50%; } .pv-r2 { top: 88%; }
+.pv-cursor { position: absolute; left: 50%; top: 50%; width: 30px; height: 30px; margin: -15px 0 0 -15px; }
+.pv-cursor::before, .pv-cursor::after { content: ""; position: absolute; background: var(--danger); box-shadow: 0 0 0 2px var(--bg); }
+.pv-cursor::before { left: 0; right: 0; top: 50%; height: 4px; margin-top: -2px; }
+.pv-cursor::after { top: 0; bottom: 0; left: 50%; width: 4px; margin-left: -2px; }
+.pv-cursor.is-blink::before, .pv-cursor.is-blink::after { background: var(--warn); }
+.preview-caption { display: grid; gap: 8px; width: 100%; margin-top: 20px; }
+
+.home-section { display: grid; gap: 28px; }
+.section-head { display: grid; gap: 10px; max-width: 62ch; }
+.section-head h2 { font-size: clamp(1.625rem, 1.3rem + 1.2vw, 2.125rem); }
+.features { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; }
+@media (max-width: 1020px) { .features { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .features { grid-template-columns: minmax(0, 1fr); } }
+.feature { display: grid; gap: 12px; align-content: start; min-width: 0; padding: 22px; background: var(--surface); border: var(--bw) solid var(--line-soft); }
+.feature p, .step p { color: var(--ink-2); }
+.feature-mark { width: 28px; height: 28px; background: var(--accent); }
+.feature-mark[data-tone="danger"] { background: var(--danger); }
+.feature-mark[data-tone="ok"] { background: var(--ok); }
+.feature-mark[data-tone="warn"] { background: var(--warn); }
+.steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; margin: 0; padding: 0; list-style: none; }
+@media (max-width: 900px) { .steps { grid-template-columns: minmax(0, 1fr); } }
+.step { display: grid; gap: 12px; align-content: start; min-width: 0; padding: 22px; background: var(--surface); border: var(--bw) solid var(--line); box-shadow: var(--drop); }
+.step-n { display: grid; place-items: center; width: 48px; height: 48px; background: var(--ink); color: var(--bg); font: 800 1.5rem/1 var(--font-mono); }
+.step code { display: block; padding: 10px 12px; white-space: pre-wrap; overflow-wrap: anywhere; background: var(--bg); border: var(--bw) solid var(--accent); font-size: 0.9375rem; }
+.ticks { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.ticks li { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 14px; align-items: start; }
+.ticks li::before { content: ""; width: 16px; height: 16px; margin-top: 5px; background: var(--ok); }
+.cta-band { display: flex; flex-wrap: wrap; gap: 20px 32px; align-items: center; justify-content: space-between; padding: 28px; background: var(--surface); border: 6px solid var(--accent); }
+.cta-band > div:first-child { display: grid; gap: 8px; min-width: 0; }
 
 /* Forms */
 .field { display: grid; gap: 8px; min-width: 0; }
@@ -318,9 +363,9 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 
 @media (max-width: 560px) {
   .topbar { position: static; }
-  .flow { flex-direction: column; }
-  .flow-arrow { transform: rotate(90deg); align-self: flex-start; margin-left: 18px; }
   .panel { padding: 18px; }
+  .view-home { gap: 56px; }
+  .hero-actions .btn { flex: 1 1 100%; }
   .field-pair { grid-template-columns: minmax(0, 1fr); }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -334,7 +379,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 
 <header class="topbar">
   <div class="wrap topbar-inner">
-    <a class="brand" href="#dashboard" aria-label="Face Control home">
+    <a class="brand" href="#home" aria-label="Face Control home">
       <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
         <rect class="bm-fill" width="32" height="32"></rect>
         <path class="bm-cut" d="M3 16Q16 4 29 16Q16 28 3 16Z"></path>
@@ -346,6 +391,10 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
     <nav class="nav" id="nav" aria-label="Main" hidden>
       <a class="btn btn-quiet" href="#dashboard" data-nav="dashboard">Dashboard</a>
       <a class="btn btn-quiet" href="#calibration" data-nav="calibration">Calibration</a>
+    </nav>
+    <nav class="nav js-guest" aria-label="Account">
+      <a class="btn btn-quiet" href="#login" data-nav="login">Sign in</a>
+      <a class="btn btn-primary" href="#register" data-nav="register">Create account</a>
     </nav>
     <div class="bar-actions">
       <span class="user-chip" id="user-chip" hidden></span>
@@ -359,24 +408,151 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
   <div class="wrap">
     <noscript><p class="notice">Face Control needs JavaScript to run. Turn it on for this page and reload.</p></noscript>
 
+    <!-- Home -->
+    <section class="view view-home" data-view="home" hidden aria-labelledby="home-title">
+      <div class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">Hardware eye-tracker console</p>
+          <h1 id="home-title" tabindex="-1">See where your eyes land, live.</h1>
+          <p class="lede">Face Control is the browser dashboard for the Face Control eye-tracker. It connects to the tracker on your computer, draws your gaze as a live cursor, and guides you through a 9-point calibration so the cursor lands exactly where you look.</p>
+          <div class="hero-actions js-guest">
+            <a class="btn btn-primary btn-lg" href="#register">Create an account</a>
+            <a class="btn btn-lg" href="#login">Sign in</a>
+          </div>
+          <div class="hero-actions js-member" hidden>
+            <a class="btn btn-primary btn-lg" href="#dashboard">Open dashboard</a>
+            <a class="btn btn-lg" href="#calibration">Start calibration</a>
+          </div>
+          <ul class="hero-facts">
+            <li>Runs in your browser</li>
+            <li>Nothing leaves this computer</li>
+            <li>Works with any tracker that sends JSON</li>
+          </ul>
+        </div>
+
+        <figure class="preview" aria-label="Simulated preview: a red crosshair moves across a screen with nine calibration targets">
+          <div class="preview-screen" aria-hidden="true">
+            <span class="pv-tag">Simulated preview</span>
+            <span class="pv-target pv-c0 pv-r0"></span><span class="pv-target pv-c1 pv-r0"></span><span class="pv-target pv-c2 pv-r0"></span>
+            <span class="pv-target pv-c0 pv-r1"></span><span class="pv-target pv-c1 pv-r1"></span><span class="pv-target pv-c2 pv-r1"></span>
+            <span class="pv-target pv-c0 pv-r2"></span><span class="pv-target pv-c1 pv-r2"></span><span class="pv-target pv-c2 pv-r2"></span>
+            <span class="pv-cursor" id="pv-cursor"></span>
+          </div>
+          <div class="preview-tracker" aria-hidden="true"><span></span><span class="lens"></span><span></span></div>
+          <figcaption class="preview-caption">
+            <span class="label">What your tracker sends, about 60 times a second</span>
+            <pre class="payload-pre" id="pv-frame" aria-hidden="true">{"x": 400, "y": 300, "blink": false}</pre>
+          </figcaption>
+        </figure>
+      </div>
+
+      <section class="home-section" aria-labelledby="features-title">
+        <div class="section-head">
+          <p class="eyebrow">What it does</p>
+          <h2 id="features-title">Everything you need to run an eye-tracker from the browser</h2>
+        </div>
+        <div class="features">
+          <article class="feature">
+            <span class="feature-mark" data-tone="danger" aria-hidden="true"></span>
+            <h3>Live gaze cursor</h3>
+            <p>A red crosshair follows your eyes across the whole window, updated from every frame your tracker sends. Blinks are shown and counted.</p>
+          </article>
+          <article class="feature">
+            <span class="feature-mark" aria-hidden="true"></span>
+            <h3>9-point calibration</h3>
+            <p>Targets light up one at a time in the corners, along the edges and in the centre. Face Control measures how far your gaze lands from each one, in pixels.</p>
+          </article>
+          <article class="feature">
+            <span class="feature-mark" data-tone="warn" aria-hidden="true"></span>
+            <h3>Dwell to select</h3>
+            <p>Hold your gaze on any button to press it while a ring fills around the cursor. Turn it on when you want hands-free control.</p>
+          </article>
+          <article class="feature">
+            <span class="feature-mark" data-tone="ok" aria-hidden="true"></span>
+            <h3>Connection health</h3>
+            <p>See whether the tracker is connected, how many frames arrive each second, and why a frame was rejected. Dropped connections retry on their own.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="home-section" aria-labelledby="how-title">
+        <div class="section-head">
+          <p class="eyebrow">How it works</p>
+          <h2 id="how-title">From tracker to cursor in three steps</h2>
+        </div>
+        <ol class="steps">
+          <li class="step">
+            <span class="step-n" aria-hidden="true">1</span>
+            <h3>Start your tracker</h3>
+            <p>Run the Python script that reads your eye-tracker. It sends one small message per frame to <span class="mono">ws://localhost:8765</span> on this computer:</p>
+            <code>{"x": 400, "y": 300, "blink": false}</code>
+          </li>
+          <li class="step">
+            <span class="step-n" aria-hidden="true">2</span>
+            <h3>Sign in and connect</h3>
+            <p>Create an account, open the Dashboard and press Connect. The cursor appears as soon as frames arrive. No tracker yet? Run the built-in simulator to try everything first.</p>
+          </li>
+          <li class="step">
+            <span class="step-n" aria-hidden="true">3</span>
+            <h3>Calibrate</h3>
+            <p>Start the 9-point calibration, keep your head still and follow the blue targets. You get an accuracy score for every point, and your tracker receives each target's position.</p>
+          </li>
+        </ol>
+        <p class="hint">You need an eye-tracker with a script that sends gaze frames, and Chrome, Edge or Firefox on the same computer.</p>
+      </section>
+
+      <div class="grid-2">
+        <section class="panel panel-strong" aria-labelledby="privacy-title">
+          <p class="eyebrow">Privacy</p>
+          <h2 id="privacy-title">Your data stays on this computer</h2>
+          <ul class="ticks">
+            <li>There is no Face Control server. The whole app runs in your browser.</li>
+            <li>Passwords are salted and hashed with PBKDF2-SHA-256 (600,000 rounds). The password itself is never saved.</li>
+            <li>Gaze data travels only between your tracker and this page, and is never stored.</li>
+            <li>The dashboard only connects to trackers on this computer (localhost).</li>
+            <li>No cookies, no analytics and no third-party scripts.</li>
+          </ul>
+          <div class="row">
+            <a class="btn btn-quiet" href="#cookies">Cookie Policy</a>
+            <a class="btn btn-quiet" href="#terms">Terms and Conditions</a>
+          </div>
+        </section>
+        <section class="panel" aria-labelledby="a11y-title">
+          <p class="eyebrow">Accessibility</p>
+          <h2 id="a11y-title">Designed to be used with your eyes</h2>
+          <ul class="ticks">
+            <li>Every button is at least 56 pixels tall, a comfortable target for gaze.</li>
+            <li>Solid, high-contrast colours with clear hover and focus states.</li>
+            <li>Light and dark themes, and support for reduced motion.</li>
+            <li>Works with a keyboard and screen readers as well as with gaze.</li>
+          </ul>
+        </section>
+      </div>
+
+      <section class="cta-band" aria-labelledby="cta-title">
+        <div>
+          <h2 id="cta-title">Ready to calibrate?</h2>
+          <p class="hint js-guest">Creating an account takes under a minute, and it stays on this device.</p>
+          <p class="hint js-member" hidden>Your dashboard is ready.</p>
+        </div>
+        <div class="hero-actions js-guest">
+          <a class="btn btn-primary btn-lg" href="#register">Create an account</a>
+          <a class="btn btn-lg" href="#login">Sign in</a>
+        </div>
+        <div class="hero-actions js-member" hidden>
+          <a class="btn btn-primary btn-lg" href="#dashboard">Open dashboard</a>
+        </div>
+      </section>
+    </section>
+
     <!-- Sign in -->
     <section class="view" data-view="login" hidden aria-labelledby="login-title">
       <div class="auth-grid">
         <div class="auth-intro">
-          <p class="eyebrow">Eye-tracker console</p>
+          <p class="eyebrow">Welcome back</p>
           <h1 id="login-title" tabindex="-1">Sign in to Face Control</h1>
-          <p class="lede">See the live gaze cursor from your tracker, check the connection, and run a 9-point calibration. Your account and settings stay in this browser.</p>
-          <figure class="flow" aria-label="How gaze data reaches this page">
-            <div class="flow-node"><span class="label">Tracker script</span><span class="mono">python tracker.py</span></div>
-            <div class="flow-arrow" aria-hidden="true">→</div>
-            <div class="flow-node"><span class="label">Local socket</span><span class="mono">ws://localhost:8765</span></div>
-            <div class="flow-arrow" aria-hidden="true">→</div>
-            <div class="flow-node is-here"><span class="label">This dashboard</span><span class="mono">gaze cursor</span></div>
-          </figure>
-          <div class="payload">
-            <span class="label">Frame format</span>
-            <code>{"x": 400, "y": 300, "blink": false}</code>
-          </div>
+          <p class="lede">Sign in to see your live gaze cursor, check the tracker connection and run calibration. Your account and settings stay in this browser.</p>
+          <div class="row"><a class="btn btn-quiet" href="#home">What is Face Control?</a></div>
         </div>
 
         <form class="panel panel-strong auth-form stack" id="login-form" novalidate>
@@ -657,7 +833,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 
     <section class="view" data-view="notfound" hidden aria-labelledby="nf-title">
       <div class="view-head"><div><p class="eyebrow">Not found</p><h1 id="nf-title" tabindex="-1">This page doesn't exist</h1><p class="lede">Check the address, or go back to the start.</p></div></div>
-      <div class="row"><a class="btn btn-primary" href="#login">Go to the start</a></div>
+      <div class="row"><a class="btn btn-primary" href="#home">Go to the home page</a></div>
     </section>
   </div>
 </main>
@@ -1089,6 +1265,7 @@ const Auth = {
 
 /* ---------- Router: hash routes with an auth guard ---------- */
 const ROUTES = {
+  home: { title: 'Eye-tracker console' },
   login: { title: 'Sign in' },
   register: { title: 'Create account' },
   dashboard: { title: 'Dashboard', auth: true },
@@ -1104,7 +1281,7 @@ const Router = {
     const seq = ++this.seq;
     let name = location.hash.replace(/^#\/?/, '');
     try { name = decodeURIComponent(name); } catch { /* keep raw */ }
-    name = name || 'login';
+    name = name || 'home';
     const authed = await Auth.validate();
     if (seq !== this.seq) return;               // a newer navigation won
     if (!Object.hasOwn(ROUTES, name)) return this.show('notfound', authed);
@@ -1132,6 +1309,7 @@ const Router = {
     if (name === 'login') renderLoginNotice();
     if (name === 'dashboard') renderDashboard();
     if (name === 'calibration') Calibration.renderIdle();
+    if (name === 'home') HeroPreview.start(); else HeroPreview.stop();
     window.scrollTo(0, 0);
     $(`[data-view="${name}"] h1`)?.focus({ preventScroll: true });
     syncCursor();
@@ -1141,6 +1319,8 @@ const Router = {
 function renderChrome(authed) {
   $('#nav').hidden = !authed;
   $('#btn-signout').hidden = !authed;
+  $$('.js-guest').forEach((el) => { el.hidden = !!authed; });
+  $$('.js-member').forEach((el) => { el.hidden = !authed; });
   const chip = $('#user-chip');
   chip.hidden = !authed;
   chip.textContent = authed && Auth.current ? Auth.current.display : '';
@@ -1655,6 +1835,37 @@ const Calibration = {
       ? 'No gaze data was received, so this run was for hardware alignment only.'
       : `Mean error ${meanError} px across ${measuredCount} of 9 targets.` + (Consent.optional() ? ' This result is saved on this device.' : ' Accept preference storage to keep this result after you close the tab.');
     $('#cal-results').hidden = false;
+  },
+};
+
+/* ---------- Home page preview: a simulated gaze path over the nine targets ---------- */
+const HeroPreview = {
+  raf: 0, t0: 0, lastText: 0,
+  cursor: $('#pv-cursor'),
+  frame: $('#pv-frame'),
+  targets: $$('.pv-target'),
+  spots: [0.1, 0.5, 0.9].flatMap((y) => [0.1, 0.5, 0.9].map((x) => ({ x, y: y === 0.1 ? 0.12 : y === 0.9 ? 0.88 : y }))),
+  start() {
+    if (this.raf) return;
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) { this.place(0.5, 0.5, false); return; }
+    this.t0 = performance.now();
+    const step = (now) => {
+      const t = (now - this.t0) / 1000;
+      this.place(0.5 + 0.4 * Math.sin(t * 0.9), 0.5 + 0.38 * Math.sin(t * 1.3 + 0.6), (t % 3.5) < 0.15, now);
+      this.raf = requestAnimationFrame(step);
+    };
+    this.raf = requestAnimationFrame(step);
+  },
+  stop() { cancelAnimationFrame(this.raf); this.raf = 0; },
+  place(nx, ny, blink, now = 0) {
+    this.cursor.style.left = (nx * 100).toFixed(2) + '%';
+    this.cursor.style.top = (ny * 100).toFixed(2) + '%';
+    this.cursor.classList.toggle('is-blink', blink);
+    this.targets.forEach((el, i) => el.classList.toggle('is-near', Math.hypot(this.spots[i].x - nx, this.spots[i].y - ny) < 0.08));
+    if (now - this.lastText > 120 || !now) {
+      this.lastText = now;
+      this.frame.textContent = `{"x": ${Math.round(nx * 800)}, "y": ${Math.round(ny * 600)}, "blink": ${blink}}`;
+    }
   },
 };
 
