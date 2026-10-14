@@ -1,0 +1,1873 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!--
+  Content Security Policy. Everything ships inline, so nothing is loaded from any other host.
+  WebSocket connections are limited to this computer (localhost / 127.0.0.1).
+  require-trusted-types-for blocks string-to-HTML sinks such as innerHTML in Chromium browsers;
+  the app builds every element with DOM APIs and never needs them.
+-->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src ws://localhost:* ws://127.0.0.1:* wss://localhost:* wss://127.0.0.1:*; base-uri 'none'; form-action 'none'; object-src 'none'; require-trusted-types-for 'script'">
+<meta name="referrer" content="no-referrer">
+<title>Face Control</title>
+<meta name="description" content="Control dashboard for the Face Control eye-tracker: live gaze cursor, WebSocket link and 9-point calibration.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%233498db'/%3E%3Cpath d='M3 16Q16 4 29 16Q16 28 3 16Z' fill='%231b1f23'/%3E%3Ccircle cx='16' cy='16' r='5.5' fill='%233498db'/%3E%3Ccircle cx='16' cy='16' r='2.2' fill='%231b1f23'/%3E%3C/svg%3E">
+<style>
+/* Layout: one 1160px column under a slab top bar; views are flat bordered panels on a charcoal ground;
+   calibration takes over the whole window while it runs. Flat UI: solid fills, solid borders,
+   zero-blur offset shadows, no gradients anywhere. */
+:root {
+  --bg: #1b1f23;
+  --surface: #252b31;
+  --surface-2: #313840;
+  --ink: #ffffff;
+  --ink-2: #c5ced8;
+  --line: #e8edf2;
+  --line-soft: #4f5964;
+  --shadow: #000000;
+  --accent: #3498db;
+  --accent-ink: #6cb8ec;
+  --danger: #e74c3c;
+  --danger-ink: #ff8a7d;
+  --ok: #2ecc71;
+  --warn: #f1c40f;
+  --on-color: #0b0f12;
+  --focus: #f1c40f;
+  --font-body: "Atkinson Hyperlegible Next", "Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "Atkinson Hyperlegible Mono", ui-monospace, "Cascadia Mono", "SF Mono", Consolas, "Liberation Mono", monospace;
+  --hit: 56px;
+  --bw: 3px;
+  --drop: 5px 5px 0 var(--shadow);
+  --drop-lg: 8px 8px 0 var(--shadow);
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #ffffff; --surface: #f0f3f6; --surface-2: #dfe5eb; --ink: #12161a; --ink-2: #3b4550;
+    --line: #12161a; --line-soft: #98a4b0; --shadow: #12161a; --accent-ink: #17639c; --danger-ink: #b3261e;
+    --focus: #12161a; color-scheme: light;
+  }
+}
+:root[data-theme="light"] {
+  --bg: #ffffff; --surface: #f0f3f6; --surface-2: #dfe5eb; --ink: #12161a; --ink-2: #3b4550;
+  --line: #12161a; --line-soft: #98a4b0; --shadow: #12161a; --accent-ink: #17639c; --danger-ink: #b3261e;
+  --focus: #12161a; color-scheme: light;
+}
+:root[data-theme="dark"] {
+  --bg: #1b1f23; --surface: #252b31; --surface-2: #313840; --ink: #ffffff; --ink-2: #c5ced8;
+  --line: #e8edf2; --line-soft: #4f5964; --shadow: #000000; --accent-ink: #6cb8ec; --danger-ink: #ff8a7d;
+  --focus: #f1c40f; color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { background: var(--bg); -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; min-height: 100vh; display: flex; flex-direction: column;
+  background: var(--bg); color: var(--ink);
+  font-family: var(--font-body); font-size: 1.0625rem; line-height: 1.55;
+}
+h1, h2, h3 { margin: 0; line-height: 1.15; font-weight: 800; text-wrap: balance; }
+h1 { font-size: clamp(1.875rem, 1.4rem + 1.6vw, 2.5rem); letter-spacing: -0.01em; }
+h2 { font-size: 1.5rem; }
+h3 { font-size: 1.1875rem; }
+h1[tabindex="-1"]:focus { outline: none; }
+p { margin: 0; }
+a { color: var(--accent-ink); }
+code, pre, .mono { font-family: var(--font-mono); }
+:focus-visible { outline: 4px solid var(--focus); outline-offset: 3px; }
+
+.wrap { width: 100%; max-width: 1160px; margin-inline: auto; padding-inline: 16px; }
+@media (min-width: 720px) { .wrap { padding-inline: 32px; } }
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.label { font: 700 0.8125rem/1.2 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); }
+.eyebrow { font: 700 0.875rem/1.2 var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent-ink); }
+.lede { font-size: 1.1875rem; color: var(--ink-2); max-width: 60ch; }
+.hint { font-size: 0.9375rem; color: var(--ink-2); }
+.error { font-weight: 700; color: var(--danger-ink); }
+.row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.stack { display: grid; gap: 18px; }
+
+/* Skip control */
+.skip { position: absolute; left: 16px; top: -120px; z-index: 2000; }
+.skip:focus { top: 16px; }
+
+/* Top bar */
+.topbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 800; background: var(--surface); border-bottom: var(--bw) solid var(--line); }
+.topbar-inner { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; padding-block: 10px; }
+.brand { display: flex; align-items: center; gap: 12px; min-height: var(--hit); margin-right: auto; color: var(--ink); text-decoration: none; }
+.brand:hover .brand-name { text-decoration: underline; text-decoration-thickness: 3px; text-underline-offset: 4px; }
+.brand-mark { width: 40px; height: 40px; flex: none; }
+.brand-mark .bm-fill { fill: var(--accent); }
+.brand-mark .bm-cut { fill: var(--bg); }
+.brand-name { display: block; font-weight: 800; font-size: 1.25rem; line-height: 1.1; }
+.brand-sub { display: block; font: 700 0.75rem/1.2 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); }
+.nav, .bar-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.user-chip { font: 700 0.9375rem/1.2 var(--font-mono); color: var(--ink-2); padding-inline: 4px; overflow-wrap: anywhere; }
+
+/* Buttons: 56px targets, solid fills, colour inversion on hover, sharp offset shadow */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  min-height: var(--hit); min-width: var(--hit); padding: 8px 22px;
+  border: var(--bw) solid var(--line); border-radius: 0;
+  background: var(--surface-2); color: var(--ink);
+  font: 700 1.0625rem/1.2 var(--font-body); text-decoration: none; text-align: center;
+  cursor: pointer; box-shadow: var(--drop);
+  transition: transform 80ms ease, box-shadow 80ms ease;
+}
+.btn:hover { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.btn:active { transform: translate(3px, 3px); box-shadow: 2px 2px 0 var(--shadow); }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: var(--on-color); }
+.btn-primary:hover { background: var(--bg); color: var(--accent-ink); border-color: var(--accent); box-shadow: var(--drop), inset 0 0 0 3px var(--accent); }
+.btn-danger { background: var(--danger); border-color: var(--danger); color: var(--on-color); }
+.btn-danger:hover { background: var(--bg); color: var(--danger-ink); border-color: var(--danger); box-shadow: var(--drop), inset 0 0 0 3px var(--danger); }
+.btn-quiet { background: transparent; border-color: var(--line-soft); box-shadow: none; }
+.btn[aria-pressed="true"] { background: var(--warn); border-color: var(--warn); color: var(--on-color); }
+.btn[aria-pressed="true"]:hover { background: var(--bg); color: var(--ink); border-color: var(--warn); box-shadow: var(--drop), inset 0 0 0 3px var(--warn); }
+.btn[aria-current="page"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.btn[disabled] { opacity: 0.55; cursor: not-allowed; box-shadow: none; transform: none; }
+.btn-block { width: 100%; }
+.is-dwell-target { outline: 5px solid var(--danger) !important; outline-offset: 4px; }
+
+/* Main + views */
+main { flex: 1; padding-block: 32px 64px; }
+main:focus { outline: none; }
+.view { display: grid; gap: 28px; }
+.view-head { display: flex; flex-wrap: wrap; gap: 16px 24px; align-items: flex-end; justify-content: space-between; }
+.view-head > div { display: grid; gap: 8px; min-width: 0; max-width: 70ch; }
+
+.panel { display: grid; gap: 18px; align-content: start; min-width: 0; padding: 24px; background: var(--surface); border: var(--bw) solid var(--line-soft); }
+.panel-strong { border-color: var(--line); box-shadow: var(--drop-lg); }
+.panel > h2 { font-size: 1.3125rem; }
+.grid-2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 28px; align-items: start; }
+.col { display: grid; gap: 28px; min-width: 0; }
+@media (max-width: 860px) { .grid-2 { grid-template-columns: minmax(0, 1fr); } }
+
+/* Auth */
+.auth-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 40px; align-items: start; }
+.auth-intro { display: grid; gap: 22px; padding-top: 8px; }
+.auth-form { width: 100%; max-width: 520px; justify-self: end; }
+@media (max-width: 860px) {
+  .auth-grid { grid-template-columns: minmax(0, 1fr); gap: 28px; }
+  .auth-form { justify-self: stretch; max-width: none; }
+}
+.flow { margin: 0; display: flex; flex-wrap: wrap; align-items: stretch; gap: 10px; }
+.flow-node { display: grid; gap: 4px; padding: 12px 14px; min-width: 0; background: var(--surface); border: var(--bw) solid var(--line-soft); }
+.flow-node .mono { font-size: 0.9375rem; overflow-wrap: anywhere; }
+.flow-node.is-here { border-color: var(--accent); }
+.flow-arrow { align-self: center; font: 700 1.5rem/1 var(--font-mono); color: var(--accent-ink); }
+.payload { display: grid; gap: 8px; }
+.payload code { display: block; padding: 14px 16px; overflow-x: auto; white-space: pre; background: var(--bg); border: var(--bw) solid var(--accent); font-size: 1rem; }
+
+/* Forms */
+.field { display: grid; gap: 8px; min-width: 0; }
+.field > label { font-weight: 700; }
+.input {
+  width: 100%; min-height: var(--hit); padding: 10px 16px;
+  border: var(--bw) solid var(--line-soft); border-radius: 0;
+  background: var(--bg); color: var(--ink); font: inherit; font-size: 1.125rem;
+}
+.input:hover { border-color: var(--ink-2); }
+.input:focus { border-color: var(--accent); }
+.input:focus-visible { outline: 4px solid var(--focus); outline-offset: 2px; }
+.input[aria-invalid="true"] { border-color: var(--danger); }
+select.input { padding-block: 0; cursor: pointer; }
+.field-pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+.check {
+  display: flex; gap: 14px; align-items: center; min-height: var(--hit); padding: 12px 16px;
+  background: var(--bg); border: var(--bw) solid var(--line-soft); font-weight: 700; cursor: pointer;
+}
+.check:hover { border-color: var(--ink); }
+.check input { width: 28px; height: 28px; flex: none; margin: 0; accent-color: var(--accent); cursor: pointer; }
+.check[data-invalid] { border-color: var(--danger); }
+.rules { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 0.9375rem; }
+.rules li { display: flex; gap: 10px; align-items: center; color: var(--ink-2); }
+.rules li::before { content: ""; width: 14px; height: 14px; flex: none; border: var(--bw) solid var(--line-soft); }
+.rules li[data-ok="true"] { color: var(--ink); }
+.rules li[data-ok="true"]::before { background: var(--ok); border-color: var(--ok); }
+.notice { padding: 12px 16px; background: var(--bg); border: var(--bw) solid var(--warn); font-weight: 700; }
+.form-error { padding: 12px 16px; background: var(--bg); border: var(--bw) solid var(--danger); font-weight: 700; }
+.form-error:focus { outline: none; }
+
+/* Live tiles */
+.tiles { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 980px) { .tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 540px) { .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.tile { display: grid; gap: 8px; align-content: start; min-width: 0; padding: 16px; background: var(--surface); border: var(--bw) solid var(--line-soft); }
+.tile.is-blink { background: var(--warn); border-color: var(--warn); color: var(--on-color); }
+.tile.is-blink .label, .tile.is-blink .unit { color: var(--on-color); }
+.metric { font: 700 clamp(1.75rem, 1.3rem + 1.2vw, 2.375rem)/1 var(--font-mono); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.unit { font: 700 0.8125rem/1.2 var(--font-mono); color: var(--ink-2); }
+
+/* Pills: state encoded as fill + square marker */
+.pill { display: inline-flex; align-items: center; gap: 10px; justify-self: start; max-width: 100%; min-height: 40px; padding: 4px 12px; background: var(--bg); border: var(--bw) solid var(--line-soft); font: 700 0.9375rem/1.2 var(--font-mono); }
+.pill-mark { width: 12px; height: 12px; flex: none; background: var(--ink-2); }
+.pill[data-state="open"], .pill[data-state="good"] { background: var(--ok); border-color: var(--ok); color: var(--on-color); }
+.pill[data-state="connecting"], .pill[data-state="reconnecting"], .pill[data-state="stale"], .pill[data-state="fair"] { background: var(--warn); border-color: var(--warn); color: var(--on-color); }
+.pill[data-state="sim"] { background: var(--accent); border-color: var(--accent); color: var(--on-color); }
+.pill[data-state="poor"] { background: var(--danger); border-color: var(--danger); color: var(--on-color); }
+.pill[data-state="open"] .pill-mark, .pill[data-state="good"] .pill-mark, .pill[data-state="connecting"] .pill-mark,
+.pill[data-state="reconnecting"] .pill-mark, .pill[data-state="stale"] .pill-mark, .pill[data-state="fair"] .pill-mark,
+.pill[data-state="sim"] .pill-mark, .pill[data-state="poor"] .pill-mark { background: var(--on-color); }
+.status-line { padding: 12px 14px; background: var(--bg); border-left: 6px solid var(--line-soft); }
+
+/* Key/value lists */
+.kv { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 18px; margin: 0; }
+.kv dt { color: var(--ink-2); }
+.kv dd { margin: 0; font-family: var(--font-mono); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+
+/* Gaze map */
+.gaze-map { position: relative; width: 100%; max-width: 100%; aspect-ratio: 4 / 3; overflow: hidden; background: var(--bg); border: var(--bw) solid var(--line-soft); }
+.gm-v { position: absolute; inset: 0 33.333%; border-inline: 1px solid var(--line-soft); }
+.gm-h { position: absolute; inset: 33.333% 0; border-block: 1px solid var(--line-soft); }
+.gm-dot { position: absolute; width: 20px; height: 20px; margin: -10px 0 0 -10px; border-radius: 50%; background: var(--danger); box-shadow: 0 0 0 3px var(--bg); }
+.gm-dot.is-blink { background: var(--warn); }
+.gm-empty { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; text-align: center; color: var(--ink-2); }
+.payload-pre { margin: 0; min-height: 3.4em; padding: 12px 14px; background: var(--bg); border: var(--bw) solid var(--line-soft); font-size: 0.9375rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* Gaze cursor overlay: solid crosshair, position driven by top/left */
+#gaze-cursor { position: fixed; left: 0; top: 0; width: 48px; height: 48px; margin: -24px 0 0 -24px; pointer-events: none; z-index: 1000; }
+#gaze-cursor::before, #gaze-cursor::after { content: ""; position: absolute; background: var(--danger); box-shadow: 0 0 0 2px var(--bg); }
+#gaze-cursor::before { left: 0; right: 0; top: 50%; height: 4px; margin-top: -2px; }
+#gaze-cursor::after { top: 0; bottom: 0; left: 50%; width: 4px; margin-left: -2px; }
+.gc-dot { position: absolute; left: 50%; top: 50%; z-index: 1; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: var(--ink); box-shadow: 0 0 0 3px var(--danger); }
+.gc-ring { position: absolute; inset: -12px; border: 4px solid var(--accent); border-radius: 50%; transform: scale(var(--p, 0)); }
+#gaze-cursor.is-blink::before, #gaze-cursor.is-blink::after { background: var(--warn); }
+#gaze-cursor.is-blink .gc-dot { display: none; }
+
+/* Calibration */
+.cal-stage {
+  position: relative; display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(3, minmax(0, 1fr));
+  height: min(64vh, 600px); min-height: 340px; padding: 28px;
+  background: var(--bg); border: var(--bw) solid var(--line); box-shadow: var(--drop-lg);
+}
+.cal-stage.is-fill {
+  position: fixed; inset: 0; z-index: 960; height: auto; min-height: 0;
+  padding: calc(env(safe-area-inset-top, 0px) + 40px) 40px calc(env(safe-area-inset-bottom, 0px) + 40px);
+  border: 0; box-shadow: none;
+}
+.cal-point {
+  position: relative; display: grid; place-items: center; width: 64px; height: 64px;
+  border-radius: 50%; border: 4px solid var(--line-soft); background: var(--surface); color: var(--ink-2);
+  font: 700 1.125rem/1 var(--font-mono);
+  transition: transform 120ms ease, background-color 120ms ease;
+}
+.cal-point[data-col="0"] { grid-column: 1; justify-self: start; }
+.cal-point[data-col="1"] { grid-column: 2; justify-self: center; }
+.cal-point[data-col="2"] { grid-column: 3; justify-self: end; }
+.cal-point[data-row="0"] { grid-row: 1; align-self: start; }
+.cal-point[data-row="1"] { grid-row: 2; align-self: center; }
+.cal-point[data-row="2"] { grid-row: 3; align-self: end; }
+.cal-point.is-active { z-index: 2; background: var(--accent); border-color: var(--ink); color: var(--on-color); transform: scale(1.3); box-shadow: 0 0 0 8px var(--bg), 0 0 0 14px var(--accent); }
+.cal-point.is-collecting span { visibility: hidden; }
+.cal-point.is-collecting::after { content: ""; position: absolute; inset: 14px; border-radius: 50%; background: var(--on-color); animation: fc-shrink var(--dwell, 2000ms) linear forwards; }
+.cal-point.is-done { background: var(--ok); border-color: var(--ok); color: var(--on-color); }
+@keyframes fc-shrink { to { transform: scale(0); } }
+.cal-hud {
+  position: absolute; left: 50%; top: 25%; z-index: 3; transform: translate(-50%, -50%);
+  display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: center; justify-content: center;
+  max-width: calc(100% - 32px); padding: 12px 16px;
+  background: var(--surface); border: var(--bw) solid var(--line); box-shadow: var(--drop);
+}
+.cal-hud-text { font: 700 1.25rem/1.2 var(--font-mono); font-variant-numeric: tabular-nums; }
+
+/* Tables */
+.table-wrap { overflow-x: auto; border: var(--bw) solid var(--line-soft); }
+table { width: 100%; min-width: 560px; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th, td { padding: 12px 14px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line-soft); }
+th { background: var(--surface-2); font: 700 0.8125rem/1.3 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); }
+td.num { font-family: var(--font-mono); text-align: right; white-space: nowrap; }
+tbody tr:last-child td { border-bottom: 0; }
+
+/* Policies */
+.policy { display: grid; gap: 16px; max-width: 74ch; }
+.policy h2 { margin-top: 10px; font-size: 1.3125rem; }
+.policy ul { margin: 0; padding-left: 1.25em; display: grid; gap: 6px; }
+.policy .meta { font: 700 0.875rem/1.3 var(--font-mono); color: var(--ink-2); }
+.policy table { min-width: 640px; font-size: 0.9375rem; }
+
+/* Cookie banner */
+.cookie-banner { position: fixed; left: 0; right: 0; bottom: 0; z-index: 950; padding-bottom: env(safe-area-inset-bottom, 0px); background: var(--surface); border-top: var(--bw) solid var(--line); box-shadow: 0 -6px 0 var(--shadow); }
+.cookie-inner { display: flex; flex-wrap: wrap; gap: 16px 28px; align-items: center; padding-block: 20px; }
+.cookie-text { flex: 1 1 420px; display: grid; gap: 6px; min-width: 0; }
+.cookie-text h2 { font-size: 1.1875rem; }
+.cookie-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+
+/* Dialog */
+dialog.modal { width: min(780px, calc(100% - 32px)); max-height: calc(100% - 48px); padding: 0; background: var(--surface); color: var(--ink); border: var(--bw) solid var(--line); box-shadow: 10px 10px 0 var(--shadow); }
+dialog.modal[open] { display: flex; flex-direction: column; }
+dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
+.modal-head { display: flex; gap: 16px; align-items: center; justify-content: space-between; padding: 14px 20px; border-bottom: var(--bw) solid var(--line); }
+.modal-body { min-height: 0; overflow: auto; padding: 20px 24px 28px; }
+
+/* Toast */
+.toast { position: fixed; right: 16px; top: calc(env(safe-area-inset-top, 0px) + 96px); z-index: 1100; max-width: min(420px, calc(100% - 32px)); padding: 14px 18px; background: var(--ink); color: var(--bg); border: var(--bw) solid var(--ink); box-shadow: var(--drop); font-weight: 700; }
+.toast:empty { display: none; }
+.toast[data-tone="ok"] { background: var(--ok); border-color: var(--ok); color: var(--on-color); }
+.toast[data-tone="error"] { background: var(--danger); border-color: var(--danger); color: var(--on-color); }
+
+/* Footer */
+.footer { background: var(--surface); border-top: var(--bw) solid var(--line-soft); }
+.footer-inner { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; justify-content: space-between; padding-block: 16px; }
+.footer nav { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.framed { display: grid; gap: 16px; max-width: 60ch; margin: 64px auto; padding: 24px; }
+
+@media (max-width: 560px) {
+  .topbar { position: static; }
+  .flow { flex-direction: column; }
+  .flow-arrow { transform: rotate(90deg); align-self: flex-start; margin-left: 18px; }
+  .panel { padding: 18px; }
+  .field-pair { grid-template-columns: minmax(0, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; }
+  .cal-point.is-collecting::after { animation: none; }
+}
+</style>
+</head>
+<body>
+<button class="btn btn-primary skip" type="button" data-action="skip">Skip to content</button>
+
+<header class="topbar">
+  <div class="wrap topbar-inner">
+    <a class="brand" href="#dashboard" aria-label="Face Control home">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+        <rect class="bm-fill" width="32" height="32"></rect>
+        <path class="bm-cut" d="M3 16Q16 4 29 16Q16 28 3 16Z"></path>
+        <circle class="bm-fill" cx="16" cy="16" r="5.5"></circle>
+        <circle class="bm-cut" cx="16" cy="16" r="2.2"></circle>
+      </svg>
+      <span><span class="brand-name">Face Control</span><span class="brand-sub">Eye-tracker console</span></span>
+    </a>
+    <nav class="nav" id="nav" aria-label="Main" hidden>
+      <a class="btn btn-quiet" href="#dashboard" data-nav="dashboard">Dashboard</a>
+      <a class="btn btn-quiet" href="#calibration" data-nav="calibration">Calibration</a>
+    </nav>
+    <div class="bar-actions">
+      <span class="user-chip" id="user-chip" hidden></span>
+      <button class="btn btn-quiet" type="button" data-action="theme">Theme: <span id="theme-label">System</span></button>
+      <button class="btn" type="button" data-action="sign-out" id="btn-signout" hidden>Sign out</button>
+    </div>
+  </div>
+</header>
+
+<main id="main" tabindex="-1">
+  <div class="wrap">
+    <noscript><p class="notice">Face Control needs JavaScript to run. Turn it on for this page and reload.</p></noscript>
+
+    <!-- Sign in -->
+    <section class="view" data-view="login" hidden aria-labelledby="login-title">
+      <div class="auth-grid">
+        <div class="auth-intro">
+          <p class="eyebrow">Eye-tracker console</p>
+          <h1 id="login-title" tabindex="-1">Sign in to Face Control</h1>
+          <p class="lede">See the live gaze cursor from your tracker, check the connection, and run a 9-point calibration. Your account and settings stay in this browser.</p>
+          <figure class="flow" aria-label="How gaze data reaches this page">
+            <div class="flow-node"><span class="label">Tracker script</span><span class="mono">python tracker.py</span></div>
+            <div class="flow-arrow" aria-hidden="true">→</div>
+            <div class="flow-node"><span class="label">Local socket</span><span class="mono">ws://localhost:8765</span></div>
+            <div class="flow-arrow" aria-hidden="true">→</div>
+            <div class="flow-node is-here"><span class="label">This dashboard</span><span class="mono">gaze cursor</span></div>
+          </figure>
+          <div class="payload">
+            <span class="label">Frame format</span>
+            <code>{"x": 400, "y": 300, "blink": false}</code>
+          </div>
+        </div>
+
+        <form class="panel panel-strong auth-form stack" id="login-form" novalidate>
+          <h2>Sign in</h2>
+          <p class="notice" id="login-notice" role="alert" hidden></p>
+          <p class="notice js-crypto-missing" hidden>This browser can't run secure sign-in here. Open the page over https:// or from localhost.</p>
+          <div class="field">
+            <label for="login-username">Username</label>
+            <input class="input" id="login-username" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="32" required aria-describedby="login-username-error">
+            <p class="error" id="login-username-error" hidden></p>
+          </div>
+          <div class="field">
+            <label for="login-password">Password</label>
+            <input class="input" id="login-password" name="password" type="password" autocomplete="current-password" maxlength="128" required aria-describedby="login-password-error">
+            <p class="error" id="login-password-error" hidden></p>
+          </div>
+          <p class="form-error" tabindex="-1" role="alert" hidden></p>
+          <button class="btn btn-primary btn-block" type="submit">Sign in</button>
+          <a class="btn btn-block" href="#register">Create an account</a>
+          <p class="hint">Face Control never stores your password. It keeps only a salted PBKDF2-SHA-256 hash on this device.</p>
+        </form>
+      </div>
+    </section>
+
+    <!-- Register -->
+    <section class="view" data-view="register" hidden aria-labelledby="register-title">
+      <div class="auth-grid">
+        <div class="auth-intro">
+          <p class="eyebrow">New account</p>
+          <h1 id="register-title" tabindex="-1">Create your Face Control account</h1>
+          <p class="lede">Your account lives only in this browser. Your password is salted and hashed with SHA-256 (PBKDF2, 600,000 rounds) before anything is saved.</p>
+          <dl class="kv panel">
+            <dt>Stored</dt><dd>username, salt, hash, agreement record</dd>
+            <dt>Never stored</dt><dd>your password</dd>
+            <dt>Sent anywhere</dt><dd>nothing</dd>
+          </dl>
+        </div>
+
+        <form class="panel panel-strong auth-form stack" id="register-form" novalidate>
+          <h2>Create account</h2>
+          <p class="notice js-crypto-missing" hidden>This browser can't run secure sign-in here. Open the page over https:// or from localhost.</p>
+          <div class="field">
+            <label for="reg-username">Username</label>
+            <input class="input" id="reg-username" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="32" required aria-describedby="reg-username-hint reg-username-error">
+            <p class="hint" id="reg-username-hint">3 to 32 characters: letters, numbers, dot, dash or underscore.</p>
+            <p class="error" id="reg-username-error" hidden></p>
+          </div>
+          <div class="field">
+            <label for="reg-password">Password</label>
+            <input class="input" id="reg-password" name="password" type="password" autocomplete="new-password" maxlength="128" required aria-describedby="reg-rules reg-password-error">
+            <ul class="rules" id="reg-rules">
+              <li data-rule="length">At least 12 characters</li>
+              <li data-rule="nouser">Doesn't contain your username</li>
+              <li data-rule="match">Matches the confirmation below</li>
+            </ul>
+            <p class="error" id="reg-password-error" hidden></p>
+          </div>
+          <div class="field">
+            <label for="reg-confirm">Confirm password</label>
+            <input class="input" id="reg-confirm" name="confirm" type="password" autocomplete="new-password" maxlength="128" required aria-describedby="reg-confirm-error">
+            <p class="error" id="reg-confirm-error" hidden></p>
+          </div>
+          <div class="field">
+            <label class="check" for="reg-terms">
+              <input type="checkbox" id="reg-terms" name="terms" required aria-describedby="reg-terms-error">
+              <span>I agree to the Terms and Conditions and Cookie Policy</span>
+            </label>
+            <p class="error" id="reg-terms-error" hidden></p>
+            <div class="row">
+              <button class="btn btn-quiet" type="button" data-action="policy-terms">Read Terms and Conditions</button>
+              <button class="btn btn-quiet" type="button" data-action="policy-cookies">Read Cookie Policy</button>
+            </div>
+          </div>
+          <p class="form-error" tabindex="-1" role="alert" hidden></p>
+          <button class="btn btn-primary btn-block" type="submit">Create account</button>
+          <a class="btn btn-block" href="#login">I already have an account</a>
+        </form>
+      </div>
+    </section>
+
+    <!-- Dashboard -->
+    <section class="view" data-view="dashboard" hidden aria-labelledby="dash-title">
+      <div class="view-head">
+        <div>
+          <p class="eyebrow">Dashboard</p>
+          <h1 id="dash-title" tabindex="-1">Live gaze</h1>
+          <p class="hint" id="dash-session"></p>
+        </div>
+        <a class="btn btn-primary" href="#calibration">Open calibration</a>
+      </div>
+
+      <div class="tiles" role="group" aria-label="Live tracker readings">
+        <div class="tile"><span class="label">Tracker link</span><span class="pill js-link-pill" data-state="idle"><span class="pill-mark"></span><span class="js-link-text">Not connected</span></span></div>
+        <div class="tile"><span class="label">Gaze X</span><span class="metric" id="m-x">—</span><span class="unit js-unit">frame px</span></div>
+        <div class="tile"><span class="label">Gaze Y</span><span class="metric" id="m-y">—</span><span class="unit js-unit">frame px</span></div>
+        <div class="tile" id="tile-eye"><span class="label">Eyes</span><span class="metric" id="m-eye">—</span><span class="unit">blink flag</span></div>
+        <div class="tile"><span class="label">Frames / s</span><span class="metric" id="m-rate">0</span><span class="unit">last second</span></div>
+        <div class="tile"><span class="label">Blinks</span><span class="metric" id="m-blinks">0</span><span class="unit">this visit</span></div>
+      </div>
+
+      <div class="grid-2">
+        <div class="col">
+          <section class="panel panel-strong" aria-labelledby="conn-title">
+            <h2 id="conn-title">Tracker connection</h2>
+            <form id="conn-form" class="stack" novalidate>
+              <div class="field">
+                <label for="ws-url">WebSocket address</label>
+                <input class="input mono" id="ws-url" name="url" inputmode="url" autocapitalize="none" spellcheck="false" maxlength="200" aria-describedby="ws-url-hint ws-url-error">
+                <p class="hint" id="ws-url-hint">Only trackers on this computer are allowed: localhost or 127.0.0.1.</p>
+                <p class="error" id="ws-url-error" hidden></p>
+              </div>
+              <div class="row">
+                <button class="btn btn-primary" id="btn-connect" type="submit">Connect</button>
+                <button class="btn" id="btn-disconnect" type="button" hidden>Disconnect</button>
+                <button class="btn" id="btn-sim" type="button" aria-pressed="false">Run simulator</button>
+              </div>
+              <p class="status-line" id="link-detail" role="status">Start your tracker script, then connect.</p>
+            </form>
+            <dl class="kv">
+              <dt>Frames received</dt><dd id="m-total">0</dd>
+              <dt>Frames rejected</dt><dd id="m-rejected">0</dd>
+              <dt>Last rejection</dt><dd id="m-reason">None</dd>
+            </dl>
+          </section>
+
+          <section class="panel" aria-labelledby="map-settings-title">
+            <h2 id="map-settings-title">Cursor and mapping</h2>
+            <div class="field">
+              <label for="map-mode">Coordinate mapping</label>
+              <select class="input" id="map-mode">
+                <option value="frame">Scale the tracker frame to this window</option>
+                <option value="viewport">Use coordinates as window pixels</option>
+              </select>
+            </div>
+            <div class="field-pair" id="frame-fields">
+              <div class="field">
+                <label for="frame-w">Tracker frame width</label>
+                <input class="input mono" id="frame-w" type="number" inputmode="numeric" min="1" max="20000" step="1" aria-describedby="frame-w-error">
+                <p class="error" id="frame-w-error" hidden></p>
+              </div>
+              <div class="field">
+                <label for="frame-h">Tracker frame height</label>
+                <input class="input mono" id="frame-h" type="number" inputmode="numeric" min="1" max="20000" step="1" aria-describedby="frame-h-error">
+                <p class="error" id="frame-h-error" hidden></p>
+              </div>
+            </div>
+            <div class="field">
+              <label for="smoothing">Smoothing</label>
+              <select class="input" id="smoothing">
+                <option value="off">Off: raw positions</option>
+                <option value="low">Low</option>
+                <option value="high">High: steadier, slower</option>
+              </select>
+            </div>
+            <label class="check" for="show-cursor"><input type="checkbox" id="show-cursor"><span>Show the gaze cursor</span></label>
+            <label class="check" for="dwell"><input type="checkbox" id="dwell"><span>Dwell to select: hold your gaze on a button to press it</span></label>
+            <div class="field">
+              <label for="dwell-ms">Dwell time</label>
+              <select class="input" id="dwell-ms">
+                <option value="800">0.8 seconds</option>
+                <option value="1200">1.2 seconds</option>
+                <option value="1600">1.6 seconds</option>
+                <option value="2000">2 seconds</option>
+              </select>
+            </div>
+            <div class="notice row" id="prefs-note" hidden>
+              <span>These settings last for this visit only. Allow preference storage to keep them.</span>
+              <button class="btn" type="button" data-action="cookie-settings">Cookie settings</button>
+            </div>
+          </section>
+        </div>
+
+        <div class="col">
+          <section class="panel" aria-labelledby="map-title">
+            <h2 id="map-title">Gaze map</h2>
+            <div class="gaze-map" id="gaze-map" aria-hidden="true">
+              <div class="gm-v"></div><div class="gm-h"></div>
+              <div class="gm-empty" id="gm-empty">Waiting for gaze frames</div>
+              <div class="gm-dot" id="gm-dot" hidden></div>
+            </div>
+            <div class="field">
+              <span class="label">Last frame</span>
+              <pre class="payload-pre" id="last-frame">No frames yet</pre>
+            </div>
+          </section>
+
+          <section class="panel" aria-labelledby="cal-sum-title">
+            <h2 id="cal-sum-title">Calibration</h2>
+            <p id="cal-summary-line">Not calibrated in this browser yet.</p>
+            <div class="row"><a class="btn btn-primary" href="#calibration">Start 9-point calibration</a></div>
+          </section>
+
+          <section class="panel" aria-labelledby="acct-title">
+            <h2 id="acct-title">Account</h2>
+            <dl class="kv">
+              <dt>Username</dt><dd id="acct-name"></dd>
+              <dt>Created</dt><dd id="acct-created"></dd>
+              <dt>Password</dt><dd>PBKDF2-HMAC-SHA-256 · 600,000 rounds · 16-byte salt</dd>
+              <dt>Agreed to</dt><dd id="acct-agreed"></dd>
+            </dl>
+            <div class="row">
+              <button class="btn" type="button" data-action="sign-out">Sign out</button>
+              <button class="btn" type="button" id="btn-delete">Delete account</button>
+              <button class="btn btn-quiet" type="button" id="btn-delete-cancel" hidden>Keep my account</button>
+            </div>
+            <p class="notice" id="delete-hint" hidden>This removes your account and settings from this browser. It can't be undone.</p>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <!-- Calibration -->
+    <section class="view" data-view="calibration" hidden aria-labelledby="cal-title">
+      <div class="view-head">
+        <div>
+          <p class="eyebrow">Calibration</p>
+          <h1 id="cal-title" tabindex="-1">9-point calibration</h1>
+          <p class="lede">Keep your head still and look at each blue target until its centre disappears. Targets light up one at a time, left to right and top to bottom.</p>
+        </div>
+      </div>
+
+      <div class="panel panel-strong">
+        <div class="row">
+          <button class="btn btn-primary" type="button" id="cal-start">Start Calibration</button>
+          <button class="btn btn-danger" type="button" id="cal-stop" hidden>Stop calibration</button>
+          <div class="field">
+            <label class="sr-only" for="cal-dwell">Time per target</label>
+            <select class="input" id="cal-dwell">
+              <option value="1500">1.5 s per target</option>
+              <option value="2000">2 s per target</option>
+              <option value="3000">3 s per target</option>
+              <option value="4000">4 s per target</option>
+            </select>
+          </div>
+          <label class="check" for="cal-fill"><input type="checkbox" id="cal-fill"><span>Fill the window while running</span></label>
+        </div>
+        <p class="status-line" id="cal-status" role="status"></p>
+      </div>
+
+      <div class="cal-stage" id="cal-stage" role="group" aria-label="Calibration targets">
+        <div class="cal-point" data-row="0" data-col="0" data-label="Top left" aria-label="Target 1, top left"><span>1</span></div>
+        <div class="cal-point" data-row="0" data-col="1" data-label="Top centre" aria-label="Target 2, top centre"><span>2</span></div>
+        <div class="cal-point" data-row="0" data-col="2" data-label="Top right" aria-label="Target 3, top right"><span>3</span></div>
+        <div class="cal-point" data-row="1" data-col="0" data-label="Middle left" aria-label="Target 4, middle left"><span>4</span></div>
+        <div class="cal-point" data-row="1" data-col="1" data-label="Centre" aria-label="Target 5, centre"><span>5</span></div>
+        <div class="cal-point" data-row="1" data-col="2" data-label="Middle right" aria-label="Target 6, middle right"><span>6</span></div>
+        <div class="cal-point" data-row="2" data-col="0" data-label="Bottom left" aria-label="Target 7, bottom left"><span>7</span></div>
+        <div class="cal-point" data-row="2" data-col="1" data-label="Bottom centre" aria-label="Target 8, bottom centre"><span>8</span></div>
+        <div class="cal-point" data-row="2" data-col="2" data-label="Bottom right" aria-label="Target 9, bottom right"><span>9</span></div>
+        <div class="cal-hud" id="cal-hud" hidden>
+          <span class="cal-hud-text" id="cal-hud-text">Target 1 of 9</span>
+          <button class="btn btn-danger" type="button" data-action="cal-stop">Stop (Esc)</button>
+        </div>
+      </div>
+
+      <section class="panel" id="cal-results" hidden aria-labelledby="cal-results-title">
+        <h2 id="cal-results-title">Results</h2>
+        <p id="cal-results-summary"></p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th scope="col">Target</th><th scope="col">Position (px)</th><th scope="col">Samples</th><th scope="col">Mean error</th><th scope="col">Quality</th></tr></thead>
+            <tbody id="cal-rows"></tbody>
+          </table>
+        </div>
+        <p class="hint">Error is the distance between the average gaze position and the target centre, in window pixels. Under 40 px is good, under 80 px is fair.</p>
+      </section>
+    </section>
+
+    <!-- Policies -->
+    <section class="view" data-view="cookies" hidden aria-labelledby="cookies-title">
+      <div class="view-head"><div><p class="eyebrow">Legal</p><h1 id="cookies-title" tabindex="-1">Cookie Policy</h1></div></div>
+      <div class="panel" id="cookies-body"></div>
+    </section>
+    <section class="view" data-view="terms" hidden aria-labelledby="terms-title">
+      <div class="view-head"><div><p class="eyebrow">Legal</p><h1 id="terms-title" tabindex="-1">Terms and Conditions</h1></div></div>
+      <div class="panel" id="terms-body"></div>
+    </section>
+
+    <section class="view" data-view="notfound" hidden aria-labelledby="nf-title">
+      <div class="view-head"><div><p class="eyebrow">Not found</p><h1 id="nf-title" tabindex="-1">This page doesn't exist</h1><p class="lede">Check the address, or go back to the start.</p></div></div>
+      <div class="row"><a class="btn btn-primary" href="#login">Go to the start</a></div>
+    </section>
+  </div>
+</main>
+
+<footer class="footer">
+  <div class="wrap footer-inner">
+    <p class="hint">Face Control runs in your browser. No server, no trackers.</p>
+    <nav aria-label="Legal">
+      <a class="btn btn-quiet" href="#cookies">Cookie Policy</a>
+      <a class="btn btn-quiet" href="#terms">Terms and Conditions</a>
+      <button class="btn btn-quiet" type="button" data-action="cookie-settings">Cookie settings</button>
+    </nav>
+  </div>
+</footer>
+
+<!-- Gaze cursor overlay -->
+<div id="gaze-cursor" aria-hidden="true" hidden><span class="gc-ring"></span><span class="gc-dot"></span></div>
+
+<!-- Cookie consent -->
+<section class="cookie-banner" id="cookie-banner" aria-labelledby="cookie-title" hidden>
+  <div class="wrap cookie-inner">
+    <div class="cookie-text">
+      <h2 id="cookie-title">Your storage choice</h2>
+      <p>Face Control keeps your account on this device so you can sign in. With your permission it also remembers your theme, tracker and cursor settings. Nothing is tracked or shared.</p>
+      <p class="hint" id="cookie-current" hidden></p>
+    </div>
+    <div class="cookie-actions">
+      <button class="btn btn-primary" type="button" data-action="consent-all">Accept</button>
+      <button class="btn" type="button" data-action="consent-essential">Essential only</button>
+      <button class="btn btn-quiet" type="button" data-action="policy-cookies">Cookie Policy</button>
+    </div>
+  </div>
+</section>
+
+<!-- Policy dialog -->
+<dialog class="modal" id="policy-dialog" aria-labelledby="policy-dialog-title">
+  <div class="modal-head">
+    <h2 id="policy-dialog-title">Policy</h2>
+    <button class="btn" type="button" data-action="modal-close">Close</button>
+  </div>
+  <div class="modal-body" id="policy-dialog-body"></div>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="sr-only" id="sr-live" aria-live="polite"></div>
+
+<template id="tpl-cookies">
+  <div class="policy">
+    <p class="meta">Version 1.0 · Last updated 14 October 2026</p>
+    <p>Face Control sets no HTTP cookies and loads nothing from other websites. It does use your browser's local storage and session storage, which privacy laws such as the EU ePrivacy Directive and UK PECR treat the same way as cookies. This policy lists every item it stores and why.</p>
+    <h2>What is stored on your device</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th scope="col">Name</th><th scope="col">Where</th><th scope="col">Purpose</th><th scope="col">Kept for</th><th scope="col">Category</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">fc.consent</td><td>Local storage</td><td>Remembers the storage choice you made in the banner.</td><td>Until you change it or clear site data</td><td>Essential</td></tr>
+          <tr><td class="mono">fc.users</td><td>Local storage</td><td>Your account: username, a random salt, a PBKDF2-SHA-256 hash of your password, and the policy versions you agreed to. Your password itself is never stored.</td><td>Until you delete your account</td><td>Essential</td></tr>
+          <tr><td class="mono">fc.session</td><td>Session storage</td><td>A random sign-in token for this tab.</td><td>Until you sign out, close the tab, or are inactive for 30 minutes</td><td>Essential</td></tr>
+          <tr><td class="mono">fc.throttle</td><td>Local storage</td><td>Counts failed sign-in attempts to slow down password guessing.</td><td>Cleared after a successful sign-in</td><td>Essential</td></tr>
+          <tr><td class="mono">fc.prefs</td><td>Local storage</td><td>Theme, tracker address, cursor mapping and smoothing, dwell selection, and your last calibration result.</td><td>Until you withdraw consent or clear site data</td><td>Preferences (optional)</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <h2>Essential and optional storage</h2>
+    <p>Essential items are needed for sign-in and security, so they are stored whichever option you choose. Preference storage is optional. Until you choose “Accept”, preferences are held in memory only and are lost when you close the tab. If you later switch to “Essential only”, <span class="mono">fc.prefs</span> is deleted straight away.</p>
+    <h2>Gaze data</h2>
+    <p>Gaze coordinates travel from the tracker software on your own computer to this page over a local WebSocket (localhost or 127.0.0.1 only). They are processed in memory to draw the cursor and are never stored or sent anywhere else. With preference storage on, only a summary of your last calibration is saved.</p>
+    <h2>Hosting</h2>
+    <p>The page is served by GitHub Pages. GitHub may log technical data such as your IP address when it delivers the page; see the <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener noreferrer">GitHub General Privacy Statement</a>. Face Control has no server of its own and receives none of your data.</p>
+    <h2>Changing your choice or deleting your data</h2>
+    <ul>
+      <li>Change your choice at any time with “Cookie settings” at the bottom of every page.</li>
+      <li>Delete your account from the Dashboard. This removes your account record and preferences.</li>
+      <li>Remove everything by clearing this site's data in your browser settings.</li>
+    </ul>
+    <div class="row"><button class="btn" type="button" data-action="cookie-settings">Open cookie settings</button></div>
+  </div>
+</template>
+
+<template id="tpl-terms">
+  <div class="policy">
+    <p class="meta">Version 1.0 · Last updated 14 October 2026</p>
+    <p>These terms apply when you create an account on, or use, the Face Control dashboard (“the dashboard”) published by the Face Control project maintainers. By creating an account you agree to them.</p>
+    <h2>1. What the dashboard does</h2>
+    <p>The dashboard runs entirely in your web browser. It connects to eye-tracker software on your own computer, shows where you are looking, and runs a 9-point calibration. There is no Face Control server: your account and settings live only in this browser on this device.</p>
+    <h2>2. Not a medical or safety device</h2>
+    <p>The dashboard is not a medical device and is not designed to diagnose, treat or monitor any condition. Do not rely on it as your only way to communicate or to call for help. Keep another way to reach help available at all times.</p>
+    <h2>3. Your account</h2>
+    <ul>
+      <li>Choose a strong password that you don't use anywhere else.</li>
+      <li>Your account exists only in this browser. Anyone who can use your browser profile may be able to read its stored data, so protect your device with its own lock.</li>
+      <li>There is no password recovery. If you forget your password, clear this site's data and create a new account.</li>
+    </ul>
+    <h2>4. Hardware and tracker software</h2>
+    <p>You are responsible for setting up and running your eye-tracker hardware and the software that sends gaze data. The dashboard only accepts connections to addresses on your own computer.</p>
+    <h2>5. Health and comfort</h2>
+    <p>Eye tracking and calibration can be tiring. Take regular breaks, and stop if you feel eye strain, headache, dizziness or discomfort. Calibration targets are high-contrast but do not flash.</p>
+    <h2>6. Acceptable use</h2>
+    <ul>
+      <li>Only track a person who has agreed to it. Gaze data can reveal sensitive information about health and attention.</li>
+      <li>Do not try to get around the dashboard's security controls or use it to harm others.</li>
+    </ul>
+    <h2>7. No warranty</h2>
+    <p>The dashboard is provided “as is”, without warranties of any kind, including fitness for a particular purpose and accuracy of gaze positions.</p>
+    <h2>8. Limitation of liability</h2>
+    <p>To the extent the law allows, the maintainers are not liable for any loss or damage arising from your use of the dashboard. Nothing in these terms limits liability that cannot be limited by law.</p>
+    <h2>9. Changes to these terms</h2>
+    <p>If these terms change, the version number and date at the top will change. Your account records which version you agreed to.</p>
+    <h2>10. Contact</h2>
+    <p>For questions or problems, open an issue at <a href="https://github.com/Aniruddh9140/face-control-website/issues" target="_blank" rel="noopener noreferrer">github.com/Aniruddh9140/face-control-website</a>.</p>
+  </div>
+</template>
+
+<script type="module">
+/* ==========================================================================
+   Face Control dashboard: single-file SPA.
+   Modules (plain objects in one ES module): Store, Consent, Prefs, Theme,
+   Crypto, Auth, Router, GazeLink, Simulator, Gaze/Render, Dwell, Calibration.
+   ========================================================================== */
+
+const APP = 'Face Control';
+const CONSENT_VERSION = 1;
+const TERMS_VERSION = '1.0';
+const COOKIE_POLICY_VERSION = '1.0';
+const KDF_ITERATIONS = 600000;            // OWASP 2023 guidance for PBKDF2-HMAC-SHA-256
+const SESSION_IDLE_MS = 30 * 60 * 1000;
+const MAX_FAILS = 5;
+const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1']);  // keep in sync with the CSP connect-src
+const MAX_FRAME_CHARS = 4096;
+const STALE_MS = 3000;
+const SETTLE_MS = 700;
+
+/* ---------- DOM helpers ---------- */
+const $ = (sel, root = document) => root.querySelector(sel);
+const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+const vw = () => document.documentElement.clientWidth || window.innerWidth;
+const vh = () => document.documentElement.clientHeight || window.innerHeight;
+
+// Builds elements without ever parsing HTML strings, so user data can't become markup.
+function h(tag, attrs = {}, ...kids) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (v == null || v === false) continue;
+    if (k === 'class') el.className = v;
+    else if (k === 'text') el.textContent = v;
+    else el.setAttribute(k, v === true ? '' : String(v));
+  }
+  el.append(...kids.flat().filter((c) => c != null));
+  return el;
+}
+
+let toastTimer = 0;
+function toast(msg, tone = 'info') {
+  const t = $('#toast');
+  t.dataset.tone = tone;
+  t.textContent = msg;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.textContent = ''; }, 4500);
+}
+function announce(msg) { $('#sr-live').textContent = msg; }
+
+function setError(input, msg) {
+  const box = document.getElementById(input.id + '-error');
+  const wrap = input.closest('.check');
+  if (msg) {
+    input.setAttribute('aria-invalid', 'true');
+    if (box) { box.textContent = msg; box.hidden = false; }
+    wrap?.setAttribute('data-invalid', '');
+  } else {
+    input.removeAttribute('aria-invalid');
+    if (box) { box.textContent = ''; box.hidden = true; }
+    wrap?.removeAttribute('data-invalid');
+  }
+}
+function clearForm(form) {
+  $$('input, select', form).forEach((i) => i.id && setError(i, ''));
+  const fe = $('.form-error', form);
+  fe.hidden = true; fe.textContent = '';
+}
+function formError(form, msg) {
+  const fe = $('.form-error', form);
+  fe.textContent = msg; fe.hidden = false; fe.focus();
+}
+function busy(btn, label) {
+  const prev = btn.textContent;
+  btn.disabled = true; btn.setAttribute('aria-busy', 'true'); btn.textContent = label;
+  return () => { btn.disabled = false; btn.removeAttribute('aria-busy'); btn.textContent = prev; };
+}
+
+/* ---------- Store: storage that survives blocked or throwing browser storage ---------- */
+function probe(name) {
+  try { const s = window[name]; s.setItem('fc.probe', '1'); s.removeItem('fc.probe'); return s; } catch { return null; }
+}
+function area(backend) {
+  const mem = new Map();
+  return {
+    durable: !!backend,
+    get(key) {
+      let raw = mem.has(key) ? mem.get(key) : null;
+      if (raw === null && backend) { try { raw = backend.getItem('fc.' + key); } catch { raw = null; } }
+      if (raw == null) return null;
+      try { return JSON.parse(raw); } catch { return null; }
+    },
+    set(key, value) {
+      const raw = JSON.stringify(value);
+      if (backend) { try { backend.setItem('fc.' + key, raw); mem.delete(key); return; } catch { /* fall through */ } }
+      mem.set(key, raw);
+    },
+    remove(key) {
+      mem.delete(key);
+      if (backend) { try { backend.removeItem('fc.' + key); } catch { /* ignore */ } }
+    },
+  };
+}
+const Local = area(probe('localStorage'));
+const Tab = area(probe('sessionStorage'));
+const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
+
+/* ---------- Consent + Prefs: optional storage stays in memory until "Accept" ---------- */
+const Consent = {
+  state() {
+    const c = Local.get('consent');
+    return isObj(c) && c.v === CONSENT_VERSION && (c.choice === 'all' || c.choice === 'essential') ? c : null;
+  },
+  optional() { return this.state()?.choice === 'all'; },
+  choose(choice) {
+    Local.set('consent', { v: CONSENT_VERSION, choice, at: new Date().toISOString() });
+    if (choice === 'all') { Prefs.persist(); toast('Accepted. Your settings will be remembered on this device.', 'ok'); }
+    else { Prefs.purge(); toast('Essential storage only. Settings will last for this visit.'); }
+    Banner.hide();
+    renderPrefsNote();
+  },
+};
+
+const PREF_DEFAULTS = {
+  theme: 'system', wsUrl: 'ws://localhost:8765', mapMode: 'frame', frameW: 800, frameH: 600,
+  smoothing: 'low', showCursor: true, dwell: false, dwellMs: 1200, calDwellMs: 2000, calFill: true, lastCal: null,
+};
+const intIn = (v, lo, hi) => Number.isInteger(v) && v >= lo && v <= hi;
+function sanitizePrefs(d) {
+  const out = { ...PREF_DEFAULTS };
+  if (!isObj(d)) return out;
+  if (['system', 'dark', 'light'].includes(d.theme)) out.theme = d.theme;
+  if (typeof d.wsUrl === 'string' && GazeLink.check(d.wsUrl).url) out.wsUrl = d.wsUrl;
+  if (['frame', 'viewport'].includes(d.mapMode)) out.mapMode = d.mapMode;
+  if (intIn(d.frameW, 1, 20000)) out.frameW = d.frameW;
+  if (intIn(d.frameH, 1, 20000)) out.frameH = d.frameH;
+  if (['off', 'low', 'high'].includes(d.smoothing)) out.smoothing = d.smoothing;
+  for (const k of ['showCursor', 'dwell', 'calFill']) if (typeof d[k] === 'boolean') out[k] = d[k];
+  if ([800, 1200, 1600, 2000].includes(d.dwellMs)) out.dwellMs = d.dwellMs;
+  if ([1500, 2000, 3000, 4000].includes(d.calDwellMs)) out.calDwellMs = d.calDwellMs;
+  if (isObj(d.lastCal) && typeof d.lastCal.at === 'string') out.lastCal = d.lastCal;
+  return out;
+}
+const Prefs = {
+  data: { ...PREF_DEFAULTS },
+  load() { this.data = sanitizePrefs(Consent.optional() ? Local.get('prefs') : null); },
+  get(k) { return this.data[k]; },
+  set(k, v) { this.data[k] = v; if (Consent.optional()) Local.set('prefs', this.data); },
+  persist() { Local.set('prefs', this.data); },
+  purge() { Local.remove('prefs'); },
+  reset() { this.data = { ...PREF_DEFAULTS }; this.purge(); },
+};
+
+const Theme = {
+  labels: { system: 'System', dark: 'Dark', light: 'Light' },
+  apply(t, touchRoot = true) {
+    const root = document.documentElement;
+    if (touchRoot) {
+      if (t === 'dark' || t === 'light') root.setAttribute('data-theme', t);
+      else root.removeAttribute('data-theme');
+    }
+    $('#theme-label').textContent = this.labels[t] || 'System';
+  },
+  cycle() {
+    const order = ['system', 'dark', 'light'];
+    const next = order[(order.indexOf(Prefs.get('theme')) + 1) % order.length];
+    Prefs.set('theme', next);
+    this.apply(next);
+    toast(`Theme: ${this.labels[next]}.`);
+  },
+};
+
+/* ---------- Crypto (Web Crypto API) ---------- */
+const enc = new TextEncoder();
+const cryptoReady = !!(window.crypto && window.crypto.subtle && window.crypto.getRandomValues);
+const randomBytes = (n) => crypto.getRandomValues(new Uint8Array(n));
+function toB64(bytes) { let s = ''; for (const b of bytes) s += String.fromCharCode(b); return btoa(s); }
+function fromB64(str) {
+  const s = atob(String(str));
+  const out = new Uint8Array(s.length);
+  for (let i = 0; i < s.length; i++) out[i] = s.charCodeAt(i);
+  return out;
+}
+async function sha256(bytes) { return new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)); }
+// Salted, stretched SHA-256: PBKDF2-HMAC-SHA-256 with a per-user 16-byte random salt.
+async function hashPassword(password, salt, iterations) {
+  const key = await crypto.subtle.importKey('raw', enc.encode(password.normalize('NFKC')), 'PBKDF2', false, ['deriveBits']);
+  return new Uint8Array(await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations }, key, 256));
+}
+function timingSafeEqual(a, b) {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
+  return diff === 0;
+}
+const DUMMY_SALT = cryptoReady ? randomBytes(16) : null;
+
+/* ---------- Auth: local accounts + mock session tokens ---------- */
+class AuthError extends Error {}
+const USERNAME_RE = /^[A-Za-z0-9_.-]{3,32}$/;
+const userKey = (name) => 'u:' + name.trim().toLowerCase();   // prefix keeps names like "__proto__" inert
+
+const Throttle = {
+  all() { const t = Local.get('throttle'); return isObj(t) ? t : {}; },
+  remaining(key) {
+    const t = this.all();
+    return Object.hasOwn(t, key) && typeof t[key].until === 'number' ? Math.max(0, t[key].until - Date.now()) : 0;
+  },
+  fail(key) {
+    const all = this.all();
+    const t = Object.hasOwn(all, key) && isObj(all[key]) ? all[key] : { fails: 0 };
+    t.fails = (Number(t.fails) || 0) + 1;
+    if (t.fails >= MAX_FAILS) t.until = Date.now() + Math.min(15 * 60 * 1000, 30000 * 2 ** (t.fails - MAX_FAILS));
+    all[key] = t;
+    Local.set('throttle', all);
+  },
+  clear(key) { const all = this.all(); delete all[key]; Local.set('throttle', all); },
+};
+
+const Auth = {
+  current: null,
+  lastTouch: 0,
+  users() { const u = Local.get('users'); return isObj(u) ? u : {}; },
+  record() {
+    if (!this.current) return null;
+    const users = this.users();
+    return Object.hasOwn(users, this.current.key) ? users[this.current.key] : null;
+  },
+  async register(username, password) {
+    const key = userKey(username);
+    if (Object.hasOwn(this.users(), key)) throw new AuthError('That username is already registered on this device. Choose another one, or sign in.');
+    const salt = randomBytes(16);
+    const hash = await hashPassword(password, salt, KDF_ITERATIONS);
+    const users = this.users();          // re-read: another tab may have written meanwhile
+    if (Object.hasOwn(users, key)) throw new AuthError('That username was just registered in another tab. Choose another one.');
+    const at = new Date().toISOString();
+    users[key] = {
+      display: username.trim(), kdf: 'PBKDF2-HMAC-SHA-256', iterations: KDF_ITERATIONS,
+      salt: toB64(salt), hash: toB64(hash), createdAt: at,
+      agreed: { terms: TERMS_VERSION, cookiePolicy: COOKIE_POLICY_VERSION, at },
+    };
+    Local.set('users', users);
+    await this.startSession(key);
+  },
+  async login(username, password) {
+    const key = userKey(username);
+    const wait = Throttle.remaining(key);
+    if (wait > 0) throw new AuthError(`Too many failed attempts. Try again in ${Math.ceil(wait / 1000)} seconds.`);
+    const users = this.users();
+    const rec = Object.hasOwn(users, key) ? users[key] : null;
+    // Unknown users still pay the full hashing cost, so timing doesn't reveal which names exist.
+    const salt = rec ? fromB64(rec.salt) : DUMMY_SALT;
+    const iterations = rec && intIn(rec.iterations, 100000, 10000000) ? rec.iterations : KDF_ITERATIONS;
+    const derived = await hashPassword(password, salt, iterations);
+    const ok = rec ? timingSafeEqual(derived, fromB64(rec.hash)) : false;
+    if (!ok) { Throttle.fail(key); throw new AuthError('That username and password don\'t match an account on this device.'); }
+    Throttle.clear(key);
+    await this.startSession(key);
+  },
+  async startSession(key) {
+    const token = randomBytes(32);
+    const exp = Date.now() + SESSION_IDLE_MS;
+    const users = this.users();
+    // Only the SHA-256 of the token is kept with the account; the token itself lives in this tab.
+    users[key].session = { hash: toB64(await sha256(token)), exp, issued: Date.now() };
+    Local.set('users', users);
+    Tab.set('session', { user: key, token: toB64(token), exp });
+    this.current = { key, display: users[key].display };
+    this.lastTouch = Date.now();
+  },
+  async validate() {
+    if (!cryptoReady) return false;
+    const s = Tab.get('session');
+    if (!isObj(s) || typeof s.user !== 'string' || typeof s.token !== 'string') { this.current = null; return false; }
+    const users = this.users();
+    const rec = Object.hasOwn(users, s.user) ? users[s.user] : null;
+    const now = Date.now();
+    if (!rec || !isObj(rec.session) || now > s.exp || now > rec.session.exp) { this.end(); return false; }
+    let ok = false;
+    try { ok = timingSafeEqual(await sha256(fromB64(s.token)), fromB64(rec.session.hash)); } catch { ok = false; }
+    if (!ok) { this.end(); return false; }
+    this.current = { key: s.user, display: rec.display };
+    return true;
+  },
+  touch() {   // sliding idle expiry, written at most every 30 s
+    if (!this.current) return;
+    const now = Date.now();
+    if (now - this.lastTouch < 30000) return;
+    const s = Tab.get('session');
+    const users = this.users();
+    if (!isObj(s) || !Object.hasOwn(users, s.user) || !isObj(users[s.user].session)) return;
+    if (now > s.exp) return;   // already expired; the session check will sign out
+    this.lastTouch = now;
+    s.exp = users[s.user].session.exp = now + SESSION_IDLE_MS;
+    Tab.set('session', s);
+    Local.set('users', users);
+  },
+  end() {
+    const s = Tab.get('session');
+    if (isObj(s) && typeof s.user === 'string') {
+      const users = this.users();
+      if (Object.hasOwn(users, s.user) && users[s.user].session) { delete users[s.user].session; Local.set('users', users); }
+    }
+    Tab.remove('session');
+    this.current = null;
+  },
+  deleteAccount() {
+    const s = Tab.get('session');
+    const users = this.users();
+    if (isObj(s) && Object.hasOwn(users, s.user)) delete users[s.user];
+    Local.set('users', users);
+    Tab.remove('session');
+    this.current = null;
+    Prefs.reset();
+  },
+};
+
+/* ---------- Router: hash routes with an auth guard ---------- */
+const ROUTES = {
+  login: { title: 'Sign in' },
+  register: { title: 'Create account' },
+  dashboard: { title: 'Dashboard', auth: true },
+  calibration: { title: 'Calibration', auth: true },
+  cookies: { title: 'Cookie Policy' },
+  terms: { title: 'Terms and Conditions' },
+};
+const Router = {
+  current: null,
+  notice: '',
+  seq: 0,
+  async resolve() {
+    const seq = ++this.seq;
+    let name = location.hash.replace(/^#\/?/, '');
+    try { name = decodeURIComponent(name); } catch { /* keep raw */ }
+    name = name || 'login';
+    const authed = await Auth.validate();
+    if (seq !== this.seq) return;               // a newer navigation won
+    if (!Object.hasOwn(ROUTES, name)) return this.show('notfound', authed);
+    const r = ROUTES[name];
+    if (r.auth && !authed) { this.notice = this.notice || 'Sign in to open the dashboard.'; return this.go('login', true); }
+    if (authed && (name === 'login' || name === 'register')) return this.go('dashboard', true);
+    this.show(name, authed);
+  },
+  go(name, replace = false) {
+    const target = '#' + name;
+    if (location.hash === target) { this.resolve(); return; }
+    if (replace) {
+      try { history.replaceState(null, '', target); } catch { location.replace(target); return; }
+      this.resolve();
+    } else {
+      location.hash = name;
+    }
+  },
+  show(name, authed) {
+    if (this.current === 'calibration' && name !== 'calibration') Calibration.stop('left');
+    this.current = name;
+    $$('[data-view]').forEach((v) => { v.hidden = v.dataset.view !== name; });
+    document.title = `${ROUTES[name]?.title || 'Page not found'} · ${APP}`;
+    renderChrome(authed);
+    if (name === 'login') renderLoginNotice();
+    if (name === 'dashboard') renderDashboard();
+    if (name === 'calibration') Calibration.renderIdle();
+    window.scrollTo(0, 0);
+    $(`[data-view="${name}"] h1`)?.focus({ preventScroll: true });
+    syncCursor();
+  },
+};
+
+function renderChrome(authed) {
+  $('#nav').hidden = !authed;
+  $('#btn-signout').hidden = !authed;
+  const chip = $('#user-chip');
+  chip.hidden = !authed;
+  chip.textContent = authed && Auth.current ? Auth.current.display : '';
+  $$('[data-nav]').forEach((a) => {
+    if (a.dataset.nav === Router.current) a.setAttribute('aria-current', 'page');
+    else a.removeAttribute('aria-current');
+  });
+}
+function renderLoginNotice() {
+  const n = $('#login-notice');
+  n.hidden = !Router.notice;
+  n.textContent = Router.notice;
+  Router.notice = '';
+}
+
+function signOut(reason) {
+  Calibration.stop('signout');
+  Simulator.stop();
+  Link.disconnect();
+  Gaze.reset();
+  Auth.end();
+  Router.notice = reason === 'expired' ? 'You were signed out after 30 minutes without activity.' : '';
+  Router.go('login', true);
+  if (reason !== 'expired') toast('Signed out.');
+}
+
+/* ---------- Gaze link: WebSocket client with validation and reconnect ---------- */
+class GazeLink extends EventTarget {
+  #ws = null; #url = ''; #want = false; #retry = 0; #timer = 0; #opened = false;
+  state = 'idle'; retryDelay = 0; lastError = ''; openedAt = 0;
+
+  static check(raw) {
+    let u;
+    try { u = new URL(String(raw).trim()); } catch { return { error: 'Enter a full address, such as ws://localhost:8765.' }; }
+    if (u.protocol !== 'ws:' && u.protocol !== 'wss:') return { error: 'The address must start with ws:// or wss://.' };
+    if (!LOOPBACK_HOSTS.has(u.hostname)) return { error: 'For your privacy, only trackers on this computer are allowed. Use localhost or 127.0.0.1.' };
+    if (u.username || u.password) return { error: 'Remove the user name and password from the address.' };
+    return { url: u.pathname === '/' && !u.search ? `${u.protocol}//${u.host}` : u.href };
+  }
+  get url() { return this.#url; }
+  connect(url) {
+    this.disconnect(true);
+    this.#want = true; this.#url = url; this.#retry = 0; this.lastError = '';
+    this.#open();
+  }
+  #open() {
+    this.#opened = false;
+    this.#set('connecting');
+    let ws;
+    try { ws = new WebSocket(this.#url); } catch {
+      this.lastError = 'The browser blocked this address.';
+      this.#retryLater();
+      return;
+    }
+    this.#ws = ws;
+    ws.addEventListener('open', () => {
+      if (this.#ws !== ws) return;
+      this.#opened = true; this.#retry = 0; this.lastError = ''; this.openedAt = performance.now();
+      this.#set('open');
+    });
+    ws.addEventListener('message', (ev) => { if (this.#ws === ws) this.dispatchEvent(new CustomEvent('frame', { detail: ev.data })); });
+    ws.addEventListener('close', (ev) => {
+      if (this.#ws !== ws) return;
+      this.#ws = null;
+      this.lastError = this.#opened ? `The connection dropped (code ${ev.code}).` : `No tracker answered at ${this.#url}.`;
+      if (this.#want) this.#retryLater(); else this.#set('idle');
+    });
+  }
+  #retryLater() {
+    this.#retry++;
+    this.retryDelay = Math.round(Math.min(10000, 500 * 2 ** (this.#retry - 1)) * (0.8 + Math.random() * 0.4));
+    this.#set('reconnecting');
+    clearTimeout(this.#timer);
+    this.#timer = setTimeout(() => { if (this.#want) this.#open(); }, this.retryDelay);
+  }
+  disconnect(silent = false) {
+    this.#want = false;
+    clearTimeout(this.#timer);
+    const ws = this.#ws;
+    this.#ws = null;
+    if (ws) { try { ws.close(1000, 'Dashboard disconnected'); } catch { /* ignore */ } }
+    if (!silent) { this.lastError = ''; this.#set('idle'); }
+  }
+  markStale(stale) {
+    if (stale && this.state === 'open') this.#set('stale');
+    else if (!stale && this.state === 'stale') this.#set('open');
+  }
+  send(obj) {
+    const ws = this.#ws;
+    if (!ws || ws.readyState !== WebSocket.OPEN) return false;
+    try { ws.send(JSON.stringify(obj)); return true; } catch { return false; }
+  }
+  #set(state) { this.state = state; this.dispatchEvent(new Event('state')); }
+}
+const Link = new GazeLink();
+
+/* ---------- Gaze pipeline: one entry point for socket and simulator frames ---------- */
+const Gaze = {
+  last: null, lastRaw: '', target: null, pos: null, lastSampleAt: 0, wasBlink: false,
+  total: 0, rejected: 0, reason: 'None', perSecond: 0, blinks: 0, lastUi: 0,
+  reset() {
+    Object.assign(this, { last: null, lastRaw: '', target: null, pos: null, lastSampleAt: 0, wasBlink: false, total: 0, rejected: 0, reason: 'None', perSecond: 0, blinks: 0 });
+    updateReadouts();
+    syncCursor();
+  },
+};
+function parseSample(m) {
+  if (!isObj(m)) return null;
+  const { x, y } = m;
+  if (typeof x !== 'number' || typeof y !== 'number' || !Number.isFinite(x) || !Number.isFinite(y)) return null;
+  if (Math.abs(x) > 100000 || Math.abs(y) > 100000) return null;
+  const blink = m.blink === undefined ? false : m.blink;
+  if (typeof blink !== 'boolean') return null;
+  return { x, y, blink };
+}
+function reject(reason) { Gaze.rejected++; Gaze.reason = reason; }
+function ingest(raw) {
+  if (typeof raw !== 'string') return reject('Binary frame; send JSON text.');
+  if (raw.length > MAX_FRAME_CHARS) return reject('Frame larger than 4 KB.');
+  let msg;
+  try { msg = JSON.parse(raw); } catch { return reject('Frame is not valid JSON.'); }
+  const s = parseSample(msg);
+  if (!s) return reject('Frame needs numeric "x" and "y" and a true/false "blink".');
+  const now = performance.now();
+  Gaze.total++; Gaze.perSecond++;
+  Gaze.last = s; Gaze.lastSampleAt = now;
+  Gaze.lastRaw = raw.length > 240 ? raw.slice(0, 240) + '…' : raw;
+  if (s.blink && !Gaze.wasBlink) Gaze.blinks++;
+  Gaze.wasBlink = s.blink;
+  if (!s.blink) {                     // trackers report unreliable positions while the eyes are shut
+    Gaze.target = toViewport(s);
+    Calibration.collect(Gaze.target);
+  }
+  Link.markStale(false);
+  Render.kick();
+}
+Link.addEventListener('frame', (e) => ingest(e.detail));
+Link.addEventListener('state', () => { renderLink(); Calibration.renderIdle(); });
+
+function sourceSize() {
+  return Prefs.get('mapMode') === 'viewport' ? { w: vw(), h: vh() } : { w: Prefs.get('frameW'), h: Prefs.get('frameH') };
+}
+function toViewport(s) {
+  if (Prefs.get('mapMode') === 'viewport') return { x: s.x, y: s.y };
+  const { w, h: hh } = sourceSize();
+  return { x: (s.x / w) * vw(), y: (s.y / hh) * vh() };
+}
+function toSource(p) {
+  if (Prefs.get('mapMode') === 'viewport') return { x: Math.round(p.x), y: Math.round(p.y) };
+  const { w, h: hh } = sourceSize();
+  return { x: Math.round((p.x / vw()) * w), y: Math.round((p.y / vh()) * hh) };
+}
+
+/* ---------- Simulator: synthetic frames through the same pipeline ---------- */
+const Simulator = {
+  running: false, timer: 0, t0: 0, x: 0, y: 0,
+  start() {
+    Link.disconnect();
+    const { w, h: hh } = sourceSize();
+    Object.assign(this, { running: true, t0: performance.now(), x: w / 2, y: hh / 2 });
+    clearInterval(this.timer);
+    this.timer = setInterval(() => this.tick(), 1000 / 60);
+    renderLink();
+    Calibration.renderIdle();
+  },
+  stop() {
+    if (!this.running) return;
+    clearInterval(this.timer);
+    this.running = false;
+    renderLink();
+    Calibration.renderIdle();
+  },
+  tick() {
+    const t = (performance.now() - this.t0) / 1000;
+    const { w, h: hh } = sourceSize();
+    let tx, ty;
+    if (Calibration.target) {            // during calibration, look at the target with a small bias
+      const aim = toSource(Calibration.target);
+      tx = aim.x + w * 0.012; ty = aim.y - hh * 0.01;
+    } else {
+      tx = w / 2 + w * 0.38 * Math.sin(t * 0.7);
+      ty = hh / 2 + hh * 0.36 * Math.sin(t * 1.1 + 0.6);
+    }
+    this.x += (tx - this.x) * 0.12;
+    this.y += (ty - this.y) * 0.12;
+    const noise = () => (Math.random() - 0.5) * Math.max(w, hh) * 0.008;
+    const blink = !Calibration.running && (t % 4.2) < 0.16;
+    ingest(JSON.stringify({ x: Math.round(this.x + noise()), y: Math.round(this.y + noise()), blink }));
+  },
+};
+
+/* ---------- Render loop: cursor position via top/left, batched per animation frame ---------- */
+const cursorEl = $('#gaze-cursor');
+const ringEl = $('.gc-ring', cursorEl);
+const Render = {
+  raf: 0,
+  kick() { if (!this.raf) this.raf = requestAnimationFrame((now) => this.frame(now)); },
+  frame(now) {
+    this.raf = 0;
+    if (!Gaze.target) { syncCursor(); return; }
+    const alpha = { off: 1, low: 0.45, high: 0.18 }[Prefs.get('smoothing')] ?? 1;
+    if (!Gaze.pos) Gaze.pos = { ...Gaze.target };
+    else {
+      Gaze.pos.x += (Gaze.target.x - Gaze.pos.x) * alpha;
+      Gaze.pos.y += (Gaze.target.y - Gaze.pos.y) * alpha;
+    }
+    const x = clamp(Gaze.pos.x, 0, vw());
+    const y = clamp(Gaze.pos.y, 0, vh());
+    cursorEl.style.left = x + 'px';
+    cursorEl.style.top = y + 'px';
+    cursorEl.classList.toggle('is-blink', !!Gaze.last?.blink);
+    syncCursor();
+    Dwell.update(x, y, now, !!Gaze.last?.blink);
+    if (now - Gaze.lastUi > 100) { Gaze.lastUi = now; updateReadouts(); }
+    const moving = Math.abs(Gaze.target.x - Gaze.pos.x) > 0.5 || Math.abs(Gaze.target.y - Gaze.pos.y) > 0.5;
+    if (moving || Dwell.el || now - Gaze.lastSampleAt < 500) this.kick();
+  },
+};
+
+function syncCursor() {
+  const fresh = Gaze.lastSampleAt > 0 && performance.now() - Gaze.lastSampleAt < 1500;
+  const onApp = Router.current === 'dashboard' || Router.current === 'calibration';
+  const show = !!Auth.current && onApp && Prefs.get('showCursor') && fresh && !!Gaze.target;
+  if (cursorEl.hidden === show) cursorEl.hidden = !show;
+  if (!show) Dwell.reset();
+}
+
+/* ---------- Dwell selection: hold the gaze on a control to press it ---------- */
+const DWELL_SELECTOR = 'button:not([disabled]), a[href], label.check, [data-dwell]';
+const Dwell = {
+  el: null, start: 0,
+  reset() {
+    this.el?.classList.remove('is-dwell-target');
+    this.el = null;
+    ringEl.style.setProperty('--p', '0');
+  },
+  update(x, y, now, blink) {
+    if (!Prefs.get('dwell') || cursorEl.hidden) { if (this.el) this.reset(); return; }
+    if (blink) return;                               // pause, don't restart, during a blink
+    const hit = document.elementFromPoint(x, y)?.closest(DWELL_SELECTOR) || null;
+    if (hit !== this.el) {
+      this.reset();
+      if (hit) { this.el = hit; this.start = now; hit.classList.add('is-dwell-target'); }
+      return;
+    }
+    if (!hit) return;
+    const p = clamp((now - this.start) / Prefs.get('dwellMs'), 0, 1);
+    ringEl.style.setProperty('--p', p.toFixed(3));
+    if (p >= 1) {
+      hit.click();
+      this.start = now + 900;                        // cool-down before the same control can fire again
+      ringEl.style.setProperty('--p', '0');
+    }
+  },
+};
+
+/* ---------- Dashboard rendering ---------- */
+function updateReadouts() {
+  const s = Gaze.last;
+  $('#m-x').textContent = s ? String(Math.round(s.x)) : '—';
+  $('#m-y').textContent = s ? String(Math.round(s.y)) : '—';
+  $('#m-eye').textContent = s ? (s.blink ? 'Blink' : 'Open') : '—';
+  $('#tile-eye').classList.toggle('is-blink', !!s?.blink);
+  $('#m-blinks').textContent = Gaze.blinks.toLocaleString();
+  $('#m-total').textContent = Gaze.total.toLocaleString();
+  $('#m-rejected').textContent = Gaze.rejected.toLocaleString();
+  $('#m-reason').textContent = Gaze.reason;
+  $('#last-frame').textContent = Gaze.lastRaw || 'No frames yet';
+  const dot = $('#gm-dot');
+  $('#gm-empty').hidden = !!s;
+  dot.hidden = !s;
+  if (s) {
+    const { w, h: hh } = sourceSize();
+    dot.style.left = clamp((s.x / w) * 100, 0, 100) + '%';
+    dot.style.top = clamp((s.y / hh) * 100, 0, 100) + '%';
+    dot.classList.toggle('is-blink', s.blink);
+  }
+}
+
+const LINK_TEXT = { idle: 'Not connected', connecting: 'Connecting…', open: 'Connected', stale: 'No data', reconnecting: 'Retrying', sim: 'Simulator' };
+function renderLink() {
+  const state = Simulator.running ? 'sim' : Link.state;
+  $$('.js-link-pill').forEach((p) => { p.dataset.state = state; $('.js-link-text', p).textContent = LINK_TEXT[state]; });
+  const detail = {
+    idle: Link.lastError || 'Start your tracker script, then connect.',
+    connecting: `Opening ${Link.url}…`,
+    open: `Receiving gaze frames from ${Link.url}.`,
+    stale: `Connected to ${Link.url}, but no gaze frames arrived in the last 3 seconds.`,
+    reconnecting: `${Link.lastError} Trying again in ${Math.max(1, Math.round(Link.retryDelay / 1000))} s.`,
+    sim: 'The simulator is sending 60 frames per second. Stop it to use your tracker.',
+  }[state];
+  $('#link-detail').textContent = detail;
+  const linked = ['connecting', 'open', 'stale', 'reconnecting'].includes(state);
+  $('#btn-connect').hidden = linked;
+  $('#btn-disconnect').hidden = !linked;
+  const sim = $('#btn-sim');
+  sim.setAttribute('aria-pressed', String(Simulator.running));
+  sim.textContent = Simulator.running ? 'Stop simulator' : 'Run simulator';
+}
+
+function renderPrefsNote() { $('#prefs-note').hidden = Consent.optional(); }
+
+const fmtDate = (iso) => {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? 'unknown' : d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+};
+
+function renderDashboard() {
+  const rec = Auth.record();
+  $('#dash-session').textContent = Auth.current
+    ? `Signed in as ${Auth.current.display}. You'll be signed out after 30 minutes without activity.`
+    : '';
+  $('#acct-name').textContent = rec?.display || '';
+  $('#acct-created').textContent = rec ? fmtDate(rec.createdAt) : '';
+  $('#acct-agreed').textContent = rec?.agreed
+    ? `Terms ${rec.agreed.terms} and Cookie Policy ${rec.agreed.cookiePolicy}, ${fmtDate(rec.agreed.at)}`
+    : '';
+  const last = Prefs.get('lastCal');
+  $('#cal-summary-line').textContent = last
+    ? `Last calibrated ${fmtDate(last.at)}. ` + (typeof last.meanError === 'number'
+        ? `Mean error ${last.meanError} px across ${last.measured} of 9 targets.`
+        : 'No gaze data was recorded, so accuracy is unknown.')
+    : 'Not calibrated in this browser yet.';
+  $$('.js-unit').forEach((u) => { u.textContent = Prefs.get('mapMode') === 'viewport' ? 'window px' : 'frame px'; });
+  disarmDelete();
+  renderLink();
+  renderPrefsNote();
+  updateReadouts();
+}
+
+let syncSettings = () => {};
+function bindSettings() {
+  const mode = $('#map-mode'), fw = $('#frame-w'), fh = $('#frame-h'), sm = $('#smoothing');
+  const sc = $('#show-cursor'), dw = $('#dwell'), dms = $('#dwell-ms');
+  const sync = syncSettings = () => {
+    $('#ws-url').value = Prefs.get('wsUrl');
+    mode.value = Prefs.get('mapMode');
+    fw.value = Prefs.get('frameW'); fh.value = Prefs.get('frameH');
+    sm.value = Prefs.get('smoothing');
+    sc.checked = Prefs.get('showCursor');
+    dw.checked = Prefs.get('dwell');
+    dms.value = String(Prefs.get('dwellMs'));
+    $('#cal-dwell').value = String(Prefs.get('calDwellMs'));
+    $('#cal-fill').checked = Prefs.get('calFill');
+    $('#frame-fields').hidden = Prefs.get('mapMode') !== 'frame';
+    updateMapAspect();
+  };
+  mode.addEventListener('change', () => {
+    Prefs.set('mapMode', mode.value === 'viewport' ? 'viewport' : 'frame');
+    Gaze.pos = null;
+    sync(); renderDashboard();
+  });
+  for (const [el, key] of [[fw, 'frameW'], [fh, 'frameH']]) {
+    el.addEventListener('change', () => {
+      const n = Number(el.value);
+      if (!intIn(n, 1, 20000)) { setError(el, 'Enter a whole number from 1 to 20000.'); return; }
+      setError(el, '');
+      Prefs.set(key, n);
+      updateMapAspect();
+    });
+  }
+  sm.addEventListener('change', () => Prefs.set('smoothing', ['off', 'low', 'high'].includes(sm.value) ? sm.value : 'low'));
+  sc.addEventListener('change', () => { Prefs.set('showCursor', sc.checked); syncCursor(); });
+  dw.addEventListener('change', () => {
+    Prefs.set('dwell', dw.checked);
+    if (!dw.checked) Dwell.reset();
+    toast(dw.checked ? 'Dwell selection is on. Hold your gaze on a button to press it.' : 'Dwell selection is off.');
+  });
+  dms.addEventListener('change', () => { const n = Number(dms.value); if ([800, 1200, 1600, 2000].includes(n)) Prefs.set('dwellMs', n); });
+  $('#cal-dwell').addEventListener('change', (e) => { const n = Number(e.target.value); if ([1500, 2000, 3000, 4000].includes(n)) Prefs.set('calDwellMs', n); });
+  $('#cal-fill').addEventListener('change', (e) => Prefs.set('calFill', e.target.checked));
+  sync();
+  window.addEventListener('resize', updateMapAspect);
+}
+function updateMapAspect() {
+  const { w, h: hh } = sourceSize();
+  const ratio = clamp(w / hh, 0.4, 3);
+  $('#gaze-map').style.aspectRatio = String(ratio);
+}
+
+let deleteArmed = false, deleteTimer = 0;
+function disarmDelete() {
+  deleteArmed = false;
+  clearTimeout(deleteTimer);
+  const b = $('#btn-delete');
+  b.textContent = 'Delete account';
+  b.classList.remove('btn-danger');
+  $('#btn-delete-cancel').hidden = true;
+  $('#delete-hint').hidden = true;
+}
+
+/* ---------- Calibration: 9 targets, shown one at a time ---------- */
+const Calibration = {
+  running: false, index: -1, phase: 'idle', samples: [], results: [], timers: [], target: null,
+  stage: $('#cal-stage'),
+  points: $$('.cal-point'),
+  later(fn, ms) { this.timers.push(setTimeout(fn, ms)); },
+  centerOf(el) { const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; },
+  hasGaze() { return Simulator.running || Link.state === 'open'; },
+  status(msg) { $('#cal-status').textContent = msg; },
+  renderIdle() {
+    if (this.running) return;
+    this.status(this.hasGaze()
+      ? 'Ready. Gaze data is coming in, so the accuracy at each target will be measured.'
+      : 'Ready. No gaze data yet. The targets still run so you can align the hardware, but accuracy can\'t be measured. Connect a tracker or run the simulator on the Dashboard.');
+  },
+  start() {
+    if (this.running) return;
+    this.running = true; this.results = []; this.index = -1;
+    this.points.forEach((p) => { p.classList.remove('is-active', 'is-collecting', 'is-done'); p.removeAttribute('aria-current'); });
+    const fill = Prefs.get('calFill');
+    $('#toast').textContent = '';                  // nothing may cover a target
+    this.stage.classList.toggle('is-fill', fill);
+    $('#cal-hud').hidden = !fill;
+    $('#cal-start').hidden = true;
+    $('#cal-stop').hidden = false;
+    $('#cal-results').hidden = true;
+    (fill ? $('#cal-hud .btn') : $('#cal-stop')).focus({ preventScroll: true });
+    if (!fill) this.stage.scrollIntoView({ block: 'center', behavior: 'instant' });
+    Link.send({ type: 'calibration', event: 'start', points: 9, viewport: { w: vw(), h: vh() }, frame: sourceSize() });
+    this.next();
+  },
+  next() {
+    this.index++;
+    if (this.index >= this.points.length) { this.finish(); return; }
+    const el = this.points[this.index];
+    el.classList.add('is-active');
+    el.setAttribute('aria-current', 'step');
+    const c = this.centerOf(el);
+    this.target = c;
+    const n = this.index + 1;
+    $('#cal-hud-text').textContent = `Target ${n} of 9`;
+    this.status(`Target ${n} of 9: ${el.dataset.label}. Look at the blue target until its centre disappears.`);
+    announce(`Target ${n} of 9, ${el.dataset.label}.`);
+    Link.send({
+      type: 'calibration', event: 'point', index: this.index, label: el.dataset.label,
+      viewport: { x: Math.round(c.x), y: Math.round(c.y) }, source: toSource(c),
+      normalized: { x: +(c.x / vw()).toFixed(4), y: +(c.y / vh()).toFixed(4) },
+    });
+    this.phase = 'settle';
+    this.later(() => {
+      this.phase = 'collect';
+      this.samples = [];
+      const dwell = Prefs.get('calDwellMs');
+      el.style.setProperty('--dwell', dwell + 'ms');
+      el.classList.add('is-collecting');
+      this.later(() => this.record(el), dwell);
+    }, SETTLE_MS);
+  },
+  collect(pos) {
+    if (this.running && this.phase === 'collect') this.samples.push({ x: pos.x, y: pos.y });
+  },
+  record(el) {
+    const c = this.centerOf(el);
+    const n = this.samples.length;
+    let error = null;
+    if (n) {
+      const mx = this.samples.reduce((a, s) => a + s.x, 0) / n;
+      const my = this.samples.reduce((a, s) => a + s.y, 0) / n;
+      error = Math.hypot(mx - c.x, my - c.y);
+    }
+    this.results.push({ index: this.index, label: el.dataset.label, target: c, samples: n, error });
+    el.classList.remove('is-active', 'is-collecting');
+    el.classList.add('is-done');
+    el.removeAttribute('aria-current');
+    Link.send({ type: 'calibration', event: 'point_done', index: this.index, samples: n, mean_error_px: error == null ? null : Math.round(error) });
+    this.phase = 'settle';
+    this.next();
+  },
+  finish() {
+    const measured = this.results.filter((r) => r.error != null);
+    const meanError = measured.length ? Math.round(measured.reduce((a, r) => a + r.error, 0) / measured.length) : null;
+    const summary = { at: new Date().toISOString(), meanError, measured: measured.length, points: this.results.map((r) => ({ i: r.index, e: r.error == null ? null : Math.round(r.error), n: r.samples })) };
+    this.cleanup();
+    Prefs.set('lastCal', summary);
+    Link.send({ type: 'calibration', event: 'complete', mean_error_px: meanError, points: summary.points });
+    this.renderResults(meanError, measured.length);
+    this.status('Calibration complete. Results are below.');
+    toast('Calibration complete.', 'ok');
+    $('#cal-results').scrollIntoView({ block: 'start', behavior: 'instant' });
+  },
+  stop(reason) {
+    if (!this.running) return;
+    this.cleanup();
+    this.points.forEach((p) => { p.classList.remove('is-active', 'is-collecting', 'is-done'); p.removeAttribute('aria-current'); });
+    Link.send({ type: 'calibration', event: 'cancel' });
+    if (reason === 'user') { this.status('Calibration stopped. Nothing was saved.'); announce('Calibration stopped.'); }
+  },
+  cleanup() {
+    this.timers.forEach(clearTimeout);
+    this.timers = [];
+    this.running = false; this.phase = 'idle'; this.target = null;
+    this.stage.classList.remove('is-fill');
+    $('#cal-hud').hidden = true;
+    $('#cal-stop').hidden = true;
+    const start = $('#cal-start');
+    start.hidden = false;
+    if (Router.current === 'calibration') start.focus({ preventScroll: true });
+  },
+  renderResults(meanError, measuredCount) {
+    const quality = (e) => (e == null ? ['none', 'No data'] : e < 40 ? ['good', 'Good'] : e < 80 ? ['fair', 'Fair'] : ['poor', 'Poor']);
+    $('#cal-rows').replaceChildren(...this.results.map((r) => {
+      const [state, label] = quality(r.error);
+      return h('tr', {},
+        h('td', { text: `${r.index + 1}. ${r.label}` }),
+        h('td', { class: 'num', text: `${Math.round(r.target.x)}, ${Math.round(r.target.y)}` }),
+        h('td', { class: 'num', text: String(r.samples) }),
+        h('td', { class: 'num', text: r.error == null ? '—' : `${Math.round(r.error)} px` }),
+        h('td', {}, h('span', { class: 'pill', 'data-state': state }, h('span', { class: 'pill-mark' }), label)));
+    }));
+    $('#cal-results-summary').textContent = meanError == null
+      ? 'No gaze data was received, so this run was for hardware alignment only.'
+      : `Mean error ${meanError} px across ${measuredCount} of 9 targets.` + (Consent.optional() ? ' This result is saved on this device.' : ' Accept preference storage to keep this result after you close the tab.');
+    $('#cal-results').hidden = false;
+  },
+};
+
+/* ---------- Consent banner and policy dialog ---------- */
+const Banner = {
+  el: $('#cookie-banner'),
+  show(focus = true) {
+    const c = Consent.state();
+    const cur = $('#cookie-current');
+    cur.hidden = !c;
+    cur.textContent = c ? `Current choice: ${c.choice === 'all' ? 'all storage accepted' : 'essential storage only'}, set ${fmtDate(c.at)}.` : '';
+    this.el.hidden = false;
+    this.pad();
+    if (focus) $('.btn', this.el).focus({ preventScroll: true });
+  },
+  hide() { this.el.hidden = true; this.pad(); $('#main').focus({ preventScroll: true }); },
+  pad() { document.body.style.paddingBottom = this.el.hidden ? '' : this.el.offsetHeight + 'px'; },
+};
+
+const Modal = {
+  el: $('#policy-dialog'),
+  open(kind) {
+    const tpl = $(kind === 'terms' ? '#tpl-terms' : '#tpl-cookies');
+    $('#policy-dialog-title').textContent = kind === 'terms' ? 'Terms and Conditions' : 'Cookie Policy';
+    const body = $('#policy-dialog-body');
+    body.replaceChildren(tpl.content.cloneNode(true));
+    body.scrollTop = 0;
+    if (typeof this.el.showModal === 'function') { if (!this.el.open) this.el.showModal(); }
+    else this.el.setAttribute('open', '');
+  },
+  close() { if (typeof this.el.close === 'function') this.el.close(); else this.el.removeAttribute('open'); },
+};
+
+/* ---------- Forms ---------- */
+function passwordRules(u, p, c) {
+  return {
+    length: p.length >= 12,
+    nouser: p.length > 0 && (!u.trim() || !p.toLowerCase().includes(u.trim().toLowerCase())),
+    match: p.length > 0 && p === c,
+  };
+}
+function bindForms() {
+  const login = $('#login-form');
+  login.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    clearForm(login);
+    const u = login.elements.username, p = login.elements.password;
+    let bad = false;
+    if (!u.value.trim()) { setError(u, 'Enter your username.'); bad = true; }
+    if (!p.value) { setError(p, 'Enter your password.'); bad = true; }
+    if (bad) { $('[aria-invalid="true"]', login).focus(); return; }
+    const done = busy($('button[type="submit"]', login), 'Checking…');
+    try {
+      await Auth.login(u.value, p.value);
+      login.reset();
+      toast(`Signed in as ${Auth.current.display}.`, 'ok');
+      Router.go('dashboard');
+    } catch (err) {
+      formError(login, err instanceof AuthError ? err.message : 'Sign-in failed because this browser blocked secure storage. Try a normal (not private) window.');
+      p.value = '';
+    } finally { done(); }
+  });
+
+  const reg = $('#register-form');
+  const ru = reg.elements.username, rp = reg.elements.password, rc = reg.elements.confirm, rt = reg.elements.terms;
+  const paintRules = () => {
+    const r = passwordRules(ru.value, rp.value, rc.value);
+    $$('#reg-rules li').forEach((li) => { li.dataset.ok = String(r[li.dataset.rule]); });
+    return r;
+  };
+  [ru, rp, rc].forEach((el) => el.addEventListener('input', paintRules));
+  rt.addEventListener('change', () => { if (rt.checked) setError(rt, ''); });
+  reg.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    clearForm(reg);
+    const r = paintRules();
+    const name = ru.value.trim();
+    if (!USERNAME_RE.test(name)) setError(ru, 'Use 3 to 32 characters: letters, numbers, dot, dash or underscore.');
+    if (!r.length) setError(rp, 'Use at least 12 characters.');
+    else if (!r.nouser) setError(rp, 'Your password can\'t contain your username.');
+    if (!rc.value) setError(rc, 'Type your password again.');
+    else if (!r.match) setError(rc, 'The two passwords don\'t match.');
+    // The agreement checkbox is mandatory: no account is created without it.
+    if (!rt.checked) setError(rt, 'You need to agree to the Terms and Conditions and Cookie Policy to create an account.');
+    const firstBad = $('[aria-invalid="true"]', reg);
+    if (firstBad) { firstBad.focus(); return; }
+    const done = busy($('button[type="submit"]', reg), 'Securing your password…');
+    try {
+      await Auth.register(name, rp.value);
+      reg.reset(); paintRules();
+      toast(Local.durable ? 'Account created. You are signed in.' : 'Account created for this visit only: this browser is blocking storage.', 'ok');
+      Router.go('dashboard');
+    } catch (err) {
+      formError(reg, err instanceof AuthError ? err.message : 'The account couldn\'t be saved because this browser blocked storage. Try a normal (not private) window.');
+    } finally { done(); }
+  });
+  paintRules();
+
+  const conn = $('#conn-form');
+  conn.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const input = $('#ws-url');
+    const res = GazeLink.check(input.value);
+    if (res.error) { setError(input, res.error); input.focus(); return; }
+    setError(input, '');
+    input.value = res.url;
+    Prefs.set('wsUrl', res.url);
+    Simulator.stop();
+    Link.connect(res.url);
+    $('#btn-disconnect').focus();
+  });
+  $('#btn-disconnect').addEventListener('click', () => { Link.disconnect(); $('#btn-connect').focus(); });
+  $('#btn-sim').addEventListener('click', () => {
+    if (Simulator.running) { Simulator.stop(); toast('Simulator stopped.'); }
+    else { Simulator.start(); toast('Simulator running. Watch the red crosshair.', 'ok'); }
+  });
+
+  $('#cal-start').addEventListener('click', () => Calibration.start());
+  $('#cal-stop').addEventListener('click', () => Calibration.stop('user'));
+
+  $('#btn-delete').addEventListener('click', () => {
+    const b = $('#btn-delete');
+    if (!deleteArmed) {
+      deleteArmed = true;
+      b.textContent = 'Yes, delete my account';
+      b.classList.add('btn-danger');
+      $('#btn-delete-cancel').hidden = false;
+      $('#delete-hint').hidden = false;
+      deleteTimer = setTimeout(disarmDelete, 10000);
+      return;
+    }
+    Calibration.stop('signout'); Simulator.stop(); Link.disconnect(); Gaze.reset();
+    Auth.deleteAccount();
+    disarmDelete();
+    syncSettings();
+    Theme.apply(Prefs.get('theme'));
+    Router.go('login', true);
+    toast('Your account was deleted from this device.');
+  });
+  $('#btn-delete-cancel').addEventListener('click', () => { disarmDelete(); $('#btn-delete').focus(); });
+}
+/* ---------- Global wiring ---------- */
+function bindGlobal() {
+  document.addEventListener('click', (e) => {
+    const el = e.target.closest('[data-action]');
+    if (!el) return;
+    const a = el.dataset.action;
+    if (a === 'policy-terms') Modal.open('terms');
+    else if (a === 'policy-cookies') Modal.open('cookies');
+    else if (a === 'modal-close') Modal.close();
+    else if (a === 'cookie-settings') { Modal.close(); Banner.show(); }
+    else if (a === 'consent-all') Consent.choose('all');
+    else if (a === 'consent-essential') Consent.choose('essential');
+    else if (a === 'sign-out') signOut();
+    else if (a === 'theme') Theme.cycle();
+    else if (a === 'cal-stop') Calibration.stop('user');
+    else if (a === 'skip') $('#main').focus();
+  });
+  Modal.el.addEventListener('click', (e) => { if (e.target === Modal.el) Modal.close(); });   // backdrop click
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && Calibration.running) { e.preventDefault(); Calibration.stop('user'); }
+  });
+  for (const type of ['pointerdown', 'keydown', 'click']) {
+    document.addEventListener(type, () => Auth.touch(), { capture: true, passive: true });
+  }
+  window.addEventListener('hashchange', () => Router.resolve());
+  window.addEventListener('resize', () => Banner.pad());
+
+  setInterval(() => {                              // 1 Hz: frame rate, stale link, cursor visibility
+    $('#m-rate').textContent = String(Gaze.perSecond);
+    Gaze.perSecond = 0;
+    updateReadouts();                              // keeps stats current even if animation frames are throttled
+    if (Link.state === 'open' || Link.state === 'stale') {
+      Link.markStale(performance.now() - Math.max(Gaze.lastSampleAt, Link.openedAt) > STALE_MS);
+    }
+    syncCursor();
+  }, 1000);
+  setInterval(async () => {                        // session expiry check
+    if (Auth.current && !(await Auth.validate())) signOut('expired');
+  }, 15000);
+}
+
+/* ---------- Boot ---------- */
+function framedElsewhere() {
+  let framed = false;
+  try { framed = window.top !== window.self; } catch { framed = true; }
+  return framed && !document.querySelector('meta[name="fc-embed"][content="allow"]');
+}
+
+function boot() {
+  if (framedElsewhere()) {   // basic clickjacking guard: GitHub Pages can't send frame-ancestors headers
+    document.body.replaceChildren(h('main', { class: 'framed panel panel-strong' },
+      h('h1', { text: 'Open Face Control in its own tab' }),
+      h('p', { text: 'For your security, sign-in is turned off when this page is embedded in another site.' }),
+      h('a', { class: 'btn btn-primary', href: location.href, target: '_top', rel: 'noopener', text: 'Open Face Control' })));
+    return;
+  }
+  Prefs.load();
+  Theme.apply(Prefs.get('theme'), Prefs.get('theme') !== 'system');
+  $('#cookies-body').replaceChildren($('#tpl-cookies').content.cloneNode(true));
+  $('#terms-body').replaceChildren($('#tpl-terms').content.cloneNode(true));
+  if (!cryptoReady) {
+    $$('.js-crypto-missing').forEach((n) => { n.hidden = false; });
+    $$('#login-form button[type="submit"], #register-form button[type="submit"]').forEach((b) => { b.disabled = true; });
+  }
+  bindSettings();
+  bindForms();
+  bindGlobal();
+  renderLink();
+  if (!Consent.state()) Banner.show(false);
+  Router.resolve();
+}
+boot();
+</script>
+</body>
+</html>
