@@ -13,28 +13,34 @@
 <meta name="referrer" content="no-referrer">
 <title>EyeSync</title>
 <meta name="description" content="EyeSync: the control dashboard for your eye-tracker, with a live gaze cursor, WebSocket link and 9-point calibration.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%233498db'/%3E%3Cpath d='M3 16Q16 4 29 16Q16 28 3 16Z' fill='%231b1f23'/%3E%3Ccircle cx='16' cy='16' r='5.5' fill='%233498db'/%3E%3Ccircle cx='16' cy='16' r='2.2' fill='%231b1f23'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'%3E%3Crect width='16' height='16' fill='%233498db'/%3E%3Cpath d='M5 5h6v1h2v1h1v2h-1v1h-2v1H5v-1H3V9H2V7h1V6h2z' fill='%2312100c'/%3E%3Crect x='6' y='6' width='4' height='4' fill='%233498db'/%3E%3Crect x='7' y='7' width='1' height='1' fill='%23f4ecda'/%3E%3C/svg%3E">
 <style>
-/* Layout: one 1160px column under a slab top bar; views are flat bordered panels on a charcoal ground;
-   calibration takes over the whole window while it runs. Flat UI: solid fills, solid borders,
-   zero-blur offset shadows, no gradients anywhere. */
+/* Layout: one 1160px column under a slab top bar; views are flat bordered panels, the main ones
+   dressed as retro windows with a title strip; calibration takes over the whole window while it runs.
+   Look: a little retro computer lab (warm charcoal, beige-plastic light mode, mono labels, a CRT on
+   the home page). Flat UI: solid fills, solid borders, zero-blur offset shadows, no gradients. */
 :root {
-  --bg: #1b1f23;
-  --surface: #252b31;
-  --surface-2: #313840;
-  --ink: #ffffff;
-  --ink-2: #c5ced8;
-  --line: #e8edf2;
-  --line-soft: #4f5964;
-  --shadow: #000000;
+  --bg: #1c1a17;
+  --surface: #26231e;
+  --surface-2: #332f28;
+  --ink: #f4ecda;
+  --ink-2: #c9bfa9;
+  --line: #efe6d2;
+  --line-soft: #5a5242;
+  --shadow: #0b0a08;
   --accent: #3498db;
-  --accent-ink: #6cb8ec;
-  --danger: #e74c3c;
-  --danger-ink: #ff8a7d;
-  --ok: #2ecc71;
-  --warn: #f1c40f;
-  --on-color: #0b0f12;
-  --focus: #f1c40f;
+  --accent-ink: #7cc0ef;
+  --danger: #e5533d;
+  --danger-ink: #ff9a85;
+  --ok: #4cc38a;
+  --warn: #f2b632;
+  --on-color: #12100c;
+  --focus: #f2b632;
+  --bezel: #3b362d;             /* the CRT's plastic case */
+  --crt: #0f1a14;               /* the CRT's glass: dark in both themes */
+  --phosphor: #8fe3a8;
+  --phosphor-dim: #33533f;
+  --pixel-hi: #f4ecda;          /* the logo's pupil highlight */
   --font-body: "Atkinson Hyperlegible Next", "Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-mono: "Atkinson Hyperlegible Mono", ui-monospace, "Cascadia Mono", "SF Mono", Consolas, "Liberation Mono", monospace;
   --hit: 56px;
@@ -45,20 +51,20 @@
 }
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) {
-    --bg: #ffffff; --surface: #f0f3f6; --surface-2: #dfe5eb; --ink: #12161a; --ink-2: #3b4550;
-    --line: #12161a; --line-soft: #98a4b0; --shadow: #12161a; --accent-ink: #17639c; --danger-ink: #b3261e;
-    --focus: #12161a; color-scheme: light;
+    --bg: #efe8d8; --surface: #f8f3e7; --surface-2: #e3d9c3; --ink: #1c1a17; --ink-2: #4d463a;
+    --line: #1c1a17; --line-soft: #b0a48b; --shadow: #1c1a17; --accent-ink: #1b5c94; --danger-ink: #a8301f;
+    --focus: #1c1a17; --bezel: #d8ccb2; color-scheme: light;
   }
 }
 :root[data-theme="light"] {
-  --bg: #ffffff; --surface: #f0f3f6; --surface-2: #dfe5eb; --ink: #12161a; --ink-2: #3b4550;
-  --line: #12161a; --line-soft: #98a4b0; --shadow: #12161a; --accent-ink: #17639c; --danger-ink: #b3261e;
-  --focus: #12161a; color-scheme: light;
+  --bg: #efe8d8; --surface: #f8f3e7; --surface-2: #e3d9c3; --ink: #1c1a17; --ink-2: #4d463a;
+  --line: #1c1a17; --line-soft: #b0a48b; --shadow: #1c1a17; --accent-ink: #1b5c94; --danger-ink: #a8301f;
+  --focus: #1c1a17; --bezel: #d8ccb2; color-scheme: light;
 }
 :root[data-theme="dark"] {
-  --bg: #1b1f23; --surface: #252b31; --surface-2: #313840; --ink: #ffffff; --ink-2: #c5ced8;
-  --line: #e8edf2; --line-soft: #4f5964; --shadow: #000000; --accent-ink: #6cb8ec; --danger-ink: #ff8a7d;
-  --focus: #f1c40f; color-scheme: dark;
+  --bg: #1c1a17; --surface: #26231e; --surface-2: #332f28; --ink: #f4ecda; --ink-2: #c9bfa9;
+  --line: #efe6d2; --line-soft: #5a5242; --shadow: #0b0a08; --accent-ink: #7cc0ef; --danger-ink: #ff9a85;
+  --focus: #f2b632; --bezel: #3b362d; color-scheme: dark;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -374,9 +380,44 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 
 .framed { display: grid; gap: 16px; max-width: 60ch; margin: 64px auto; padding: 24px; }
 
+/* ---- Retro touches: kept small on purpose ---- */
+::selection { background: var(--warn); color: var(--on-color); }
+.brand-mark { shape-rendering: crispEdges; }
+.brand-mark .bm-cut { fill: var(--on-color); }
+.brand-mark .bm-hi { fill: var(--pixel-hi); }
+.brand-name { font-family: var(--font-mono); font-size: 1.1875rem; letter-spacing: 0.08em; text-transform: uppercase; }
+
+/* Main panels wear a retro window title strip with three little squares. */
+.panel { --pad: 24px; padding: var(--pad); }
+.panel-strong { position: relative; }
+.panel-strong::before { content: ""; height: 14px; margin: calc(var(--pad) * -1) calc(var(--pad) * -1) 4px; background: var(--line); }
+.panel-strong::after { content: ""; position: absolute; top: 3px; left: 10px; width: 8px; height: 8px; background: var(--danger); box-shadow: 13px 0 0 var(--warn), 26px 0 0 var(--ok); }
+
+/* Terminal prompt on the home page eyebrow. */
+.prompt::before { content: "> "; color: var(--ink-2); }
+.prompt::after { content: "_"; animation: fc-caret 1.1s steps(1) infinite; }
+@keyframes fc-caret { 50% { opacity: 0; } }
+
+/* The home page preview is a small CRT: plastic bezel, rounded glass, faint scanlines
+   (an image of solid 1px lines, not a gradient), phosphor-green targets. */
+.preview-screen {
+  background-color: var(--crt);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='3'%3E%3Crect width='4' height='1' fill='%23000' fill-opacity='.3'/%3E%3C/svg%3E");
+  border: 16px solid var(--bezel); border-radius: 22px;
+  outline: var(--bw) solid var(--line);
+  box-shadow: inset 0 0 0 3px var(--shadow), var(--drop-lg);
+}
+.preview-tracker { background: var(--bezel); outline: var(--bw) solid var(--line); }
+.pv-tag { color: var(--phosphor); }
+.pv-target { border-color: var(--phosphor-dim); background: var(--crt); }
+.pv-target.is-near { background: var(--phosphor); border-color: var(--phosphor); }
+.pv-cursor::before, .pv-cursor::after { box-shadow: 0 0 0 2px var(--crt); }
+
+.footer .hint { font-family: var(--font-mono); font-size: 0.875rem; letter-spacing: 0.02em; }
+
 @media (max-width: 560px) {
   .topbar { position: static; }
-  .panel { padding: 18px; }
+  .panel { --pad: 18px; }
   .view-home { gap: 56px; }
   .hero-actions .btn { flex: 1 1 100%; }
   .field-pair { grid-template-columns: minmax(0, 1fr); }
@@ -384,6 +425,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; }
   .cal-point.is-collecting::after { animation: none; }
+  .prompt::after { animation: none; }
 }
 </style>
 </head>
@@ -393,11 +435,11 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 <header class="topbar">
   <div class="wrap topbar-inner">
     <a class="brand" href="#home" aria-label="EyeSync home">
-      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
-        <rect class="bm-fill" width="32" height="32"></rect>
-        <path class="bm-cut" d="M3 16Q16 4 29 16Q16 28 3 16Z"></path>
-        <circle class="bm-fill" cx="16" cy="16" r="5.5"></circle>
-        <circle class="bm-cut" cx="16" cy="16" r="2.2"></circle>
+      <svg class="brand-mark" viewBox="0 0 16 16" aria-hidden="true">
+        <rect class="bm-fill" width="16" height="16"></rect>
+        <path class="bm-cut" d="M5 5h6v1h2v1h1v2h-1v1h-2v1H5v-1H3V9H2V7h1V6h2z"></path>
+        <rect class="bm-fill" x="6" y="6" width="4" height="4"></rect>
+        <rect class="bm-hi" x="7" y="7" width="1" height="1"></rect>
       </svg>
       <span><span class="brand-name">EyeSync</span><span class="brand-sub">Eye-tracker console</span></span>
     </a>
@@ -425,7 +467,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
     <section class="view view-home" data-view="home" hidden aria-labelledby="home-title">
       <div class="hero">
         <div class="hero-copy">
-          <p class="eyebrow">Hardware eye-tracker console</p>
+          <p class="eyebrow prompt">Hardware eye-tracker console</p>
           <h1 id="home-title" tabindex="-1">See where your eyes land, live.</h1>
           <p class="lede">EyeSync is the browser dashboard for your eye-tracker. It connects to the tracker on your computer, draws your gaze as a live cursor, and guides you through a 9-point calibration so the cursor lands exactly where you look.</p>
           <div class="hero-actions js-guest">
@@ -874,7 +916,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 
 <footer class="footer">
   <div class="wrap footer-inner">
-    <p class="hint">EyeSync runs in your browser. No server, no trackers.</p>
+    <p class="hint">EyeSync v1.1 · runs in your browser · no server, no trackers</p>
     <nav aria-label="Legal">
       <a class="btn btn-quiet" href="#cookies">Cookie Policy</a>
       <a class="btn btn-quiet" href="#terms">Terms and Conditions</a>
