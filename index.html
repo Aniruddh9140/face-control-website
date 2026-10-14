@@ -582,6 +582,10 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
             <input class="input" id="login-password" name="password" type="password" autocomplete="current-password" maxlength="128" required aria-describedby="login-password-error">
             <p class="error" id="login-password-error" hidden></p>
           </div>
+          <div class="field">
+            <label class="check" for="login-remember"><input type="checkbox" id="login-remember" name="remember" checked aria-describedby="login-remember-hint"><span>Keep me signed in on this device</span></label>
+            <p class="hint" id="login-remember-hint">You stay signed in after closing the site, for 30 days since your last visit. Untick this on a shared computer.</p>
+          </div>
           <p class="form-error" tabindex="-1" role="alert" hidden></p>
           <button class="btn btn-primary btn-block" type="submit">Sign in</button>
           <a class="btn btn-block" href="#register">Create an account</a>
@@ -638,6 +642,10 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
               <button class="btn btn-quiet" type="button" data-action="policy-terms">Read Terms and Conditions</button>
               <button class="btn btn-quiet" type="button" data-action="policy-cookies">Read Cookie Policy</button>
             </div>
+          </div>
+          <div class="field">
+            <label class="check" for="reg-remember"><input type="checkbox" id="reg-remember" name="remember" checked aria-describedby="reg-remember-hint"><span>Keep me signed in on this device</span></label>
+            <p class="hint" id="reg-remember-hint">You stay signed in after closing the site, for 30 days since your last visit. Untick this on a shared computer.</p>
           </div>
           <p class="form-error" tabindex="-1" role="alert" hidden></p>
           <button class="btn btn-primary btn-block" type="submit">Create account</button>
@@ -908,7 +916,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 
 <template id="tpl-cookies">
   <div class="policy">
-    <p class="meta">Version 1.0 · Last updated 14 October 2026</p>
+    <p class="meta">Version 1.1 · Last updated 14 October 2026</p>
     <p>EyeSync sets no HTTP cookies and loads nothing from other websites. It does use your browser's local storage and session storage, which privacy laws such as the EU ePrivacy Directive and UK PECR treat the same way as cookies. This policy lists every item it stores and why.</p>
     <h2>What is stored on your device</h2>
     <div class="table-wrap">
@@ -916,8 +924,8 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
         <thead><tr><th scope="col">Name</th><th scope="col">Where</th><th scope="col">Purpose</th><th scope="col">Kept for</th><th scope="col">Category</th></tr></thead>
         <tbody>
           <tr><td class="mono">fc.consent</td><td>Local storage</td><td>Remembers the storage choice you made in the banner.</td><td>Until you change it or clear site data</td><td>Essential</td></tr>
-          <tr><td class="mono">fc.users</td><td>Local storage</td><td>Your account: username, a random salt, a PBKDF2-SHA-256 hash of your password, and the policy versions you agreed to. Your password itself is never stored.</td><td>Until you delete your account</td><td>Essential</td></tr>
-          <tr><td class="mono">fc.session</td><td>Session storage</td><td>A random sign-in token for this tab.</td><td>Until you sign out, close the tab, or are inactive for 30 minutes</td><td>Essential</td></tr>
+          <tr><td class="mono">fc.users</td><td>Local storage</td><td>Your account: username, a random salt, a PBKDF2-SHA-256 hash of your password, fingerprints (SHA-256 hashes) of your active sign-ins, and the policy versions you agreed to. Your password itself is never stored.</td><td>Until you delete your account</td><td>Essential</td></tr>
+          <tr><td class="mono">fc.session</td><td>Local storage with “Keep me signed in”, otherwise session storage</td><td>A random sign-in token. With “Keep me signed in” it keeps you signed in after you close the site; otherwise it only works in the current tab.</td><td>Until you sign out. With “Keep me signed in”, at most 30 days since your last visit; otherwise until you close the tab or after 30 minutes without activity</td><td>Essential</td></tr>
           <tr><td class="mono">fc.throttle</td><td>Local storage</td><td>Counts failed sign-in attempts to slow down password guessing.</td><td>Cleared after a successful sign-in</td><td>Essential</td></tr>
           <tr><td class="mono">fc.prefs</td><td>Local storage</td><td>Theme, tracker address, cursor mapping and smoothing, dwell selection, and your last calibration result.</td><td>Until you withdraw consent or clear site data</td><td>Preferences (optional)</td></tr>
         </tbody>
@@ -941,7 +949,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 
 <template id="tpl-terms">
   <div class="policy">
-    <p class="meta">Version 1.0 · Last updated 14 October 2026</p>
+    <p class="meta">Version 1.1 · Last updated 14 October 2026</p>
     <p>These terms apply when you create an account on, or use, the EyeSync dashboard (“the dashboard”) published by the EyeSync project maintainers. By creating an account you agree to them.</p>
     <h2>1. What the dashboard does</h2>
     <p>The dashboard runs entirely in your web browser. It connects to eye-tracker software on your own computer, shows where you are looking, and runs a 9-point calibration. There is no EyeSync server: your account and settings live only in this browser on this device.</p>
@@ -951,6 +959,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
     <ul>
       <li>Choose a strong password that you don't use anywhere else.</li>
       <li>Your account exists only in this browser. Anyone who can use your browser profile may be able to read its stored data, so protect your device with its own lock.</li>
+      <li>If you choose “Keep me signed in”, anyone using this browser can open your dashboard without your password until you sign out. Don't choose it on a shared computer.</li>
       <li>There is no password recovery. If you forget your password, clear this site's data and create a new account.</li>
     </ul>
     <h2>4. Hardware and tracker software</h2>
@@ -982,10 +991,12 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 
 const APP = 'EyeSync';
 const CONSENT_VERSION = 1;
-const TERMS_VERSION = '1.0';
-const COOKIE_POLICY_VERSION = '1.0';
+const TERMS_VERSION = '1.1';
+const COOKIE_POLICY_VERSION = '1.1';
 const KDF_ITERATIONS = 600000;            // OWASP 2023 guidance for PBKDF2-HMAC-SHA-256
-const SESSION_IDLE_MS = 30 * 60 * 1000;
+const SESSION_IDLE_MS = 30 * 60 * 1000;          // sign-in for this tab only
+const REMEMBER_MS = 30 * 24 * 60 * 60 * 1000;    // "Keep me signed in": 30 days since last use
+const MAX_SESSIONS = 5;                           // signed-in tabs/browsers kept per account
 const MAX_FAILS = 5;
 const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1']);  // keep in sync with the CSP connect-src
 const MAX_FRAME_CHARS = 4096;
@@ -1201,7 +1212,7 @@ const Auth = {
     const users = this.users();
     return Object.hasOwn(users, this.current.key) ? users[this.current.key] : null;
   },
-  async register(username, password) {
+  async register(username, password, remember) {
     const key = userKey(username);
     if (Object.hasOwn(this.users(), key)) throw new AuthError('That username is already registered on this device. Choose another one, or sign in.');
     const salt = randomBytes(16);
@@ -1215,9 +1226,9 @@ const Auth = {
       agreed: { terms: TERMS_VERSION, cookiePolicy: COOKIE_POLICY_VERSION, at },
     };
     Local.set('users', users);
-    await this.startSession(key);
+    await this.startSession(key, remember);
   },
-  async login(username, password) {
+  async login(username, password, remember) {
     const key = userKey(username);
     const wait = Throttle.remaining(key);
     if (wait > 0) throw new AuthError(`Too many failed attempts. Try again in ${Math.ceil(wait / 1000)} seconds.`);
@@ -1230,61 +1241,95 @@ const Auth = {
     const ok = rec ? timingSafeEqual(derived, fromB64(rec.hash)) : false;
     if (!ok) { Throttle.fail(key); throw new AuthError('That username and password don\'t match an account on this device.'); }
     Throttle.clear(key);
-    await this.startSession(key);
+    await this.startSession(key, remember);
   },
-  async startSession(key) {
+
+  // Sessions. The account keeps only the SHA-256 of each session token (up to MAX_SESSIONS).
+  // The token itself lives in sessionStorage (ends with the tab, 30 min idle) or, with
+  // "Keep me signed in", in localStorage (shared by this browser's tabs, 30 days idle).
+  sessionsOf(rec) {
+    const list = Array.isArray(rec?.sessions) ? rec.sessions : isObj(rec?.session) ? [rec.session] : [];
+    const now = Date.now();
+    return list.filter((x) => isObj(x) && typeof x.hash === 'string' && typeof x.exp === 'number' && x.exp > now);
+  },
+  readToken() {
+    const ok = (t) => isObj(t) && typeof t.user === 'string' && typeof t.token === 'string' && typeof t.exp === 'number';
+    const tab = Tab.get('session');
+    if (ok(tab)) return { tok: tab, area: Tab };
+    const local = Local.get('session');
+    if (ok(local)) return { tok: local, area: Local };
+    return null;
+  },
+  async startSession(key, remember = true) {
     const token = randomBytes(32);
-    const exp = Date.now() + SESSION_IDLE_MS;
+    const now = Date.now();
+    const exp = now + (remember ? REMEMBER_MS : SESSION_IDLE_MS);
+    const hash = toB64(await sha256(token));
     const users = this.users();
-    // Only the SHA-256 of the token is kept with the account; the token itself lives in this tab.
-    users[key].session = { hash: toB64(await sha256(token)), exp, issued: Date.now() };
+    const rec = users[key];
+    rec.sessions = [...this.sessionsOf(rec).slice(-(MAX_SESSIONS - 1)), { hash, exp, issued: now, remember: !!remember }];
+    delete rec.session;
     Local.set('users', users);
-    Tab.set('session', { user: key, token: toB64(token), exp });
-    this.current = { key, display: users[key].display };
-    this.lastTouch = Date.now();
+    Tab.remove('session');
+    Local.remove('session');
+    (remember ? Local : Tab).set('session', { user: key, token: toB64(token), exp, remember: !!remember });
+    this.current = { key, display: rec.display, hash, remember: !!remember };
+    this.lastTouch = now;
   },
   async validate() {
     if (!cryptoReady) return false;
-    const s = Tab.get('session');
-    if (!isObj(s) || typeof s.user !== 'string' || typeof s.token !== 'string') { this.current = null; return false; }
+    const found = this.readToken();
+    if (!found) { this.current = null; return false; }
+    const { tok } = found;
     const users = this.users();
-    const rec = Object.hasOwn(users, s.user) ? users[s.user] : null;
-    const now = Date.now();
-    if (!rec || !isObj(rec.session) || now > s.exp || now > rec.session.exp) { this.end(); return false; }
-    let ok = false;
-    try { ok = timingSafeEqual(await sha256(fromB64(s.token)), fromB64(rec.session.hash)); } catch { ok = false; }
-    if (!ok) { this.end(); return false; }
-    this.current = { key: s.user, display: rec.display };
+    const rec = Object.hasOwn(users, tok.user) ? users[tok.user] : null;
+    let hash;
+    try { hash = await sha256(fromB64(tok.token)); } catch { hash = null; }
+    const match = rec && hash ? this.sessionsOf(rec).find((x) => timingSafeEqual(fromB64(x.hash), hash)) : null;
+    if (!match || Date.now() > tok.exp) { this.current = null; this.end(); return false; }
+    this.current = { key: tok.user, display: rec.display, hash: match.hash, remember: !!match.remember };
     return true;
   },
-  touch() {   // sliding idle expiry, written at most every 30 s
+  touch() {   // sliding expiry, written at most every 30 s
     if (!this.current) return;
     const now = Date.now();
     if (now - this.lastTouch < 30000) return;
-    const s = Tab.get('session');
+    const found = this.readToken();
     const users = this.users();
-    if (!isObj(s) || !Object.hasOwn(users, s.user) || !isObj(users[s.user].session)) return;
-    if (now > s.exp) return;   // already expired; the session check will sign out
+    if (!found || now > found.tok.exp || !Object.hasOwn(users, found.tok.user)) return;
+    const rec = users[found.tok.user];
+    const list = this.sessionsOf(rec);
+    const sess = list.find((x) => x.hash === this.current.hash);
+    if (!sess) return;
     this.lastTouch = now;
-    s.exp = users[s.user].session.exp = now + SESSION_IDLE_MS;
-    Tab.set('session', s);
+    sess.exp = found.tok.exp = now + (sess.remember ? REMEMBER_MS : SESSION_IDLE_MS);
+    rec.sessions = list;
+    delete rec.session;
     Local.set('users', users);
+    found.area.set('session', found.tok);
   },
   end() {
-    const s = Tab.get('session');
-    if (isObj(s) && typeof s.user === 'string') {
+    const found = this.readToken();
+    if (found) {
       const users = this.users();
-      if (Object.hasOwn(users, s.user) && users[s.user].session) { delete users[s.user].session; Local.set('users', users); }
+      if (Object.hasOwn(users, found.tok.user)) {
+        const rec = users[found.tok.user];
+        rec.sessions = this.sessionsOf(rec).filter((x) => x.hash !== this.current?.hash);
+        delete rec.session;
+        Local.set('users', users);
+      }
     }
     Tab.remove('session');
+    Local.remove('session');
     this.current = null;
   },
   deleteAccount() {
-    const s = Tab.get('session');
+    const found = this.readToken();
     const users = this.users();
-    if (isObj(s) && Object.hasOwn(users, s.user)) delete users[s.user];
+    if (found && Object.hasOwn(users, found.tok.user)) delete users[found.tok.user];
     Local.set('users', users);
     Tab.remove('session');
+    Local.remove('session');
     this.current = null;
     Prefs.reset();
   },
@@ -1365,6 +1410,7 @@ function renderLoginNotice() {
 }
 
 function signOut(reason) {
+  const remembered = !!Auth.current?.remember;
   Discovery.cancel();
   Discovery.paused = false;
   Calibration.stop('signout');
@@ -1372,9 +1418,12 @@ function signOut(reason) {
   Simulator.stop(false);
   Link.disconnect();
   Gaze.reset();
-  Router.notice = reason === 'expired' ? 'You were signed out after 30 minutes without activity.' : '';
+  Router.notice = reason === 'elsewhere' ? 'You signed out in another tab.'
+    : reason !== 'expired' ? ''
+    : remembered ? 'Your saved sign-in expired after 30 days without a visit. Sign in again.'
+    : 'You were signed out after 30 minutes without activity.';
   Router.go('login', true);
-  if (reason !== 'expired') toast('Signed out.');
+  if (!reason) toast('Signed out.');
 }
 
 /* ---------- Gaze link: WebSocket client with validation and reconnect ---------- */
@@ -1838,9 +1887,10 @@ const fmtDate = (iso) => {
 
 function renderDashboard() {
   const rec = Auth.record();
-  $('#dash-session').textContent = Auth.current
-    ? `Signed in as ${Auth.current.display}. You'll be signed out after 30 minutes without activity.`
-    : '';
+  $('#dash-session').textContent = !Auth.current ? ''
+    : Auth.current.remember
+      ? `Signed in as ${Auth.current.display}. You'll stay signed in on this device until you sign out, or after 30 days without a visit.`
+      : `Signed in as ${Auth.current.display} for this tab only. You'll be signed out when you close it, or after 30 minutes without activity.`;
   $('#acct-name').textContent = rec?.display || '';
   $('#acct-created').textContent = rec ? fmtDate(rec.createdAt) : '';
   $('#acct-agreed').textContent = rec?.agreed
@@ -2133,7 +2183,7 @@ function bindForms() {
     if (bad) { $('[aria-invalid="true"]', login).focus(); return; }
     const done = busy($('button[type="submit"]', login), 'Checking…');
     try {
-      await Auth.login(u.value, p.value);
+      await Auth.login(u.value, p.value, login.elements.remember.checked);
       login.reset();
       toast(`Signed in as ${Auth.current.display}.`, 'ok');
       Router.go('dashboard');
@@ -2168,7 +2218,7 @@ function bindForms() {
     if (firstBad) { firstBad.focus(); return; }
     const done = busy($('button[type="submit"]', reg), 'Securing your password…');
     try {
-      await Auth.register(name, rp.value);
+      await Auth.register(name, rp.value, reg.elements.remember.checked);
       reg.reset(); paintRules();
       toast(Local.durable ? 'Account created. You are signed in.' : 'Account created for this visit only: this browser is blocking storage.', 'ok');
       Router.go('dashboard');
@@ -2256,6 +2306,14 @@ function bindGlobal() {
     document.addEventListener(type, () => Auth.touch(), { capture: true, passive: true });
   }
   window.addEventListener('hashchange', () => Router.resolve());
+  // Keep tabs in step: a sign-out (or a "Keep me signed in" sign-in) in one tab applies to the others.
+  window.addEventListener('storage', async (e) => {
+    if (e.key !== null && e.key !== 'fc.session' && e.key !== 'fc.users') return;
+    const was = !!Auth.current;
+    const now = await Auth.validate();
+    if (was && !now) signOut('elsewhere');
+    else if (!was && now && (Router.current === 'login' || Router.current === 'register')) Router.go('dashboard', true);
+  });
   window.addEventListener('resize', () => Banner.pad());
 
   setInterval(() => {                              // 1 Hz: frame rate, stale link, cursor visibility
