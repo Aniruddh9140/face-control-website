@@ -9,12 +9,21 @@
   require-trusted-types-for blocks string-to-HTML sinks such as innerHTML in Chromium browsers;
   the app builds every element with DOM APIs and never needs them.
 -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src ws://localhost:* ws://127.0.0.1:* wss://localhost:* wss://127.0.0.1:*; base-uri 'none'; form-action 'none'; object-src 'none'; require-trusted-types-for 'script'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; font-src 'self'; connect-src ws://localhost:* ws://127.0.0.1:* wss://localhost:* wss://127.0.0.1:*; base-uri 'none'; form-action 'none'; object-src 'none'; require-trusted-types-for 'script'">
 <meta name="referrer" content="no-referrer">
 <title>EyeSync</title>
 <meta name="description" content="EyeSync: the control dashboard for your eye-tracker, with a live gaze cursor, WebSocket link and 9-point calibration.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'%3E%3Crect width='16' height='16' fill='%233498db'/%3E%3Cpath d='M5 5h6v1h2v1h1v2h-1v1h-2v1H5v-1H3V9H2V7h1V6h2z' fill='%2312100c'/%3E%3Crect x='6' y='6' width='4' height='4' fill='%233498db'/%3E%3Crect x='7' y='7' width='1' height='1' fill='%23f4ecda'/%3E%3C/svg%3E">
 <style>
+/* Fonts are bundled with the site (fonts/, SIL Open Font License), so no font host ever sees visitors.
+   Fraunces: soft 70s display serif for headings. Atkinson Hyperlegible: body text designed for low
+   vision. IBM Plex Mono: labels, readouts and the terminal bits. */
+@font-face { font-family: "Fraunces"; src: url("fonts/fraunces-display.woff") format("woff"); font-weight: 500 900; font-display: swap; }
+@font-face { font-family: "Atkinson Hyperlegible"; src: url("fonts/atkinson-hyperlegible-400.woff") format("woff"); font-weight: 300 500; font-display: swap; }
+@font-face { font-family: "Atkinson Hyperlegible"; src: url("fonts/atkinson-hyperlegible-700.woff") format("woff"); font-weight: 600 900; font-display: swap; }
+@font-face { font-family: "IBM Plex Mono"; src: url("fonts/ibm-plex-mono-400.woff") format("woff"); font-weight: 300 500; font-display: swap; }
+@font-face { font-family: "IBM Plex Mono"; src: url("fonts/ibm-plex-mono-600.woff") format("woff"); font-weight: 600 900; font-display: swap; }
+
 /* Layout: one 1160px column under a slab top bar; views are flat bordered panels, the main ones
    dressed as retro windows with a title strip; calibration takes over the whole window while it runs.
    Look: a little retro computer lab (warm charcoal, beige-plastic light mode, mono labels, a CRT on
@@ -41,8 +50,9 @@
   --phosphor: #8fe3a8;
   --phosphor-dim: #33533f;
   --pixel-hi: #f4ecda;          /* the logo's pupil highlight */
-  --font-body: "Atkinson Hyperlegible Next", "Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-mono: "Atkinson Hyperlegible Mono", ui-monospace, "Cascadia Mono", "SF Mono", Consolas, "Liberation Mono", monospace;
+  --font-display: "Fraunces", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --font-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", "SF Mono", Consolas, "Liberation Mono", monospace;
   --hit: 56px;
   --bw: 3px;
   --drop: 5px 5px 0 var(--shadow);
@@ -75,10 +85,10 @@ body {
   background: var(--bg); color: var(--ink);
   font-family: var(--font-body); font-size: 1.0625rem; line-height: 1.55;
 }
-h1, h2, h3 { margin: 0; line-height: 1.15; font-weight: 800; text-wrap: balance; }
-h1 { font-size: clamp(1.875rem, 1.4rem + 1.6vw, 2.5rem); letter-spacing: -0.01em; }
-h2 { font-size: 1.5rem; }
-h3 { font-size: 1.1875rem; }
+h1, h2, h3 { margin: 0; line-height: 1.12; font-family: var(--font-display); font-weight: 700; letter-spacing: -0.01em; text-wrap: balance; }
+h1 { font-size: clamp(2rem, 1.45rem + 1.8vw, 2.75rem); font-weight: 800; letter-spacing: -0.02em; }
+h2 { font-size: 1.625rem; }
+h3 { font-size: 1.25rem; }
 h1[tabindex="-1"]:focus { outline: none; }
 p { margin: 0; }
 a { color: var(--accent-ink); }
@@ -164,7 +174,7 @@ main:focus { outline: none; }
 .view-home { gap: 80px; }
 .hero { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 56px; align-items: center; padding-top: 8px; }
 .hero-copy { display: grid; gap: 24px; justify-items: start; }
-.hero h1 { max-width: 15ch; font-size: clamp(2.25rem, 1.5rem + 2.8vw, 3.5rem); letter-spacing: -0.02em; }
+.hero h1 { max-width: 14ch; font-size: clamp(2.5rem, 1.6rem + 3.2vw, 4rem); line-height: 1.02; letter-spacing: -0.025em; }
 .hero-actions { display: flex; flex-wrap: wrap; gap: 14px; }
 .btn-lg { min-height: 64px; padding: 10px 28px; font-size: 1.1875rem; }
 .hero-facts { display: flex; flex-wrap: wrap; gap: 10px 22px; margin: 0; padding: 0; list-style: none; font: 700 0.875rem/1.3 var(--font-mono); color: var(--ink-2); }
@@ -385,7 +395,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 .brand-mark { shape-rendering: crispEdges; }
 .brand-mark .bm-cut { fill: var(--on-color); }
 .brand-mark .bm-hi { fill: var(--pixel-hi); }
-.brand-name { font-family: var(--font-mono); font-size: 1.1875rem; letter-spacing: 0.08em; text-transform: uppercase; }
+.brand-name { font-family: var(--font-display); font-size: 1.5rem; font-weight: 800; letter-spacing: -0.01em; }
 
 /* Main panels wear a retro window title strip with three little squares. */
 .panel { --pad: 24px; padding: var(--pad); }
@@ -468,8 +478,8 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
       <div class="hero">
         <div class="hero-copy">
           <p class="eyebrow prompt">Hardware eye-tracker console</p>
-          <h1 id="home-title" tabindex="-1">See where your eyes land, live.</h1>
-          <p class="lede">EyeSync is the browser dashboard for your eye-tracker. It connects to the tracker on your computer, draws your gaze as a live cursor, and guides you through a 9-point calibration so the cursor lands exactly where you look.</p>
+          <h1 id="home-title" tabindex="-1">Steer your screen with a glance.</h1>
+          <p class="lede">EyeSync is the control room for your eye-tracker. It finds the tracker on your computer by itself, follows your gaze in real time, and tunes the cursor to your eyes with a half-minute, 9-point calibration.</p>
           <div class="hero-actions js-guest">
             <a class="btn btn-primary btn-lg" href="#register">Create an account</a>
             <a class="btn btn-lg" href="#login">Sign in</a>
@@ -479,9 +489,9 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
             <a class="btn btn-lg" href="#calibration">Start calibration</a>
           </div>
           <ul class="hero-facts">
-            <li>Runs in your browser</li>
-            <li>Nothing leaves this computer</li>
-            <li>Works with any tracker that sends JSON</li>
+            <li>Lives in your browser</li>
+            <li>Your gaze never leaves this computer</li>
+            <li>Speaks plain JSON</li>
           </ul>
         </div>
 
@@ -495,7 +505,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
           </div>
           <div class="preview-tracker" aria-hidden="true"><span></span><span class="lens"></span><span></span></div>
           <figcaption class="preview-caption">
-            <span class="label">What your tracker sends, about 60 times a second</span>
+            <span class="label">Live from the tracker, about 60 times a second</span>
             <pre class="payload-pre" id="pv-frame" aria-hidden="true">{"x": 400, "y": 300, "blink": false}</pre>
           </figcaption>
         </figure>
@@ -504,28 +514,28 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
       <section class="home-section" aria-labelledby="features-title">
         <div class="section-head">
           <p class="eyebrow">What it does</p>
-          <h2 id="features-title">Everything you need to run an eye-tracker from the browser</h2>
+          <h2 id="features-title">A whole eye-tracking lab in one tab</h2>
         </div>
         <div class="features">
           <article class="feature">
             <span class="feature-mark" data-tone="danger" aria-hidden="true"></span>
             <h3>Live gaze cursor</h3>
-            <p>A red crosshair follows your eyes across the whole window, updated from every frame your tracker sends. Blinks are shown and counted.</p>
+            <p>A crisp red crosshair rides along with your eyes, frame by frame, across the whole window. Blinks flash it amber and get counted.</p>
           </article>
           <article class="feature">
             <span class="feature-mark" aria-hidden="true"></span>
             <h3>9-point calibration</h3>
-            <p>Targets light up one at a time in the corners, along the edges and in the centre. EyeSync measures how far your gaze lands from each one, in pixels.</p>
+            <p>Nine targets light up across the screen, one at a time. Follow them and EyeSync tells you, to the pixel, how true your aim is.</p>
           </article>
           <article class="feature">
             <span class="feature-mark" data-tone="warn" aria-hidden="true"></span>
             <h3>Dwell to select</h3>
-            <p>Hold your gaze on any button to press it while a ring fills around the cursor. Turn it on when you want hands-free control.</p>
+            <p>Rest your gaze on a button and a ring fills around the cursor. When it closes, the button presses itself. Completely hands-free.</p>
           </article>
           <article class="feature">
             <span class="feature-mark" data-tone="ok" aria-hidden="true"></span>
-            <h3>Connection health</h3>
-            <p>EyeSync finds your tracker on its own and reconnects if it drops or restarts. See how many frames arrive each second, and why a frame was rejected.</p>
+            <h3>Finds your tracker</h3>
+            <p>No addresses to type. EyeSync sniffs out the tracker on this computer, connects, and quietly reconnects if it drops or restarts.</p>
           </article>
         </div>
       </section>
@@ -533,39 +543,39 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
       <section class="home-section" aria-labelledby="how-title">
         <div class="section-head">
           <p class="eyebrow">How it works</p>
-          <h2 id="how-title">From tracker to cursor in three steps</h2>
+          <h2 id="how-title">Up and tracking in three steps</h2>
         </div>
         <ol class="steps">
           <li class="step">
             <span class="step-n" aria-hidden="true">1</span>
-            <h3>Start your tracker</h3>
-            <p>Run the Python script that reads your eye-tracker. It sends one small message per frame to <span class="mono">ws://localhost:8765</span> on this computer:</p>
+            <h3>Wake the tracker</h3>
+            <p>Start EyeSync or your own tracker script. It streams one tiny message per frame to <span class="mono">ws://localhost:8765</span>:</p>
             <code>{"x": 400, "y": 300, "blink": false}</code>
           </li>
           <li class="step">
             <span class="step-n" aria-hidden="true">2</span>
-            <h3>Sign in and connect</h3>
-            <p>Create an account and open the Dashboard. EyeSync finds the tracker running on this computer and connects by itself, and the cursor appears as soon as frames arrive. No tracker yet? Run the built-in simulator to try everything first.</p>
+            <h3>Open your dashboard</h3>
+            <p>Sign in and the dashboard does the rest: it finds your tracker and the cursor springs to life. No tracker handy? Flip on the built-in simulator and try everything first.</p>
           </li>
           <li class="step">
             <span class="step-n" aria-hidden="true">3</span>
-            <h3>Calibrate</h3>
-            <p>Start the 9-point calibration, keep your head still and follow the blue targets. You get an accuracy score for every point, and your tracker receives each target's position.</p>
+            <h3>Calibrate in half a minute</h3>
+            <p>Hold still and follow the blue targets. You get an accuracy score for every point, and your tracker hears about each target too.</p>
           </li>
         </ol>
-        <p class="hint">You need an eye-tracker with a script that sends gaze frames, and Chrome, Edge or Firefox on the same computer.</p>
+        <p class="hint">You'll need an eye-tracker that sends gaze frames, and Chrome, Edge or Firefox on the same computer.</p>
       </section>
 
       <div class="grid-2">
         <section class="panel panel-strong" aria-labelledby="privacy-title">
           <p class="eyebrow">Privacy</p>
-          <h2 id="privacy-title">Your data stays on this computer</h2>
+          <h2 id="privacy-title">Private by design</h2>
           <ul class="ticks">
-            <li>There is no EyeSync server. The whole app runs in your browser.</li>
-            <li>Passwords are salted and hashed with PBKDF2-SHA-256 (600,000 rounds). The password itself is never saved.</li>
-            <li>Gaze data travels only between your tracker and this page, and is never stored.</li>
-            <li>The dashboard only connects to trackers on this computer (localhost).</li>
-            <li>No cookies, no analytics and no third-party scripts.</li>
+            <li>There is no EyeSync server. The whole app runs right here, in your browser.</li>
+            <li>Your password is salted and hashed with PBKDF2-SHA-256, 600,000 rounds deep. The password itself is never saved.</li>
+            <li>Gaze data travels only from your tracker to this page, and is never stored.</li>
+            <li>The dashboard talks only to trackers on this computer.</li>
+            <li>No cookies, no analytics, no third-party scripts. Even the fonts are bundled in.</li>
           </ul>
           <div class="row">
             <a class="btn btn-quiet" href="#cookies">Cookie Policy</a>
@@ -574,21 +584,21 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
         </section>
         <section class="panel" aria-labelledby="a11y-title">
           <p class="eyebrow">Accessibility</p>
-          <h2 id="a11y-title">Designed to be used with your eyes</h2>
+          <h2 id="a11y-title">Built for eyes first</h2>
           <ul class="ticks">
-            <li>Every button is at least 56 pixels tall, a comfortable target for gaze.</li>
-            <li>Solid, high-contrast colours with clear hover and focus states.</li>
-            <li>Light and dark themes, and support for reduced motion.</li>
-            <li>Works with a keyboard and screen readers as well as with gaze.</li>
+            <li>Every button is at least 56 pixels tall: an easy target for a glance.</li>
+            <li>Solid, high-contrast colours with bold hover and focus states.</li>
+            <li>Light and dark themes, and calm, still screens if you prefer reduced motion.</li>
+            <li>Keyboards and screen readers are welcome too.</li>
           </ul>
         </section>
       </div>
 
       <section class="cta-band" aria-labelledby="cta-title">
         <div>
-          <h2 id="cta-title">Ready to calibrate?</h2>
-          <p class="hint js-guest">Creating an account takes under a minute, and it stays on this device.</p>
-          <p class="hint js-member" hidden>Your dashboard is ready.</p>
+          <h2 id="cta-title">Ready when your eyes are.</h2>
+          <p class="hint js-guest">Setting up takes under a minute, and your account never leaves this device.</p>
+          <p class="hint js-member" hidden>Your dashboard is warmed up and waiting.</p>
         </div>
         <div class="hero-actions js-guest">
           <a class="btn btn-primary btn-lg" href="#register">Create an account</a>
@@ -605,8 +615,8 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
       <div class="auth-grid">
         <div class="auth-intro">
           <p class="eyebrow">Welcome back</p>
-          <h1 id="login-title" tabindex="-1">Sign in to EyeSync</h1>
-          <p class="lede">Sign in to see your live gaze cursor, check the tracker connection and run calibration. Your account and settings stay in this browser.</p>
+          <h1 id="login-title" tabindex="-1">Good to see you again.</h1>
+          <p class="lede">Sign in to pick up where you left off: your live gaze, your tracker and your calibration are all waiting.</p>
           <div class="row"><a class="btn btn-quiet" href="#home">What is EyeSync?</a></div>
         </div>
 
@@ -640,9 +650,9 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
     <section class="view" data-view="register" hidden aria-labelledby="register-title">
       <div class="auth-grid">
         <div class="auth-intro">
-          <p class="eyebrow">New account</p>
-          <h1 id="register-title" tabindex="-1">Create your EyeSync account</h1>
-          <p class="lede">Your account lives only in this browser. Your password is salted and hashed with SHA-256 (PBKDF2, 600,000 rounds) before anything is saved.</p>
+          <p class="eyebrow">New here?</p>
+          <h1 id="register-title" tabindex="-1">Start tracking in a minute.</h1>
+          <p class="lede">Your account lives only in this browser. Before anything is saved, your password is salted and hashed (PBKDF2-SHA-256, 600,000 rounds), so the password itself is never stored anywhere.</p>
           <dl class="kv panel">
             <dt>Stored</dt><dd>username, salt, hash, agreement record</dd>
             <dt>Never stored</dt><dd>your password</dd>
@@ -701,7 +711,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
       <div class="view-head">
         <div>
           <p class="eyebrow">Dashboard</p>
-          <h1 id="dash-title" tabindex="-1">Live gaze</h1>
+          <h1 id="dash-title" tabindex="-1">Your gaze, live.</h1>
           <p class="hint" id="dash-session"></p>
         </div>
         <a class="btn btn-primary" href="#calibration">Open calibration</a>
@@ -817,7 +827,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 
           <section class="panel" aria-labelledby="cal-sum-title">
             <h2 id="cal-sum-title">Calibration</h2>
-            <p id="cal-summary-line">Not calibrated in this browser yet.</p>
+            <p id="cal-summary-line">No calibration yet. Half a minute and you're tuned in.</p>
             <div class="row"><a class="btn btn-primary" href="#calibration">Start 9-point calibration</a></div>
           </section>
 
@@ -844,9 +854,9 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
     <section class="view" data-view="calibration" hidden aria-labelledby="cal-title">
       <div class="view-head">
         <div>
-          <p class="eyebrow">Calibration</p>
-          <h1 id="cal-title" tabindex="-1">9-point calibration</h1>
-          <p class="lede">Keep your head still and look at each blue target until its centre disappears. Targets light up one at a time, left to right and top to bottom.</p>
+          <p class="eyebrow">9-point calibration</p>
+          <h1 id="cal-title" tabindex="-1">Tune it to your eyes.</h1>
+          <p class="lede">Get comfortable and keep your head still. Look at the blue target until its centre shrinks away, and it hops to the next: left to right, top to bottom.</p>
         </div>
       </div>
 
@@ -908,7 +918,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
     </section>
 
     <section class="view" data-view="notfound" hidden aria-labelledby="nf-title">
-      <div class="view-head"><div><p class="eyebrow">Not found</p><h1 id="nf-title" tabindex="-1">This page doesn't exist</h1><p class="lede">Check the address, or go back to the start.</p></div></div>
+      <div class="view-head"><div><p class="eyebrow">Not found</p><h1 id="nf-title" tabindex="-1">Nothing to see here.</h1><p class="lede">This page wandered off. Head back home and try again.</p></div></div>
       <div class="row"><a class="btn btn-primary" href="#home">Go to the home page</a></div>
     </section>
   </div>
@@ -932,8 +942,8 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 <section class="cookie-banner" id="cookie-banner" aria-labelledby="cookie-title" hidden>
   <div class="wrap cookie-inner">
     <div class="cookie-text">
-      <h2 id="cookie-title">Your storage choice</h2>
-      <p>EyeSync keeps your account on this device so you can sign in. With your permission it also remembers your theme, tracker and cursor settings. Nothing is tracked or shared.</p>
+      <h2 id="cookie-title">A quick word about storage</h2>
+      <p>EyeSync keeps your account on this device so you can sign in. Say yes and it'll also remember your theme, tracker and cursor settings. Nothing is tracked, nothing is shared.</p>
       <p class="hint" id="cookie-current" hidden></p>
     </div>
     <div class="cookie-actions">
@@ -1871,7 +1881,7 @@ function idleDetail() {
   if (Discovery.missed && Discovery.refused) return `A tracker at ${Discovery.refused.url} refused this page (${Discovery.refused.refused}). EyeSync accepts its own website, or an address that ends in ?key= followed by its API key. Searching again in ${Discovery.nextSecs} s.`;
   if (Discovery.missed) return `No tracker found on this computer yet. Searching again in ${Discovery.nextSecs} s. If you closed EyeSync, press Find tracker to start it again.`;
   if (Link.lastError) return Link.lastError;
-  return Prefs.get('autoConnect') ? 'Start your tracker script. EyeSync will find it and connect automatically.' : 'Automatic search is off. Start your tracker script, then press Find tracker.';
+  return Prefs.get('autoConnect') ? 'Start your tracker and EyeSync will find it and connect by itself.' : 'Automatic search is off. Start your tracker script, then press Find tracker.';
 }
 // The "Tracker address" box: what address is in use and how it was found.
 function renderAddress(state) {
@@ -1943,7 +1953,7 @@ function renderDashboard() {
     ? `Last calibrated ${fmtDate(last.at)}. ` + (typeof last.meanError === 'number'
         ? `Mean error ${last.meanError} px across ${last.measured} of 9 targets.`
         : 'No gaze data was recorded, so accuracy is unknown.')
-    : 'Not calibrated in this browser yet.';
+    : 'No calibration yet. Half a minute and you\'re tuned in.';
   $$('.js-unit').forEach((u) => { u.textContent = Prefs.get('mapMode') === 'viewport' ? 'window px' : 'frame px'; });
   disarmDelete();
   renderLink();
@@ -2105,7 +2115,7 @@ const Calibration = {
     Link.send({ type: 'calibration', event: 'complete', mean_error_px: meanError, points: summary.points });
     this.renderResults(meanError, measured.length);
     this.status('Calibration complete. Results are below.');
-    toast('Calibration complete.', 'ok');
+    toast('Calibration complete. Nicely done.', 'ok');
     $('#cal-results').scrollIntoView({ block: 'start', behavior: 'instant' });
   },
   stop(reason) {
@@ -2227,7 +2237,7 @@ function bindForms() {
     try {
       await Auth.login(u.value, p.value, login.elements.remember.checked);
       login.reset();
-      toast(`Signed in as ${Auth.current.display}.`, 'ok');
+      toast(`Welcome back, ${Auth.current.display}.`, 'ok');
       Router.go('dashboard');
     } catch (err) {
       formError(login, err instanceof AuthError ? err.message : 'Sign-in failed because this browser blocked secure storage. Try a normal (not private) window.');
@@ -2262,7 +2272,7 @@ function bindForms() {
     try {
       await Auth.register(name, rp.value, reg.elements.remember.checked);
       reg.reset(); paintRules();
-      toast(Local.durable ? 'Account created. You are signed in.' : 'Account created for this visit only: this browser is blocking storage.', 'ok');
+      toast(Local.durable ? `You're in. Welcome to EyeSync, ${Auth.current.display}.` : 'Account created for this visit only: this browser is blocking storage.', 'ok');
       Router.go('dashboard');
     } catch (err) {
       formError(reg, err instanceof AuthError ? err.message : 'The account couldn\'t be saved because this browser blocked storage. Try a normal (not private) window.');
