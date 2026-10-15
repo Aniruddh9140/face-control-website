@@ -5,14 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <!--
   Content Security Policy. Everything ships inline, so nothing is loaded from any other host.
-  WebSocket connections are limited to this computer (localhost / 127.0.0.1).
+  fetch() may only read this site's own files (downloads/latest.json); WebSocket connections are
+  limited to this computer (localhost / 127.0.0.1). Camera pictures from EyeSync arrive as data: URLs.
   require-trusted-types-for blocks string-to-HTML sinks such as innerHTML in Chromium browsers;
   the app builds every element with DOM APIs and never needs them.
 -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; font-src 'self'; connect-src ws://localhost:* ws://127.0.0.1:* wss://localhost:* wss://127.0.0.1:*; base-uri 'none'; form-action 'none'; object-src 'none'; require-trusted-types-for 'script'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; font-src 'self'; connect-src 'self' ws://localhost:* ws://127.0.0.1:* wss://localhost:* wss://127.0.0.1:*; base-uri 'none'; form-action 'none'; object-src 'none'; require-trusted-types-for 'script'">
 <meta name="referrer" content="no-referrer">
 <title>EyeSync</title>
-<meta name="description" content="EyeSync: the control dashboard for your eye-tracker, with a live gaze cursor, WebSocket link and 9-point calibration.">
+<meta name="description" content="EyeSync turns your webcam into a mouse you steer with your head and click with a blink. Download it for Windows and control it from this dashboard.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'%3E%3Crect width='16' height='16' fill='%233498db'/%3E%3Cpath d='M5 5h6v1h2v1h1v2h-1v1h-2v1H5v-1H3V9H2V7h1V6h2z' fill='%2312100c'/%3E%3Crect x='6' y='6' width='4' height='4' fill='%233498db'/%3E%3Crect x='7' y='7' width='1' height='1' fill='%23f4ecda'/%3E%3C/svg%3E">
 <style>
 /* Fonts are bundled with the site (fonts/, SIL Open Font License), so no font host ever sees visitors.
@@ -215,7 +216,7 @@ main:focus { outline: none; }
 @media (max-width: 900px) { .steps { grid-template-columns: minmax(0, 1fr); } }
 .step { display: grid; gap: 12px; align-content: start; min-width: 0; padding: 22px; background: var(--surface); border: var(--bw) solid var(--line); box-shadow: var(--drop); }
 .step-n { display: grid; place-items: center; width: 48px; height: 48px; background: var(--ink); color: var(--bg); font: 800 1.5rem/1 var(--font-mono); }
-.step code { display: block; padding: 10px 12px; white-space: pre-wrap; overflow-wrap: anywhere; background: var(--bg); border: var(--bw) solid var(--accent); font-size: 0.9375rem; }
+.step .btn { justify-self: start; }
 .ticks { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
 .ticks li { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 14px; align-items: start; }
 .ticks li::before { content: ""; width: 16px; height: 16px; margin-top: 5px; background: var(--ok); }
@@ -243,6 +244,10 @@ select.input { padding-block: 0; cursor: pointer; }
 .check:hover { border-color: var(--ink); }
 .check input { width: 28px; height: 28px; flex: none; margin: 0; accent-color: var(--accent); cursor: pointer; }
 .check[data-invalid] { border-color: var(--danger); }
+.check:has(input:disabled) { opacity: 0.55; cursor: not-allowed; }
+.check:has(input:disabled):hover { border-color: var(--line-soft); }
+fieldset.plain { display: grid; gap: 8px; min-width: 0; margin: 0; padding: 0; border: 0; }
+fieldset.plain > legend { padding: 0; margin-bottom: 8px; font-weight: 700; }
 .rules { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 0.9375rem; }
 .rules li { display: flex; gap: 10px; align-items: center; color: var(--ink-2); }
 .rules li::before { content: ""; width: 14px; height: 14px; flex: none; border: var(--bw) solid var(--line-soft); }
@@ -266,12 +271,12 @@ select.input { padding-block: 0; cursor: pointer; }
 .pill { display: inline-flex; align-items: center; gap: 10px; justify-self: start; max-width: 100%; min-height: 40px; padding: 4px 12px; background: var(--bg); border: var(--bw) solid var(--line-soft); font: 700 0.9375rem/1.2 var(--font-mono); }
 .pill-mark { width: 12px; height: 12px; flex: none; background: var(--ink-2); }
 .pill[data-state="open"], .pill[data-state="good"] { background: var(--ok); border-color: var(--ok); color: var(--on-color); }
-.pill[data-state="connecting"], .pill[data-state="reconnecting"], .pill[data-state="stale"], .pill[data-state="searching"], .pill[data-state="fair"] { background: var(--warn); border-color: var(--warn); color: var(--on-color); }
+.pill[data-state="connecting"], .pill[data-state="reconnecting"], .pill[data-state="stale"], .pill[data-state="searching"], .pill[data-state="starting"], .pill[data-state="fair"] { background: var(--warn); border-color: var(--warn); color: var(--on-color); }
 .pill[data-state="sim"] { background: var(--accent); border-color: var(--accent); color: var(--on-color); }
 .pill[data-state="poor"] { background: var(--danger); border-color: var(--danger); color: var(--on-color); }
 .pill[data-state="open"] .pill-mark, .pill[data-state="good"] .pill-mark, .pill[data-state="connecting"] .pill-mark,
 .pill[data-state="reconnecting"] .pill-mark, .pill[data-state="stale"] .pill-mark, .pill[data-state="searching"] .pill-mark, .pill[data-state="fair"] .pill-mark,
-.pill[data-state="sim"] .pill-mark, .pill[data-state="poor"] .pill-mark { background: var(--on-color); }
+.pill[data-state="starting"] .pill-mark, .pill[data-state="sim"] .pill-mark, .pill[data-state="poor"] .pill-mark { background: var(--on-color); }
 .status-line { padding: 12px 14px; background: var(--bg); border-left: 6px solid var(--line-soft); }
 
 /* Tracker address: filled in by discovery, colour-coded by state */
@@ -286,13 +291,58 @@ select.input { padding-block: 0; cursor: pointer; }
 .manual > summary { list-style: none; cursor: pointer; }
 .manual > summary::-webkit-details-marker { display: none; }
 .manual[open] > summary { margin-bottom: 18px; }
+.link-help { display: grid; gap: 12px; padding: 16px 18px; background: var(--bg); border: var(--bw) solid var(--accent); }
+
+/* EyeSync panel: status, advice, controls */
+.panel-head { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; }
+.tag { display: inline-flex; align-items: center; min-height: 32px; padding: 4px 10px; background: var(--ok); color: var(--on-color); font: 700 0.8125rem/1.2 var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; }
+.advice { padding: 14px 16px; background: var(--warn); border: var(--bw) solid var(--warn); color: var(--on-color); font-weight: 700; }
+.es-controls { display: grid; gap: 18px; min-width: 0; margin: 0; padding: 0; border: 0; }
+.es-controls[disabled] .seg, .es-controls[disabled] .seg-ends { opacity: 0.55; }
+.seg { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); background: var(--bg); border: var(--bw) solid var(--line-soft); }
+.seg-opt { position: relative; display: grid; place-items: center; min-height: var(--hit); border-left: var(--bw) solid var(--line-soft); font: 700 1.125rem/1 var(--font-mono); cursor: pointer; }
+.seg-opt:first-child { border-left: 0; }
+.seg-opt input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: inherit; }
+.seg-opt:hover { background: var(--ink); color: var(--bg); }
+.seg-opt:has(input:checked) { background: var(--accent); color: var(--on-color); }
+.seg-opt:has(input:focus-visible) { z-index: 1; outline: 4px solid var(--focus); outline-offset: 2px; }
+.seg-opt:has(input:disabled) { cursor: not-allowed; }
+.seg-opt:has(input:disabled):hover { background: transparent; color: inherit; }
+.seg-ends { display: flex; justify-content: space-between; font: 700 0.8125rem/1.2 var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-2); }
+.choice-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.es-help { display: grid; gap: 6px; margin: 0; padding-left: 1.25em; color: var(--ink-2); }
+.stack-sm { display: grid; gap: 10px; min-width: 0; }
+
+/* EyeSync calibration progress: a solid bar in a frame, plus the steps */
+.escal { display: grid; gap: 14px; }
+.escal-run { display: grid; gap: 12px; }
+.bar { height: 24px; background: var(--bg); border: var(--bw) solid var(--line-soft); }
+.bar > span { display: block; width: 0; height: 100%; background: var(--accent); }
+.escal-steps { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; font: 700 0.8125rem/1 var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; }
+.escal-steps li { padding: 7px 9px; border: 2px solid var(--line-soft); color: var(--ink-2); }
+.escal-steps li[data-state="done"] { background: var(--ok); border-color: var(--ok); color: var(--on-color); }
+.escal-steps li[data-state="now"] { background: var(--accent); border-color: var(--accent); color: var(--on-color); }
+
+/* Camera view: EyeSync's 320x240 picture, scaled up */
+.cam { position: relative; display: grid; place-items: center; width: 100%; aspect-ratio: 4 / 3; overflow: hidden; padding: 16px; background: var(--crt); border: var(--bw) solid var(--line-soft); color: var(--phosphor); font: 700 0.9375rem/1.3 var(--font-mono); text-align: center; }
+.cam img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+
+/* Download page */
+.dl-steps { display: grid; gap: 16px; margin: 0; padding: 0; list-style: none; counter-reset: dl; }
+.dl-steps li { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 14px; align-items: start; counter-increment: dl; }
+.dl-steps li::before { content: counter(dl); display: grid; place-items: center; width: 40px; height: 40px; background: var(--ink); color: var(--bg); font: 800 1.25rem/1 var(--font-mono); }
+.grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+@media (max-width: 900px) { .grid-3 { grid-template-columns: minmax(0, 1fr); } }
+.sha { font-size: 0.8125rem; word-break: break-all; }
+.cmd { display: block; padding: 10px 12px; background: var(--bg); border: var(--bw) solid var(--line-soft); font-size: 0.9375rem; overflow-wrap: anywhere; }
 
 /* Key/value lists */
 .kv { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 18px; margin: 0; }
 .kv dt { color: var(--ink-2); }
 .kv dd { margin: 0; font-family: var(--font-mono); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.kv-text dd { font-family: var(--font-body); font-weight: 700; }
 
-/* Gaze map */
+/* Cursor map */
 .gaze-map { position: relative; width: 100%; max-width: 100%; aspect-ratio: 4 / 3; overflow: hidden; background: var(--bg); border: var(--bw) solid var(--line-soft); }
 .gm-v { position: absolute; inset: 0 33.333%; border-inline: 1px solid var(--line-soft); }
 .gm-h { position: absolute; inset: 33.333% 0; border-block: 1px solid var(--line-soft); }
@@ -301,7 +351,7 @@ select.input { padding-block: 0; cursor: pointer; }
 .gm-empty { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; text-align: center; color: var(--ink-2); }
 .payload-pre { margin: 0; min-height: 3.4em; padding: 12px 14px; background: var(--bg); border: var(--bw) solid var(--line-soft); font-size: 0.9375rem; white-space: pre-wrap; overflow-wrap: anywhere; }
 
-/* Gaze cursor overlay: solid crosshair, position driven by top/left */
+/* Cursor overlay: solid crosshair, position driven by top/left */
 #gaze-cursor { position: fixed; left: 0; top: 0; width: 48px; height: 48px; margin: -24px 0 0 -24px; pointer-events: none; z-index: 1000; }
 #gaze-cursor::before, #gaze-cursor::after { content: ""; position: absolute; background: var(--danger); box-shadow: 0 0 0 2px var(--bg); }
 #gaze-cursor::before { left: 0; right: 0; top: 50%; height: 4px; margin-top: -2px; }
@@ -430,7 +480,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
   .panel { --pad: 18px; }
   .view-home { gap: 56px; }
   .hero-actions .btn { flex: 1 1 100%; }
-  .field-pair { grid-template-columns: minmax(0, 1fr); }
+  .field-pair, .choice-row { grid-template-columns: minmax(0, 1fr); }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; }
@@ -451,11 +501,12 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
         <rect class="bm-fill" x="6" y="6" width="4" height="4"></rect>
         <rect class="bm-hi" x="7" y="7" width="1" height="1"></rect>
       </svg>
-      <span><span class="brand-name">EyeSync</span><span class="brand-sub">Eye-tracker console</span></span>
+      <span><span class="brand-name">EyeSync</span><span class="brand-sub">Head-controlled mouse</span></span>
     </a>
-    <nav class="nav" id="nav" aria-label="Main" hidden>
-      <a class="btn btn-quiet" href="#dashboard" data-nav="dashboard">Dashboard</a>
-      <a class="btn btn-quiet" href="#calibration" data-nav="calibration">Calibration</a>
+    <nav class="nav" id="nav" aria-label="Main">
+      <a class="btn btn-quiet js-member" href="#dashboard" data-nav="dashboard" hidden>Dashboard</a>
+      <a class="btn btn-quiet js-member" href="#calibration" data-nav="calibration" hidden>Calibration</a>
+      <a class="btn btn-quiet" href="#download" data-nav="download">Download</a>
     </nav>
     <nav class="nav js-guest" aria-label="Account">
       <a class="btn btn-quiet" href="#login" data-nav="login">Sign in</a>
@@ -477,25 +528,25 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
     <section class="view view-home" data-view="home" hidden aria-labelledby="home-title">
       <div class="hero">
         <div class="hero-copy">
-          <p class="eyebrow prompt">Hardware eye-tracker console</p>
-          <h1 id="home-title" tabindex="-1">Steer your screen with a glance.</h1>
-          <p class="lede">EyeSync is the control room for your eye-tracker. It finds the tracker on your computer by itself, follows your gaze in real time, and tunes the cursor to your eyes with a half-minute, 9-point calibration.</p>
+          <p class="eyebrow prompt">Webcam head mouse for Windows</p>
+          <h1 id="home-title" tabindex="-1">Steer your screen with your head. Click with a blink.</h1>
+          <p class="lede">EyeSync turns your webcam into a mouse. Move your head a little and the cursor follows; blink to click. This website is its control room: start EyeSync, tune it to you and change its settings from one tab.</p>
           <div class="hero-actions js-guest">
-            <a class="btn btn-primary btn-lg" href="#register">Create an account</a>
-            <a class="btn btn-lg" href="#login">Sign in</a>
+            <a class="btn btn-primary btn-lg" href="#download">Download EyeSync</a>
+            <a class="btn btn-lg" href="#register">Create an account</a>
           </div>
           <div class="hero-actions js-member" hidden>
             <a class="btn btn-primary btn-lg" href="#dashboard">Open dashboard</a>
-            <a class="btn btn-lg" href="#calibration">Start calibration</a>
+            <a class="btn btn-lg" href="#calibration">Calibrate</a>
           </div>
           <ul class="hero-facts">
-            <li>Lives in your browser</li>
-            <li>Your gaze never leaves this computer</li>
-            <li>Speaks plain JSON</li>
+            <li>Free for Windows 10 and 11</li>
+            <li>Just a webcam</li>
+            <li>Your camera picture never leaves your PC</li>
           </ul>
         </div>
 
-        <figure class="preview" aria-label="Simulated preview: a red crosshair moves across a screen with nine calibration targets">
+        <figure class="preview" aria-label="Simulated preview: a red crosshair, steered by head movement, moves across a screen with nine targets">
           <div class="preview-screen" aria-hidden="true">
             <span class="pv-tag">Simulated preview</span>
             <span class="pv-target pv-c0 pv-r0"></span><span class="pv-target pv-c1 pv-r0"></span><span class="pv-target pv-c2 pv-r0"></span>
@@ -505,7 +556,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
           </div>
           <div class="preview-tracker" aria-hidden="true"><span></span><span class="lens"></span><span></span></div>
           <figcaption class="preview-caption">
-            <span class="label">Live from the tracker, about 60 times a second</span>
+            <span class="label">What EyeSync sends this page, about 30 times a second</span>
             <pre class="payload-pre" id="pv-frame" aria-hidden="true">{"x": 400, "y": 300, "blink": false}</pre>
           </figcaption>
         </figure>
@@ -514,28 +565,28 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
       <section class="home-section" aria-labelledby="features-title">
         <div class="section-head">
           <p class="eyebrow">What it does</p>
-          <h2 id="features-title">A whole eye-tracking lab in one tab</h2>
+          <h2 id="features-title">A hands-free mouse, run from one tab</h2>
         </div>
         <div class="features">
           <article class="feature">
             <span class="feature-mark" data-tone="danger" aria-hidden="true"></span>
-            <h3>Live gaze cursor</h3>
-            <p>A crisp red crosshair rides along with your eyes, frame by frame, across the whole window. Blinks flash it amber and get counted.</p>
+            <h3>Steer with your head</h3>
+            <p>Small head movements move the real mouse across your whole screen. Blink to click, or wink your right eye for a right click.</p>
           </article>
           <article class="feature">
             <span class="feature-mark" aria-hidden="true"></span>
-            <h3>9-point calibration</h3>
-            <p>Nine targets light up across the screen, one at a time. Follow them and EyeSync tells you, to the pixel, how true your aim is.</p>
+            <h3>Every setting in reach</h3>
+            <p>Pause, recenter, change the speed or how you click, right from the dashboard. Changes you make on the PC show up here instantly.</p>
           </article>
           <article class="feature">
             <span class="feature-mark" data-tone="warn" aria-hidden="true"></span>
-            <h3>Dwell to select</h3>
-            <p>Rest your gaze on a button and a ring fills around the cursor. When it closes, the button presses itself. Completely hands-free.</p>
+            <h3>Tuned to you</h3>
+            <p>A 30-second calibration learns how far you move, how you blink and how you smile. An accuracy test shows how well the cursor lands.</p>
           </article>
           <article class="feature">
             <span class="feature-mark" data-tone="ok" aria-hidden="true"></span>
-            <h3>Finds your tracker</h3>
-            <p>No addresses to type. EyeSync sniffs out the tracker on this computer, connects, and quietly reconnects if it drops or restarts.</p>
+            <h3>Starts when you need it</h3>
+            <p>Open the dashboard and EyeSync starts and connects by itself. Close it with a gesture and it stays closed until you press Connect.</p>
           </article>
         </div>
       </section>
@@ -543,27 +594,27 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
       <section class="home-section" aria-labelledby="how-title">
         <div class="section-head">
           <p class="eyebrow">How it works</p>
-          <h2 id="how-title">Up and tracking in three steps</h2>
+          <h2 id="how-title">Up and running in three steps</h2>
         </div>
         <ol class="steps">
           <li class="step">
             <span class="step-n" aria-hidden="true">1</span>
-            <h3>Wake the tracker</h3>
-            <p>Start EyeSync or your own tracker script. It streams one tiny message per frame to <span class="mono">ws://localhost:8765</span>:</p>
-            <code>{"x": 400, "y": 300, "blink": false}</code>
+            <h3>Download and install</h3>
+            <p>Get EyeSync for Windows, extract the zip and double-click <span class="mono">install.bat</span>. Setup takes a few minutes.</p>
+            <a class="btn" href="#download">Download EyeSync</a>
           </li>
           <li class="step">
             <span class="step-n" aria-hidden="true">2</span>
             <h3>Open your dashboard</h3>
-            <p>Sign in and the dashboard does the rest: it finds your tracker and the cursor springs to life. No tracker handy? Flip on the built-in simulator and try everything first.</p>
+            <p>Create an account, which stays in this browser, and open the Dashboard. EyeSync starts and connects by itself. No webcam handy? Try the built-in simulator first.</p>
           </li>
           <li class="step">
             <span class="step-n" aria-hidden="true">3</span>
             <h3>Calibrate in half a minute</h3>
-            <p>Hold still and follow the blue targets. You get an accuracy score for every point, and your tracker hears about each target too.</p>
+            <p>Press Calibrate EyeSync and follow the dots on your screen. EyeSync learns your range of movement, your blink and your smile.</p>
           </li>
         </ol>
-        <p class="hint">You'll need an eye-tracker that sends gaze frames, and Chrome, Edge or Firefox on the same computer.</p>
+        <p class="hint">You'll need Windows 10 or 11, a webcam, and Chrome, Edge or Firefox on the same computer.</p>
       </section>
 
       <div class="grid-2">
@@ -571,10 +622,10 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
           <p class="eyebrow">Privacy</p>
           <h2 id="privacy-title">Private by design</h2>
           <ul class="ticks">
-            <li>There is no EyeSync server. The whole app runs right here, in your browser.</li>
+            <li>There is no EyeSync server. The website runs in your browser and talks only to EyeSync on this computer.</li>
+            <li>The camera picture is processed on your PC. The optional camera view on the dashboard is never uploaded or saved.</li>
             <li>Your password is salted and hashed with PBKDF2-SHA-256, 600,000 rounds deep. The password itself is never saved.</li>
-            <li>Gaze data travels only from your tracker to this page, and is never stored.</li>
-            <li>The dashboard talks only to trackers on this computer.</li>
+            <li>Cursor positions travel only from EyeSync to this page, and are never stored.</li>
             <li>No cookies, no analytics, no third-party scripts. Even the fonts are bundled in.</li>
           </ul>
           <div class="row">
@@ -584,9 +635,9 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
         </section>
         <section class="panel" aria-labelledby="a11y-title">
           <p class="eyebrow">Accessibility</p>
-          <h2 id="a11y-title">Built for eyes first</h2>
+          <h2 id="a11y-title">Built for hands-free use</h2>
           <ul class="ticks">
-            <li>Every button is at least 56 pixels tall: an easy target for a glance.</li>
+            <li>Every button is at least 56 pixels tall: an easy target for a head pointer.</li>
             <li>Solid, high-contrast colours with bold hover and focus states.</li>
             <li>Light and dark themes, and calm, still screens if you prefer reduced motion.</li>
             <li>Keyboards and screen readers are welcome too.</li>
@@ -596,13 +647,13 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 
       <section class="cta-band" aria-labelledby="cta-title">
         <div>
-          <h2 id="cta-title">Ready when your eyes are.</h2>
-          <p class="hint js-guest">Setting up takes under a minute, and your account never leaves this device.</p>
+          <h2 id="cta-title">Ready when you are.</h2>
+          <p class="hint js-guest">Download EyeSync, then create an account. It takes under a minute and never leaves this device.</p>
           <p class="hint js-member" hidden>Your dashboard is warmed up and waiting.</p>
         </div>
         <div class="hero-actions js-guest">
-          <a class="btn btn-primary btn-lg" href="#register">Create an account</a>
-          <a class="btn btn-lg" href="#login">Sign in</a>
+          <a class="btn btn-primary btn-lg" href="#download">Download EyeSync</a>
+          <a class="btn btn-lg" href="#register">Create an account</a>
         </div>
         <div class="hero-actions js-member" hidden>
           <a class="btn btn-primary btn-lg" href="#dashboard">Open dashboard</a>
@@ -616,7 +667,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
         <div class="auth-intro">
           <p class="eyebrow">Welcome back</p>
           <h1 id="login-title" tabindex="-1">Good to see you again.</h1>
-          <p class="lede">Sign in to pick up where you left off: your live gaze, your tracker and your calibration are all waiting.</p>
+          <p class="lede">Sign in to pick up where you left off: EyeSync's controls, your settings and your calibration are all waiting.</p>
           <div class="row"><a class="btn btn-quiet" href="#home">What is EyeSync?</a></div>
         </div>
 
@@ -651,7 +702,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
       <div class="auth-grid">
         <div class="auth-intro">
           <p class="eyebrow">New here?</p>
-          <h1 id="register-title" tabindex="-1">Start tracking in a minute.</h1>
+          <h1 id="register-title" tabindex="-1">Set up in a minute.</h1>
           <p class="lede">Your account lives only in this browser. Before anything is saved, your password is salted and hashed (PBKDF2-SHA-256, 600,000 rounds), so the password itself is never stored anywhere.</p>
           <dl class="kv panel">
             <dt>Stored</dt><dd>username, salt, hash, agreement record</dd>
@@ -711,39 +762,49 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
       <div class="view-head">
         <div>
           <p class="eyebrow">Dashboard</p>
-          <h1 id="dash-title" tabindex="-1">Your gaze, live.</h1>
+          <h1 id="dash-title" tabindex="-1">Your cursor, live.</h1>
           <p class="hint" id="dash-session"></p>
         </div>
         <a class="btn btn-primary" href="#calibration">Open calibration</a>
       </div>
 
-      <div class="tiles" role="group" aria-label="Live tracker readings">
-        <div class="tile"><span class="label">Tracker link</span><span class="pill js-link-pill" data-state="idle"><span class="pill-mark"></span><span class="js-link-text">Not connected</span></span></div>
-        <div class="tile"><span class="label">Gaze X</span><span class="metric" id="m-x">—</span><span class="unit js-unit">frame px</span></div>
-        <div class="tile"><span class="label">Gaze Y</span><span class="metric" id="m-y">—</span><span class="unit js-unit">frame px</span></div>
-        <div class="tile" id="tile-eye"><span class="label">Eyes</span><span class="metric" id="m-eye">—</span><span class="unit">blink flag</span></div>
-        <div class="tile"><span class="label">Frames / s</span><span class="metric" id="m-rate">0</span><span class="unit">last second</span></div>
+      <div class="notice row" id="update-notice" hidden>
+        <span id="update-text">A newer EyeSync is available.</span>
+        <a class="btn btn-primary" href="#download">Download</a>
+      </div>
+
+      <div class="tiles" role="group" aria-label="Live readings">
+        <div class="tile"><span class="label">Link</span><span class="pill js-link-pill" data-state="idle"><span class="pill-mark"></span><span class="js-link-text">Not connected</span></span></div>
+        <div class="tile"><span class="label">Cursor X</span><span class="metric" id="m-x">—</span><span class="unit js-unit">frame px</span></div>
+        <div class="tile"><span class="label">Cursor Y</span><span class="metric" id="m-y">—</span><span class="unit js-unit">frame px</span></div>
+        <div class="tile" id="tile-eye"><span class="label">Blink</span><span class="metric" id="m-eye">—</span><span class="unit">eyes shut or a click</span></div>
+        <div class="tile"><span class="label">Updates / s</span><span class="metric" id="m-rate">0</span><span class="unit">last second</span></div>
         <div class="tile"><span class="label">Blinks</span><span class="metric" id="m-blinks">0</span><span class="unit">this visit</span></div>
       </div>
 
       <div class="grid-2">
         <div class="col">
           <section class="panel panel-strong" aria-labelledby="conn-title">
-            <h2 id="conn-title">Tracker connection</h2>
+            <h2 id="conn-title">Connection</h2>
             <div class="addr" id="addr" data-state="detecting">
-              <span class="label">Tracker address</span>
+              <span class="label">Address</span>
               <span class="addr-value" id="addr-value">Detecting…</span>
-              <span class="addr-source" id="addr-source">Looking for your tracker on this computer</span>
+              <span class="addr-source" id="addr-source">Looking for EyeSync on this computer</span>
             </div>
             <div class="row">
-              <button class="btn btn-primary" id="btn-find" type="button">Find tracker</button>
+              <button class="btn btn-primary" id="btn-find" type="button">Connect</button>
               <button class="btn" id="btn-disconnect" type="button" hidden>Disconnect</button>
               <button class="btn" id="btn-sim" type="button" aria-pressed="false">Run simulator</button>
             </div>
-            <p class="status-line" id="link-detail" role="status">Looking for your tracker on this computer.</p>
+            <p class="status-line" id="link-detail" role="status">Looking for EyeSync on this computer.</p>
+            <div class="link-help" id="link-help" hidden>
+              <p>Already installed? Open the EyeSync shortcut on your Desktop, or restart the PC.</p>
+              <p class="hint" id="browser-note" hidden>If EyeSync is installed and this keeps happening, your browser may be blocking the connection. Allow this site to connect to apps on this device (click the icon in the address bar), then reload the page.</p>
+              <div class="row"><a class="btn btn-primary" href="#download">Download EyeSync</a></div>
+            </div>
             <div class="field">
-              <label class="check" for="auto-connect"><input type="checkbox" id="auto-connect" aria-describedby="auto-connect-hint"><span>Find and connect to the tracker automatically</span></label>
-              <p class="hint" id="auto-connect-hint">The dashboard checks this computer for a tracker that sends gaze frames: the last address that worked, then ports 8765 to 8770, 8080 and 8000. If none answers, it keeps looking in the background. If you quit EyeSync on purpose, searching won't restart it; press Find tracker for that.</p>
+              <label class="check" for="auto-connect"><input type="checkbox" id="auto-connect" aria-describedby="auto-connect-hint"><span>Connect to EyeSync automatically</span></label>
+              <p class="hint" id="auto-connect-hint">When the dashboard opens, it starts EyeSync and connects. If you closed EyeSync yourself, it stays closed until you press Connect. The dashboard also finds other trackers on ports 8766 to 8770 and 8000.</p>
             </div>
             <details class="manual" id="manual-entry">
               <summary class="btn btn-quiet">Enter an address yourself</summary>
@@ -751,17 +812,78 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
                 <div class="field">
                   <label for="ws-url">WebSocket address</label>
                   <input class="input mono" id="ws-url" name="url" inputmode="url" autocapitalize="none" spellcheck="false" maxlength="200" aria-describedby="ws-url-hint ws-url-error">
-                  <p class="hint" id="ws-url-hint">Only needed if your tracker uses a port the dashboard doesn't check. Only addresses on this computer are allowed: localhost or 127.0.0.1.</p>
+                  <p class="hint" id="ws-url-hint">Only needed for a tracker on a port the dashboard doesn't check. Only addresses on this computer are allowed: localhost or 127.0.0.1.</p>
                   <p class="error" id="ws-url-error" hidden></p>
                 </div>
                 <div class="row"><button class="btn" id="btn-connect" type="submit">Connect to this address</button></div>
               </form>
             </details>
             <dl class="kv">
-              <dt>Frames received</dt><dd id="m-total">0</dd>
-              <dt>Frames rejected</dt><dd id="m-rejected">0</dd>
+              <dt>Updates received</dt><dd id="m-total">0</dd>
+              <dt>Updates rejected</dt><dd id="m-rejected">0</dd>
               <dt>Last rejection</dt><dd id="m-reason">None</dd>
             </dl>
+          </section>
+
+          <section class="panel panel-strong" id="es-panel" aria-labelledby="es-title" hidden>
+            <div class="panel-head">
+              <h2 id="es-title">EyeSync controls</h2>
+              <span class="pill" id="es-pill" data-state="idle"><span class="pill-mark"></span><span id="es-pill-text">Not connected</span></span>
+            </div>
+            <p class="advice" id="es-hint" role="status" hidden></p>
+            <dl class="kv kv-text">
+              <dt>Face</dt><dd id="es-face">—</dd>
+              <dt>Camera</dt><dd id="es-camera">—</dd>
+              <dt>Cursor control</dt><dd id="es-control">—</dd>
+              <dt>Calibration</dt><dd id="es-calibrated">—</dd>
+              <dt>Hardware mouse</dt><dd id="es-hw">—</dd>
+              <dt>Version</dt><dd id="es-version">—</dd>
+            </dl>
+            <div class="row" id="es-face-help" hidden><button class="btn" type="button" id="es-show-camera">Show the camera to check your position</button></div>
+            <fieldset class="es-controls" id="es-controls" disabled>
+              <legend class="sr-only">EyeSync settings</legend>
+              <label class="check" for="es-mouse"><input type="checkbox" id="es-mouse"><span>Mouse control</span></label>
+              <div class="row">
+                <button class="btn" type="button" id="es-pause" aria-pressed="false">Pause</button>
+                <button class="btn" type="button" id="es-recenter">Recenter cursor</button>
+              </div>
+              <fieldset class="plain">
+                <legend>Speed</legend>
+                <div class="seg">
+                  <label class="seg-opt"><input type="radio" name="es-speed" value="1" aria-label="Speed 1, calmest"><span aria-hidden="true">1</span></label>
+                  <label class="seg-opt"><input type="radio" name="es-speed" value="2" aria-label="Speed 2"><span aria-hidden="true">2</span></label>
+                  <label class="seg-opt"><input type="radio" name="es-speed" value="3" aria-label="Speed 3"><span aria-hidden="true">3</span></label>
+                  <label class="seg-opt"><input type="radio" name="es-speed" value="4" aria-label="Speed 4"><span aria-hidden="true">4</span></label>
+                  <label class="seg-opt"><input type="radio" name="es-speed" value="5" aria-label="Speed 5, fastest"><span aria-hidden="true">5</span></label>
+                </div>
+                <div class="seg-ends" aria-hidden="true"><span>Calmer</span><span>Faster</span></div>
+              </fieldset>
+              <fieldset class="plain">
+                <legend>Click by</legend>
+                <div class="choice-row">
+                  <label class="check"><input type="radio" name="es-click" value="blink"><span>Blinking</span></label>
+                  <label class="check"><input type="radio" name="es-click" value="dwell"><span>Holding still</span></label>
+                </div>
+              </fieldset>
+              <label class="check" for="es-gestures"><input type="checkbox" id="es-gestures"><span>Face gestures</span></label>
+              <div class="row">
+                <button class="btn" type="button" id="es-window">Show EyeSync window</button>
+                <button class="btn" type="button" id="es-quit">Quit EyeSync</button>
+                <button class="btn btn-quiet" type="button" id="es-quit-cancel" hidden>Keep it running</button>
+              </div>
+              <p class="notice" id="es-quit-hint" hidden>Are you sure? EyeSync stops and your mouse works as normal again. Press Connect to start it again.</p>
+            </fieldset>
+            <div class="stack-sm">
+              <span class="label">Gestures</span>
+              <ul class="es-help">
+                <li>Blink both eyes, or wink your left eye for about ⅓ s: left click.</li>
+                <li>Wink your right eye: right click.</li>
+                <li>Big smile for 1.5 s: pause or resume.</li>
+                <li>Mouth pulled to one side for 1.5 s: next speed.</li>
+                <li>Mouth wide open for 3 s: quit EyeSync.</li>
+              </ul>
+              <p class="hint">“Start with Windows” and the API key are only in the EyeSync window on your PC.</p>
+            </div>
           </section>
 
           <section class="panel" aria-labelledby="map-settings-title">
@@ -793,8 +915,9 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
                 <option value="high">High: steadier, slower</option>
               </select>
             </div>
-            <label class="check" for="show-cursor"><input type="checkbox" id="show-cursor"><span>Show the gaze cursor</span></label>
-            <label class="check" for="dwell"><input type="checkbox" id="dwell"><span>Dwell to select: hold your gaze on a button to press it</span></label>
+            <label class="check" for="show-cursor"><input type="checkbox" id="show-cursor"><span>Show the red crosshair on this page</span></label>
+            <label class="check" for="dwell"><input type="checkbox" id="dwell" aria-describedby="dwell-note"><span>Dwell to select: hold the crosshair on a button to press it</span></label>
+            <p class="hint" id="dwell-note" hidden>EyeSync clicks for you, so the website's dwell isn't needed. It's off while EyeSync is connected.</p>
             <div class="field">
               <label for="dwell-ms">Dwell time</label>
               <select class="input" id="dwell-ms">
@@ -812,23 +935,37 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
         </div>
 
         <div class="col">
+          <section class="panel" id="cam-panel" aria-labelledby="cam-title" hidden>
+            <h2 id="cam-title">Camera view</h2>
+            <label class="check" for="cam-toggle"><input type="checkbox" id="cam-toggle" aria-describedby="cam-hint"><span>Show camera</span></label>
+            <p class="hint" id="cam-hint">The picture stays on this computer. It comes straight from EyeSync and is never uploaded or saved.</p>
+            <div class="cam">
+              <img id="cam-img" alt="Live camera view from EyeSync, mirrored, with the face mesh drawn" hidden>
+              <span id="cam-empty">Camera view is off</span>
+            </div>
+          </section>
+
           <section class="panel" aria-labelledby="map-title">
-            <h2 id="map-title">Gaze map</h2>
+            <h2 id="map-title">Cursor map</h2>
             <div class="gaze-map" id="gaze-map" aria-hidden="true">
               <div class="gm-v"></div><div class="gm-h"></div>
-              <div class="gm-empty" id="gm-empty">Waiting for gaze frames</div>
+              <div class="gm-empty" id="gm-empty">Waiting for cursor data</div>
               <div class="gm-dot" id="gm-dot" hidden></div>
             </div>
             <div class="field">
-              <span class="label">Last frame</span>
-              <pre class="payload-pre" id="last-frame">No frames yet</pre>
+              <span class="label">Last update</span>
+              <pre class="payload-pre" id="last-frame">Nothing yet</pre>
             </div>
           </section>
 
           <section class="panel" aria-labelledby="cal-sum-title">
             <h2 id="cal-sum-title">Calibration</h2>
-            <p id="cal-summary-line">No calibration yet. Half a minute and you're tuned in.</p>
-            <div class="row"><a class="btn btn-primary" href="#calibration">Start 9-point calibration</a></div>
+            <div class="js-escal-slot"></div>
+            <div class="stack-sm">
+              <span class="label">Accuracy test</span>
+              <p id="cal-summary-line">No accuracy test yet.</p>
+              <div class="row"><a class="btn" href="#calibration">Test accuracy</a></div>
+            </div>
           </section>
 
           <section class="panel" aria-labelledby="acct-title">
@@ -854,16 +991,24 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
     <section class="view" data-view="calibration" hidden aria-labelledby="cal-title">
       <div class="view-head">
         <div>
-          <p class="eyebrow">9-point calibration</p>
-          <h1 id="cal-title" tabindex="-1">Tune it to your eyes.</h1>
-          <p class="lede">Get comfortable and keep your head still. Look at the blue target until its centre shrinks away, and it hops to the next: left to right, top to bottom.</p>
+          <p class="eyebrow">Calibration</p>
+          <h1 id="cal-title" tabindex="-1">Tune it to you.</h1>
+          <p class="lede">Calibrate EyeSync to fit the head pointer to the way you move, blink and smile. The accuracy test then shows how well the cursor reaches targets.</p>
         </div>
       </div>
 
-      <div class="panel panel-strong">
+      <section class="panel panel-strong" aria-labelledby="escal-title">
+        <div class="panel-head"><h2 id="escal-title">Calibrate EyeSync</h2><span class="tag">Recommended · about 30 s</span></div>
+        <p>A full-screen guide opens on your PC, on top of this page, with dots to look at. It moves on by itself, so you don't need to click anything. Press Esc or its Cancel button to stop. The result is saved on your PC.</p>
+        <div class="js-escal-slot"></div>
+      </section>
+
+      <section class="panel" aria-labelledby="acc-title">
+        <h2 id="acc-title">Accuracy test</h2>
+        <p>Nine targets light up one at a time. Point at each blue target with your head and hold the cursor there until its centre shrinks away. The test only measures accuracy; it doesn't change EyeSync.</p>
         <div class="row">
-          <button class="btn btn-primary" type="button" id="cal-start">Start Calibration</button>
-          <button class="btn btn-danger" type="button" id="cal-stop" hidden>Stop calibration</button>
+          <button class="btn btn-primary" type="button" id="cal-start">Test accuracy</button>
+          <button class="btn btn-danger" type="button" id="cal-stop" hidden>Stop the test</button>
           <div class="field">
             <label class="sr-only" for="cal-dwell">Time per target</label>
             <select class="input" id="cal-dwell">
@@ -876,9 +1021,9 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
           <label class="check" for="cal-fill"><input type="checkbox" id="cal-fill"><span>Fill the window while running</span></label>
         </div>
         <p class="status-line" id="cal-status" role="status"></p>
-      </div>
+      </section>
 
-      <div class="cal-stage" id="cal-stage" role="group" aria-label="Calibration targets">
+      <div class="cal-stage" id="cal-stage" role="group" aria-label="Accuracy test targets">
         <div class="cal-point" data-row="0" data-col="0" data-label="Top left" aria-label="Target 1, top left"><span>1</span></div>
         <div class="cal-point" data-row="0" data-col="1" data-label="Top centre" aria-label="Target 2, top centre"><span>2</span></div>
         <div class="cal-point" data-row="0" data-col="2" data-label="Top right" aria-label="Target 3, top right"><span>3</span></div>
@@ -903,8 +1048,67 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
             <tbody id="cal-rows"></tbody>
           </table>
         </div>
-        <p class="hint">Error is the distance between the average gaze position and the target centre, in window pixels. Under 40 px is good, under 80 px is fair.</p>
+        <p class="hint">Error is the distance between the average cursor position and the target centre, in window pixels. Under 40 px is good, under 80 px is fair.</p>
       </section>
+    </section>
+
+    <!-- Download -->
+    <section class="view" data-view="download" hidden aria-labelledby="dl-title">
+      <div class="view-head">
+        <div>
+          <p class="eyebrow">Download</p>
+          <h1 id="dl-title" tabindex="-1">Get EyeSync for Windows.</h1>
+          <p class="lede">EyeSync is the program that turns your webcam into a mouse you steer with your head. Install it once, then control it from this website.</p>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <section class="panel panel-strong" aria-labelledby="dl-get-title">
+          <h2 id="dl-get-title">Download</h2>
+          <a class="btn btn-primary btn-lg btn-block" id="dl-button" href="#download" hidden>Download EyeSync</a>
+          <p class="status-line" id="dl-status" role="status">Loading the latest version…</p>
+          <div class="row" id="dl-retry-row" hidden><button class="btn" type="button" id="dl-retry">Try again</button></div>
+          <dl class="kv" id="dl-meta" hidden>
+            <dt>Version</dt><dd id="dl-version"></dd>
+            <dt>Released</dt><dd id="dl-date"></dd>
+            <dt>Size</dt><dd id="dl-size"></dd>
+            <dt>SHA-256</dt><dd class="sha" id="dl-sha"></dd>
+          </dl>
+          <div class="stack-sm" id="dl-verify" hidden>
+            <p class="hint">To check the download, run this in PowerShell in your Downloads folder and compare the hash with the SHA-256 above:</p>
+            <code class="cmd" id="dl-hashcmd">Get-FileHash EyeSync.zip</code>
+          </div>
+          <dl class="kv">
+            <dt>Needs</dt><dd>Windows 10 or 11 and a webcam</dd>
+            <dt>Setup</dt><dd>a few minutes, online</dd>
+          </dl>
+        </section>
+
+        <section class="panel" aria-labelledby="dl-steps-title">
+          <h2 id="dl-steps-title">Install in four steps</h2>
+          <ol class="dl-steps">
+            <li><p><strong>Download</strong> the zip with the button.</p></li>
+            <li><p><strong>Extract it:</strong> right-click the zip, choose <strong>Extract All…</strong>, then <strong>Extract</strong>. Opening the zip without extracting it doesn't work.</p></li>
+            <li><p><strong>Install:</strong> in the extracted folder, double-click <span class="mono">install.bat</span>. If Windows shows “Windows protected your PC”, click <strong>More info</strong>, then <strong>Run anyway</strong>. Setup takes a few minutes and installs Python if needed, so stay online.</p></li>
+            <li><p><strong>Connect:</strong> when setup finishes, this website opens. Go to the <strong>Dashboard</strong> and press <strong>Connect</strong>.</p></li>
+          </ol>
+        </section>
+      </div>
+
+      <div class="grid-3">
+        <section class="panel" aria-labelledby="dl-update-title">
+          <h2 id="dl-update-title">Updating</h2>
+          <p>Download the new zip and run its <span class="mono">install.bat</span> the same way. Your settings and calibration are kept. The dashboard tells you when a new version is out.</p>
+        </section>
+        <section class="panel" aria-labelledby="dl-remove-title">
+          <h2 id="dl-remove-title">Removing</h2>
+          <p>Run <span class="mono">uninstall.bat</span> in <span class="mono">%LocalAppData%\Programs\EyeSync</span>.</p>
+        </section>
+        <section class="panel" aria-labelledby="dl-privacy-title">
+          <h2 id="dl-privacy-title">Privacy</h2>
+          <p>The camera picture is processed on your PC and never uploaded. EyeSync only talks to this website and to apps you give its API key.</p>
+        </section>
+      </div>
     </section>
 
     <!-- Policies -->
@@ -935,7 +1139,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
   </div>
 </footer>
 
-<!-- Gaze cursor overlay -->
+<!-- Cursor overlay -->
 <div id="gaze-cursor" aria-hidden="true" hidden><span class="gc-ring"></span><span class="gc-dot"></span></div>
 
 <!-- Cookie consent -->
@@ -968,7 +1172,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 
 <template id="tpl-cookies">
   <div class="policy">
-    <p class="meta">Version 1.1 · Last updated 14 October 2026</p>
+    <p class="meta">Version 1.2 · Last updated 15 October 2026</p>
     <p>EyeSync sets no HTTP cookies and loads nothing from other websites. It does use your browser's local storage and session storage, which privacy laws such as the EU ePrivacy Directive and UK PECR treat the same way as cookies. This policy lists every item it stores and why.</p>
     <h2>What is stored on your device</h2>
     <div class="table-wrap">
@@ -979,16 +1183,17 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
           <tr><td class="mono">fc.users</td><td>Local storage</td><td>Your account: username, a random salt, a PBKDF2-SHA-256 hash of your password, fingerprints (SHA-256 hashes) of your active sign-ins, and the policy versions you agreed to. Your password itself is never stored.</td><td>Until you delete your account</td><td>Essential</td></tr>
           <tr><td class="mono">fc.session</td><td>Local storage with “Keep me signed in”, otherwise session storage</td><td>A random sign-in token. With “Keep me signed in” it keeps you signed in after you close the site; otherwise it only works in the current tab.</td><td>Until you sign out. With “Keep me signed in”, at most 30 days since your last visit; otherwise until you close the tab or after 30 minutes without activity</td><td>Essential</td></tr>
           <tr><td class="mono">fc.throttle</td><td>Local storage</td><td>Counts failed sign-in attempts to slow down password guessing.</td><td>Cleared after a successful sign-in</td><td>Essential</td></tr>
-          <tr><td class="mono">fc.prefs</td><td>Local storage</td><td>Theme, tracker address, cursor mapping and smoothing, dwell selection, and your last calibration result.</td><td>Until you withdraw consent or clear site data</td><td>Preferences (optional)</td></tr>
+          <tr><td class="mono">fc.prefs</td><td>Local storage</td><td>Theme, tracker address, automatic connection, cursor mapping and smoothing, dwell selection, and your last accuracy test result.</td><td>Until you withdraw consent or clear site data</td><td>Preferences (optional)</td></tr>
         </tbody>
       </table>
     </div>
     <h2>Essential and optional storage</h2>
     <p>Essential items are needed for sign-in and security, so they are stored whichever option you choose. Preference storage is optional. Until you choose “Accept”, preferences are held in memory only and are lost when you close the tab. If you later switch to “Essential only”, <span class="mono">fc.prefs</span> is deleted straight away.</p>
-    <h2>Gaze data</h2>
-    <p>Gaze coordinates travel from the tracker software on your own computer to this page over a local WebSocket (localhost or 127.0.0.1 only). They are processed in memory to draw the cursor and are never stored or sent anywhere else. With preference storage on, only a summary of your last calibration is saved.</p>
+    <h2>Cursor and camera data</h2>
+    <p>Cursor positions travel from EyeSync (or other tracker software) on your own computer to this page over a local WebSocket (localhost or 127.0.0.1 only). They are processed in memory to draw the cursor and are never stored or sent anywhere else. With preference storage on, only a summary of your last accuracy test is saved.</p>
+    <p>If you turn on the camera view, EyeSync sends small camera pictures to this page the same way. They are shown on the page and are never stored, uploaded or logged. They stop when you turn the camera view off or leave the Dashboard.</p>
     <h2>Hosting</h2>
-    <p>The page is served by GitHub Pages. GitHub may log technical data such as your IP address when it delivers the page; see the <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener noreferrer">GitHub General Privacy Statement</a>. EyeSync has no server of its own and receives none of your data.</p>
+    <p>The page and the EyeSync download are served by GitHub Pages. GitHub may log technical data such as your IP address when it delivers them; see the <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener noreferrer">GitHub General Privacy Statement</a>. EyeSync has no server of its own and receives none of your data.</p>
     <h2>Changing your choice or deleting your data</h2>
     <ul>
       <li>Change your choice at any time with “Cookie settings” at the bottom of every page.</li>
@@ -1001,10 +1206,10 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 
 <template id="tpl-terms">
   <div class="policy">
-    <p class="meta">Version 1.1 · Last updated 14 October 2026</p>
+    <p class="meta">Version 1.2 · Last updated 15 October 2026</p>
     <p>These terms apply when you create an account on, or use, the EyeSync dashboard (“the dashboard”) published by the EyeSync project maintainers. By creating an account you agree to them.</p>
     <h2>1. What the dashboard does</h2>
-    <p>The dashboard runs entirely in your web browser. It connects to eye-tracker software on your own computer, shows where you are looking, and runs a 9-point calibration. There is no EyeSync server: your account and settings live only in this browser on this device.</p>
+    <p>The dashboard runs entirely in your web browser. It connects to EyeSync, the head-controlled mouse program on your own computer, shows where EyeSync puts the cursor, changes EyeSync's settings when you ask it to, and runs calibration and accuracy tests. There is no EyeSync server: your account and settings live only in this browser on this device.</p>
     <h2>2. Not a medical or safety device</h2>
     <p>The dashboard is not a medical device and is not designed to diagnose, treat or monitor any condition. Do not rely on it as your only way to communicate or to call for help. Keep another way to reach help available at all times.</p>
     <h2>3. Your account</h2>
@@ -1014,17 +1219,17 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
       <li>If you choose “Keep me signed in”, anyone using this browser can open your dashboard without your password until you sign out. Don't choose it on a shared computer.</li>
       <li>There is no password recovery. If you forget your password, clear this site's data and create a new account.</li>
     </ul>
-    <h2>4. Hardware and tracker software</h2>
-    <p>You are responsible for setting up and running your eye-tracker hardware and the software that sends gaze data. The dashboard only accepts connections to addresses on your own computer.</p>
+    <h2>4. EyeSync and other software</h2>
+    <p>You install and run EyeSync, your webcam and any other tracker software on your computer yourself, and you are responsible for them. The dashboard only accepts connections to addresses on your own computer.</p>
     <h2>5. Health and comfort</h2>
-    <p>Eye tracking and calibration can be tiring. Take regular breaks, and stop if you feel eye strain, headache, dizziness or discomfort. Calibration targets are high-contrast but do not flash.</p>
+    <p>Head control and calibration can be tiring. Take regular breaks, and stop if you feel neck or eye strain, headache, dizziness or discomfort. Calibration targets are high-contrast but do not flash.</p>
     <h2>6. Acceptable use</h2>
     <ul>
-      <li>Only track a person who has agreed to it. Gaze data can reveal sensitive information about health and attention.</li>
+      <li>Only track a person who has agreed to it. Camera pictures and cursor data can reveal sensitive information about health and attention.</li>
       <li>Do not try to get around the dashboard's security controls or use it to harm others.</li>
     </ul>
     <h2>7. No warranty</h2>
-    <p>The dashboard is provided “as is”, without warranties of any kind, including fitness for a particular purpose and accuracy of gaze positions.</p>
+    <p>The dashboard is provided “as is”, without warranties of any kind, including fitness for a particular purpose and accuracy of cursor positions.</p>
     <h2>8. Limitation of liability</h2>
     <p>To the extent the law allows, the maintainers are not liable for any loss or damage arising from your use of the dashboard. Nothing in these terms limits liability that cannot be limited by law.</p>
     <h2>9. Changes to these terms</h2>
@@ -1034,17 +1239,36 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
   </div>
 </template>
 
+<!-- "Calibrate EyeSync": shown on the Dashboard and on the Calibration page -->
+<template id="tpl-escal">
+  <div class="escal">
+    <p class="js-escal-state">Connect to EyeSync on the Dashboard to calibrate it.</p>
+    <div class="escal-run js-escal-run" hidden>
+      <p class="js-escal-text" role="status"></p>
+      <div class="bar js-escal-bar" role="progressbar" aria-label="Calibration progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span class="js-escal-fill"></span></div>
+      <ol class="escal-steps js-escal-steps" aria-hidden="true">
+        <li data-step="centre">Centre</li><li data-step="left">Left</li><li data-step="right">Right</li><li data-step="up">Up</li><li data-step="down">Down</li><li data-step="blink">Blink</li><li data-step="smile">Smile</li>
+      </ol>
+    </div>
+    <div class="row">
+      <button class="btn btn-primary js-escal-start" type="button" disabled>Calibrate EyeSync</button>
+      <button class="btn btn-danger js-escal-cancel" type="button" hidden>Cancel calibration</button>
+    </div>
+  </div>
+</template>
+
 <script type="module">
 /* ==========================================================================
    EyeSync dashboard: single-file SPA.
    Modules (plain objects in one ES module): Store, Consent, Prefs, Theme,
-   Crypto, Auth, Router, GazeLink, Simulator, Gaze/Render, Dwell, Calibration.
+   Crypto, Auth, Router, GazeLink, Discovery, EyeSync, Camera, Release,
+   Simulator, Gaze/Render, Dwell, Calibration.
    ========================================================================== */
 
 const APP = 'EyeSync';
 const CONSENT_VERSION = 1;
-const TERMS_VERSION = '1.1';
-const COOKIE_POLICY_VERSION = '1.1';
+const TERMS_VERSION = '1.2';
+const COOKIE_POLICY_VERSION = '1.2';
 const KDF_ITERATIONS = 600000;            // OWASP 2023 guidance for PBKDF2-HMAC-SHA-256
 const SESSION_IDLE_MS = 30 * 60 * 1000;          // sign-in for this tab only
 const REMEMBER_MS = 30 * 24 * 60 * 60 * 1000;    // "Keep me signed in": 30 days since last use
@@ -1052,6 +1276,7 @@ const MAX_SESSIONS = 5;                           // signed-in tabs/browsers kep
 const MAX_FAILS = 5;
 const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1']);  // keep in sync with the CSP connect-src
 const MAX_FRAME_CHARS = 4096;
+const MAX_MESSAGE_CHARS = 512 * 1024;     // EyeSync's typed messages: a camera picture is ~20 KB
 const STALE_MS = 3000;
 const SETTLE_MS = 700;
 
@@ -1389,11 +1614,12 @@ const Auth = {
 
 /* ---------- Router: hash routes with an auth guard ---------- */
 const ROUTES = {
-  home: { title: 'Eye-tracker console' },
+  home: { title: 'Head-controlled mouse' },
   login: { title: 'Sign in' },
   register: { title: 'Create account' },
   dashboard: { title: 'Dashboard', auth: true },
   calibration: { title: 'Calibration', auth: true },
+  download: { title: 'Download for Windows' },
   cookies: { title: 'Cookie Policy' },
   terms: { title: 'Terms and Conditions' },
 };
@@ -1426,6 +1652,7 @@ const Router = {
   },
   show(name, authed) {
     if (this.current === 'calibration' && name !== 'calibration') Calibration.stop('left');
+    if (this.current === 'dashboard' && name !== 'dashboard') Camera.off();
     this.current = name;
     $$('[data-view]').forEach((v) => { v.hidden = v.dataset.view !== name; });
     document.title = `${ROUTES[name]?.title || 'Page not found'} · ${APP}`;
@@ -1433,6 +1660,7 @@ const Router = {
     if (name === 'login') renderLoginNotice();
     if (name === 'dashboard') renderDashboard();
     if (name === 'calibration') Calibration.renderIdle();
+    if (name === 'download') DownloadPage.render();
     if (name === 'home') HeroPreview.start(); else HeroPreview.stop();
     window.scrollTo(0, 0);
     $(`[data-view="${name}"] h1`)?.focus({ preventScroll: true });
@@ -1442,7 +1670,6 @@ const Router = {
 };
 
 function renderChrome(authed) {
-  $('#nav').hidden = !authed;
   $('#btn-signout').hidden = !authed;
   $$('.js-guest').forEach((el) => { el.hidden = !!authed; });
   $$('.js-member').forEach((el) => { el.hidden = !authed; });
@@ -1464,12 +1691,15 @@ function renderLoginNotice() {
 function signOut(reason) {
   const remembered = !!Auth.current?.remember;
   Discovery.cancel();
-  Discovery.paused = false;
+  Discovery.reset();
   Calibration.stop('signout');
   Auth.end();                                    // end first so nothing below restarts a search
   Simulator.stop(false);
+  Camera.off();
   Link.disconnect();
+  EyeSync.seen = false;
   Gaze.reset();
+  renderEyeSync();
   Router.notice = reason === 'elsewhere' ? 'You signed out in another tab.'
     : reason !== 'expired' ? ''
     : remembered ? 'Your saved sign-in expired after 30 days without a visit. Sign in again.'
@@ -1478,16 +1708,26 @@ function signOut(reason) {
   if (!reason) toast('Signed out.');
 }
 
-/* ---------- Gaze link: WebSocket client with validation and reconnect ---------- */
-// EyeSync's standby (E:\EyeSync site_access.py) treats two tries within 0.75 s as a click on
-// Connect and restarts EyeSync. Automatic tries therefore stay AUTO_GAP_MS apart; only the
-// Connect and Find tracker buttons make tries close together.
-const AUTO_GAP_MS = 1500;
-let lastTrackerTry = -Infinity;                   // performance.now() of the last connection attempt
-const isRefusal = (code) => code === 1008 || (code >= 4000 && code < 5000);   // e.g. EyeSync's 4001
+/* ---------- Tracker link: WebSocket client with validation and reconnect ---------- */
+// EyeSync (E:\EyeSync, see its WEBSITE.md) and its standby listen on EYESYNC_PORTS. Automatic tries
+// only ask questions there: ?probe=1 never starts EyeSync. ?start=1 starts it, and is sent only for a
+// click on Connect, or by auto-connect when the user didn't close EyeSync themselves. EyeSync 1.0's
+// standby ignored both and read two tries within 0.75 s as a click on Connect, so automatic tries to
+// those ports also stay EYESYNC_GAP_MS apart.
+const EYESYNC_PORTS = [8765, 8080];
+const EYESYNC_GAP_MS = 1500;
+const START_WAIT_MS = 30000;                      // how long a starting EyeSync may take to accept us
+let lastEyeSyncTry = -Infinity;                   // performance.now() of the last try to an EyeSync port
+const portOf = (url) => { try { return new URL(url).port; } catch { return ''; } };
+const isEyeSyncUrl = (url) => EYESYNC_PORTS.includes(Number(portOf(url)));
+const eyeSyncUrl = (port, ask = '') => `ws://localhost:${port}${ask ? `/?${ask}=1` : ''}`;
+// Close codes: 4000 = EyeSync was closed by the user, 4002 = its standby is starting it, 4003 = the
+// answer to a probe. Other 4xxx codes (EyeSync's 4001) and 1008 mean the server refused this page.
+const isRefusal = (code) => code === 1008 || (code >= 4000 && code < 5000 && ![4000, 4002, 4003].includes(code));
+
 class GazeLink extends EventTarget {
-  #ws = null; #url = ''; #want = false; #retry = 0; #timer = 0; #opened = false;
-  state = 'idle'; retryDelay = 0; lastError = ''; openedAt = 0;
+  #ws = null; #url = ''; #want = false; #retry = 0; #timer = 0; #opened = false; #deadline = 0;
+  state = 'idle'; policy = 'backoff'; retryDelay = 0; lastError = ''; lastCode = 0; openedAt = 0; timedOut = false;
 
   static check(raw) {
     let u;
@@ -1499,14 +1739,18 @@ class GazeLink extends EventTarget {
   }
   get url() { return this.#url; }
   get retries() { return this.#retry; }
-  connect(url) {
+  // policy: 'backoff' retries with growing gaps (other trackers). 'once' never retries by itself
+  // (EyeSync: the dashboard asks it with a probe instead). 'starting' retries every second for up
+  // to START_WAIT_MS while EyeSync starts up, then becomes 'once'.
+  connect(url, policy = 'backoff') {
     this.disconnect(true);
-    this.#want = true; this.#url = url; this.#retry = 0; this.lastError = '';
+    Object.assign(this, { policy, lastError: '', lastCode: 0, timedOut: false });
+    this.#want = true; this.#url = url; this.#retry = 0; this.#deadline = performance.now() + START_WAIT_MS;
     this.#open();
   }
   #open() {
     this.#opened = false;
-    lastTrackerTry = performance.now();
+    if (isEyeSyncUrl(this.#url)) lastEyeSyncTry = performance.now();
     this.#set('connecting');
     let ws;
     try { ws = new WebSocket(this.#url); } catch {
@@ -1518,20 +1762,28 @@ class GazeLink extends EventTarget {
     ws.addEventListener('open', () => {
       if (this.#ws !== ws) return;
       this.#opened = true; this.#retry = 0; this.lastError = ''; this.openedAt = performance.now();
+      if (this.policy === 'starting') this.policy = 'once';
       this.#set('open');
     });
     ws.addEventListener('message', (ev) => { if (this.#ws === ws) this.dispatchEvent(new CustomEvent('frame', { detail: ev.data })); });
     ws.addEventListener('close', (ev) => {
       if (this.#ws !== ws) return;
       this.#ws = null;
-      this.lastError = isRefusal(ev.code) ? `The tracker at ${this.#url} refused this page${ev.reason ? ` (${ev.reason})` : ''}.`
+      this.lastCode = this.#opened ? ev.code : 0;
+      const final = ev.code === 4000 || isRefusal(ev.code);
+      this.lastError = ev.code === 4000 ? 'EyeSync was closed. Press Connect to start it again.'
+        : isRefusal(ev.code) ? `The tracker at ${this.#url} refused this page${ev.reason ? ` (${ev.reason})` : ''}.`
         : this.#opened ? `The connection dropped (code ${ev.code}).` : `No tracker answered at ${this.#url}.`;
-      if (this.#want) this.#retryLater(); else this.#set('idle');
+      if (this.#want && !final) this.#retryLater(); else this.#stop();
     });
   }
+  #stop() { this.#want = false; clearTimeout(this.#timer); this.#set('idle'); }
   #retryLater() {
+    if (this.policy === 'once') { this.#stop(); return; }
+    if (this.policy === 'starting' && performance.now() + 1000 > this.#deadline) { this.timedOut = true; this.#stop(); return; }
     this.#retry++;
-    this.retryDelay = Math.round(Math.min(10000, 500 * 2 ** (this.#retry - 1)) * (0.8 + Math.random() * 0.4));
+    this.retryDelay = this.policy === 'starting' ? 1000
+      : Math.round(Math.min(10000, 500 * 2 ** (this.#retry - 1)) * (0.8 + Math.random() * 0.4));
     this.#set('reconnecting');
     clearTimeout(this.#timer);
     this.#timer = setTimeout(() => { if (this.#want) this.#open(); }, this.retryDelay);
@@ -1542,7 +1794,7 @@ class GazeLink extends EventTarget {
     const ws = this.#ws;
     this.#ws = null;
     if (ws) { try { ws.close(1000, 'Dashboard disconnected'); } catch { /* ignore */ } }
-    if (!silent) { this.lastError = ''; this.#set('idle'); }
+    if (!silent) { this.lastError = ''; this.lastCode = 0; this.#set('idle'); }
   }
   markStale(stale) {
     if (stale && this.state === 'open') this.#set('stale');
@@ -1557,7 +1809,7 @@ class GazeLink extends EventTarget {
 }
 const Link = new GazeLink();
 
-/* ---------- Gaze pipeline: one entry point for socket and simulator frames ---------- */
+/* ---------- Cursor pipeline: one entry point for socket and simulator frames ---------- */
 const Gaze = {
   last: null, lastRaw: '', target: null, pos: null, lastSampleAt: 0, wasBlink: false,
   total: 0, rejected: 0, reason: 'None', perSecond: 0, blinks: 0, lastUi: 0,
@@ -1597,10 +1849,25 @@ function ingest(raw) {
   Link.markStale(false);
   Render.kick();
 }
-Link.addEventListener('frame', (e) => ingest(e.detail));
+// Messages with a "type" (status, preview, eyesync, error) are EyeSync's, not tracking frames.
+function route(raw) {
+  if (typeof raw === 'string' && raw.length <= MAX_MESSAGE_CHARS && raw.includes('"type"')) {
+    let msg = null;
+    try { msg = JSON.parse(raw); } catch { /* not JSON: ingest() reports it */ }
+    if (isObj(msg) && typeof msg.type === 'string') { EyeSync.message(msg); return; }
+  }
+  ingest(raw);
+}
+Link.addEventListener('frame', (e) => route(e.detail));
 Link.addEventListener('state', () => {
-  // After three failed reconnects the tracker may have moved to another port: search again instead.
-  if (Link.state === 'reconnecting' && Link.retries >= 3 && Prefs.get('autoConnect') && !Discovery.paused) { Link.disconnect(); return; }
+  // After three failed reconnects another tracker may have moved to another port: search again instead.
+  if (Link.state === 'reconnecting' && Link.policy === 'backoff' && Link.retries >= 3 && Prefs.get('autoConnect') && !Discovery.paused) { Link.disconnect(); return; }
+  if (Link.state === 'open' && EyeSync.linkOpenedAt !== Link.openedAt) EyeSync.opened();
+  else if (Link.state !== 'open' && Link.state !== 'stale') EyeSync.closed();
+  if (Link.state === 'idle') {
+    if (Link.lastCode === 4000) Discovery.closedByUser();   // never start it again by ourselves
+    if (Link.timedOut) Discovery.startFailed = true;
+  }
   renderLink();
   Calibration.renderIdle();
   if (Link.state === 'idle') Discovery.kick();
@@ -1660,123 +1927,173 @@ const Simulator = {
   },
 };
 
-/* ---------- Discovery: find the tracker's WebSocket server on this computer ---------- */
-const DISCOVERY_PORTS = [8765, 8766, 8767, 8768, 8769, 8770, 8080, 8000];
-const EYESYNC_PORTS = new Set(['8765', '8080']);   // where EyeSync and its standby listen
+/* ---------- Discovery: find EyeSync, or another tracker, on this computer ---------- */
+const OTHER_PORTS = [8766, 8767, 8768, 8769, 8770, 8000];   // other trackers, tried without parameters
 // How long a port may take to accept the WebSocket. Generous on purpose: Windows takes ~2 s to
 // refuse a closed loopback port, and Chrome slows new sockets while several are pending.
 const PROBE_OPEN_MS = 6000;
-const PROBE_FRAME_MS = 1500;   // how long an open socket may take to send its first gaze frame
-const portOf = (url) => { try { return new URL(url).port; } catch { return ''; } };
+const PROBE_FRAME_MS = 1500;   // how long an open socket may take to say something useful
+const SEARCH_EVERY_MS = 5000;
+const INSTANT_MS = 300;        // a refusal faster than this on Windows means the browser blocked it
 
-// Opens a short-lived socket. Resolves { url, verified, refused } if it opened (verified = it sent
-// a valid gaze frame; refused = it closed us out with a reason), or null if nothing answered.
-// The probe never sends anything to the server.
-function probeTracker(url) {
-  lastTrackerTry = performance.now();
+// Opens one short-lived socket and reports what answered. It never sends anything. kind is one of
+//   none      nothing answered (the socket never opened)
+//   eyesync   EyeSync or its standby answered ?probe=1 or ?start=1: state, closedByUser, version
+//   tracker   a running tracker: it sent a valid tracking frame
+//   closed    EyeSync closed us with 4000: the user closed it
+//   refused   it closed us out (EyeSync's 4001, or 1008), with a reason
+//   open      it opened but said nothing useful in time
+// ms is how long it took.
+function askPort(url) {
+  const t0 = performance.now();
+  if (isEyeSyncUrl(url)) lastEyeSyncTry = t0;
   return new Promise((resolve) => {
     let ws, timer = 0, opened = false, done = false;
-    const finish = (result) => {
+    const finish = (r) => {
       if (done) return;
       done = true;
       clearTimeout(timer);
       try { ws?.close(); } catch { /* ignore */ }
-      resolve(result);
+      resolve({ url, ms: performance.now() - t0, ...r });
     };
-    try { ws = new WebSocket(url); } catch { resolve(null); return; }
-    timer = setTimeout(() => finish(opened ? { url, verified: false } : null), PROBE_OPEN_MS);
+    try { ws = new WebSocket(url); } catch { finish({ kind: 'none' }); return; }
+    timer = setTimeout(() => finish({ kind: opened ? 'open' : 'none' }), PROBE_OPEN_MS);
     ws.addEventListener('open', () => {
       opened = true;
       clearTimeout(timer);
-      timer = setTimeout(() => finish({ url, verified: false }), PROBE_FRAME_MS);
+      timer = setTimeout(() => finish({ kind: 'open' }), PROBE_FRAME_MS);
     });
     ws.addEventListener('message', (ev) => {
-      if (typeof ev.data !== 'string' || ev.data.length > MAX_FRAME_CHARS) return;
-      try { if (parseSample(JSON.parse(ev.data))) finish({ url, verified: true }); } catch { /* not a gaze frame */ }
+      if (typeof ev.data !== 'string' || ev.data.length > MAX_MESSAGE_CHARS) return;
+      let m;
+      try { m = JSON.parse(ev.data); } catch { return; }
+      if (!isObj(m)) return;
+      if (m.type === 'eyesync' && typeof m.state === 'string') {
+        finish({ kind: 'eyesync', state: m.state, closedByUser: m.closed_by_user === true, version: typeof m.version === 'string' ? m.version.slice(0, 20) : '' });
+      } else if (m.type === undefined && parseSample(m)) finish({ kind: 'tracker' });
     });
     ws.addEventListener('close', (ev) => {
-      if (!opened) { finish(null); return; }
-      finish(isRefusal(ev.code) ? { url, verified: false, refused: ev.reason || `code ${ev.code}` } : { url, verified: false });
+      if (!opened) finish({ kind: 'none' });
+      else if (ev.code === 4000) finish({ kind: 'closed' });
+      else if (isRefusal(ev.code)) finish({ kind: 'refused', reason: ev.reason.slice(0, 120) || `code ${ev.code}` });
+      else finish({ kind: 'open' });
     });
   });
 }
 
 const Discovery = {
-  running: false, paused: false, missed: false, attempt: 0, timer: 0, generation: 0, nextSecs: 0, checked: 0, refused: null,
-  candidates() {
-    const saved = Prefs.get('wsUrl');
-    return [...new Set([saved, ...DISCOVERY_PORTS.map((p) => `ws://localhost:${p}`)].filter(Boolean))];
-  },
-  // Auto search runs only while signed in, on the dashboard or calibration, with nothing connected.
+  running: false, manual: false, starting: false, startPort: EYESYNC_PORTS[0], paused: false, timer: 0, generation: 0, nextSecs: 0,
+  report: null,          // what the last search found: { what: none|running|standby|closed|tracker|refused, ... }
+  userClosed: false,     // EyeSync was closed by the user: say so while its standby comes back up
+  startFailed: false,    // a start timed out: don't start EyeSync again by ourselves
+  reset() { Object.assign(this, { paused: false, starting: false, report: null, userClosed: false, startFailed: false }); },
+  // Searches run while signed in, on the dashboard or calibration, with nothing connected. With
+  // auto-connect off they only report what they found; with it on they connect (or start EyeSync).
   wanted() {
-    return Prefs.get('autoConnect') && !this.paused && !!Auth.current && !Simulator.running
+    return !this.paused && !this.starting && !!Auth.current && !Simulator.running
       && Link.state === 'idle' && (Router.current === 'dashboard' || Router.current === 'calibration');
   },
   kick() {
     if (this.running || !this.wanted()) return;
-    const wait = lastTrackerTry + AUTO_GAP_MS - performance.now();   // never right after another try
+    const wait = lastEyeSyncTry + EYESYNC_GAP_MS - performance.now();   // never right after another try
     clearTimeout(this.timer);
     if (wait > 0) this.timer = setTimeout(() => this.run(), wait);
     else this.run();
   },
-  cancel() { this.generation++; this.running = false; this.missed = false; clearTimeout(this.timer); },
-  // manual = the Find tracker button: probes everything at once, which EyeSync's standby reads as a
-  // click and may start EyeSync. Automatic searches space EyeSync's ports AUTO_GAP_MS apart.
+  cancel() { this.generation++; this.running = false; this.starting = false; clearTimeout(this.timer); },
+  closedByUser() { this.userClosed = true; this.report = { what: 'closed', port: Number(portOf(Link.url)) || EYESYNC_PORTS[0] }; },
+
+  // EyeSync's ports one after another, stopping at the first that answers.
+  async askEyeSync(manual, gen) {
+    let instant = true;
+    for (const port of EYESYNC_PORTS) {
+      const wait = manual ? 0 : lastEyeSyncTry + EYESYNC_GAP_MS - performance.now();
+      if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+      if (gen !== this.generation) return { kind: 'none' };
+      const r = await askPort(eyeSyncUrl(port, 'probe'));
+      if (r.kind !== 'none' && r.kind !== 'open') return { ...r, port };
+      instant = instant && r.kind === 'none' && r.ms < INSTANT_MS;
+    }
+    return { kind: 'none', instant };
+  },
+  // The other ports and the last address that worked, all at once. Resolves on the first tracker.
+  askOthers() {
+    const saved = Prefs.get('wsUrl');
+    const list = [...new Set([saved, ...OTHER_PORTS.map((p) => `ws://localhost:${p}`)])].filter((u) => u && !isEyeSyncUrl(u));
+    return new Promise((resolve) => {
+      const opened = [];
+      let pending = list.length, settled = false;
+      const settle = (found) => { if (!settled) { settled = true; resolve({ found, opened, saved }); } };
+      if (!pending) settle(null);
+      list.forEach((url) => askPort(url).then((r) => {
+        if (r.kind === 'tracker') settle(r);
+        else if (r.kind === 'open') opened.push(r);
+        if (--pending === 0) settle(null);
+      }));
+    });
+  },
+  // manual = the Connect button: no gaps between tries, and a waiting EyeSync is started even if
+  // the user closed it.
   async run(manual = false) {
     if (this.running) return;
     clearTimeout(this.timer);
-    if (manual ? !(Auth.current && Link.state === 'idle' && !Simulator.running) : !this.wanted()) return;
+    if (manual ? !(Auth.current && Link.state === 'idle' && !Simulator.running && !this.starting) : !this.wanted()) return;
     const gen = ++this.generation;
-    const list = this.candidates();
-    this.running = true; this.missed = false; this.refused = null; this.checked = list.length;
+    this.running = true;
+    this.manual = manual;
+    if (manual) { this.userClosed = false; this.startFailed = false; }
     renderLink();
-    const found = await new Promise((resolve) => {
-      const opened = [];
-      let pending = list.length, settled = false, slot = 0;
-      const settle = (r) => { if (!settled) { settled = true; resolve(r); } };
-      const done = (i, r) => {
-        if (r?.verified) settle(r);                        // the first server sending real gaze frames wins
-        else if (r) opened[i] = r;
-        if (--pending === 0) {
-          // Nothing sent gaze frames. Fall back to a server that at least opened (and didn't refuse
-          // us), but only on the last address that worked or the standard port.
-          this.refused = opened.find((o) => o?.refused) || null;
-          settle(opened.find((o) => o && !o.refused && (o.url === list[0] || portOf(o.url) === '8765')) || null);
-        }
-      };
-      list.forEach((url, i) => {
-        const delay = !manual && EYESYNC_PORTS.has(portOf(url)) ? AUTO_GAP_MS * slot++ : 0;
-        setTimeout(() => {
-          if (settled || gen !== this.generation) { done(i, null); return; }
-          probeTracker(url).then((r) => done(i, r));
-        }, delay);
-      });
-    });
-    if (gen !== this.generation) return;                   // cancelled while probing
+    const others = this.askOthers();
+    const es = await this.askEyeSync(manual, gen);
+    // EyeSync's answer settles it at once, unless the user closed it and this is an automatic check:
+    // then another tracker on the other ports may be used instead.
+    const now = (es.kind === 'eyesync' && (es.state === 'running' || manual || !es.closedByUser)) || es.kind === 'tracker';
+    const other = now ? null : await others;
+    if (gen !== this.generation) return;                   // cancelled meanwhile
     this.running = false;
     if (!Auth.current || Simulator.running || Link.state !== 'idle') { renderLink(); return; }
-    if (found) {
-      this.attempt = 0;
-      connectTo(found.url, 'auto');
-      toast(`Found your tracker at ${found.url}.`, 'ok');
-    } else {
-      this.attempt++;
-      this.missed = true;
-      this.schedule();
-      renderLink();
+    this.act(manual, es, other);
+  },
+  act(manual, es, other) {
+    const auto = manual || Prefs.get('autoConnect');
+    const source = manual ? 'manual' : 'auto';
+    // A server on the last address that worked which opened but stayed quiet still counts.
+    const quiet = other?.opened.find((o) => o.url === other.saved);
+    let r;
+    if (es.kind === 'eyesync' && es.state === 'running') r = { what: 'running', port: es.port };
+    else if (es.kind === 'tracker') r = { what: 'tracker', url: eyeSyncUrl(es.port) };   // e.g. EyeSync 1.0
+    else if (other?.found) r = { what: 'tracker', url: other.found.url };
+    else if (es.kind === 'eyesync') r = { what: es.closedByUser ? 'closed' : 'standby', port: es.port };
+    else if (es.kind === 'closed') r = { what: 'closed', port: es.port };
+    else if (es.kind === 'refused') r = { what: 'refused', url: eyeSyncUrl(es.port), reason: es.reason };
+    else if (quiet) r = { what: 'tracker', url: quiet.url };
+    else r = { what: 'none', instant: !!es.instant };
+    if (r.what === 'running' || r.what === 'standby') this.userClosed = false;
+    if (r.what === 'closed') this.userClosed = true;
+    this.report = r;
+    if (r.what === 'running' && auto) return connectTo(eyeSyncUrl(r.port), source);
+    if (r.what === 'tracker' && auto) {
+      connectTo(r.url, source);
+      if (!manual) toast(`Found a tracker at ${r.url}.`, 'ok');
+      return;
     }
+    // Never start EyeSync by ourselves after the user closed it: only a click on Connect may.
+    if (r.what === 'standby' && (manual || (auto && !this.startFailed))) return startEyeSync(r.port, source);
+    if (r.what === 'closed' && manual) return startEyeSync(r.port, source);
+    if (r.what !== 'refused') this.schedule();             // a refusal won't change by itself: stop trying
+    renderLink();
   },
   schedule() {
     clearTimeout(this.timer);
-    if (!Prefs.get('autoConnect') || this.paused) return;
-    const delay = Math.min(15000, 5000 * 2 ** Math.max(0, this.attempt - 1));   // 5 s, 10 s, then every 15 s
-    this.nextSecs = Math.round(delay / 1000);
-    this.timer = setTimeout(() => this.run(), delay);
+    if (this.paused) return;
+    this.nextSecs = SEARCH_EVERY_MS / 1000;
+    this.timer = setTimeout(() => this.run(), SEARCH_EVERY_MS);
   },
 };
 
 let linkSource = 'auto';                          // how the current address was chosen: 'auto' or 'manual'
-function connectTo(url, source = 'manual') {
+// EyeSync's ports get no automatic retries: if the link drops, Discovery asks EyeSync with a probe.
+function connectTo(url, source = 'manual', policy = isEyeSyncUrl(url) ? 'once' : 'backoff') {
   linkSource = source;
   Discovery.cancel();
   Discovery.paused = false;
@@ -1784,8 +2101,217 @@ function connectTo(url, source = 'manual') {
   $('#ws-url').value = url;
   setError($('#ws-url'), '');
   Prefs.set('wsUrl', url);
-  Link.connect(url);
+  Link.connect(url, policy);
 }
+
+// ?start=1 starts a waiting EyeSync (answer: "starting", close 4002); then the plain address is
+// tried every second for up to 30 s. A running EyeSync treats ?start=1 as a normal connection, so
+// that socket is closed and the plain address used instead.
+async function startEyeSync(port, source) {
+  Discovery.cancel();
+  const gen = Discovery.generation;
+  Discovery.starting = true;
+  Discovery.startPort = port;
+  renderLink();
+  const r = await askPort(eyeSyncUrl(port, 'start'));
+  if (gen !== Discovery.generation) return;              // Disconnect or the simulator won meanwhile
+  Discovery.starting = false;
+  if (!Auth.current || Simulator.running || Link.state !== 'idle') { renderLink(); return; }
+  if (r.kind === 'eyesync' && r.state === 'starting') { connectTo(eyeSyncUrl(port), source, 'starting'); return; }
+  if (r.kind === 'tracker' || (r.kind === 'eyesync' && r.state === 'running')) { connectTo(eyeSyncUrl(port), source); return; }
+  Discovery.report = r.kind === 'refused' ? { what: 'refused', url: eyeSyncUrl(port), reason: r.reason } : { what: 'none' };
+  if (r.kind !== 'refused') Discovery.schedule();
+  renderLink();
+}
+
+/* ---------- EyeSync: status, controls, calibration and camera view over the same link ---------- */
+const CAL_STEPS = ['starting', 'centre', 'left', 'right', 'up', 'down', 'blink', 'smile', 'done'];
+const isDay = (v) => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
+const isVersion = (v) => typeof v === 'string' && /^\d{1,6}(\.\d{1,6}){0,3}$/.test(v);
+const shortText = (v, max = 300) => (typeof v === 'string' ? v.slice(0, max) : '');
+const fmtDay = (day) => {
+  const [y, m, d] = day.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  return Number.isNaN(date.getTime()) ? day : date.toLocaleDateString(undefined, { dateStyle: 'medium' });
+};
+function sanitizeStatus(m) {
+  const cal = isObj(m.calibration) ? m.calibration : {};
+  return {
+    version: isVersion(m.version) ? m.version : '',
+    mouseEnabled: m.mouse_enabled === true, paused: m.paused === true, active: m.active === true,
+    face: m.face === true, camera: m.camera === true,
+    speed: intIn(m.speed, 1, 5) ? m.speed : 0,
+    clickMode: m.click_mode === 'blink' || m.click_mode === 'dwell' ? m.click_mode : '',
+    gestures: m.gestures === true,
+    calibrating: m.calibrating === true,
+    calibrated: isDay(m.calibrated) ? m.calibrated : '',
+    step: CAL_STEPS.includes(cal.step) ? cal.step : '',
+    stepText: shortText(cal.text),
+    progress: typeof cal.progress === 'number' && Number.isFinite(cal.progress) ? clamp(cal.progress, 0, 1) : 0,
+    hint: shortText(m.hint),
+    hardwareMouse: m.hardware_mouse === true,
+  };
+}
+
+const EyeSync = {
+  status: null,          // the latest status on the current link; null = not talking to EyeSync
+  seen: false,           // EyeSync answered on this visit: keep its panels on screen
+  linkOpenedAt: -1,
+  get connected() { return !!this.status && (Link.state === 'open' || Link.state === 'stale'); },
+  // Right after the socket opens: ask for the status. From then on EyeSync pushes every change.
+  opened() {
+    this.linkOpenedAt = Link.openedAt;
+    this.status = null;
+    Link.send({ action: 'status' });
+  },
+  closed() {
+    if (!this.status) return;
+    this.status = null;
+    Camera.off(false);
+    renderEyeSync();
+  },
+  message(m) {
+    if (m.type === 'status') this.apply(m);
+    else if (m.type === 'preview') Camera.frame(m.image);
+    else if (m.type === 'error') toast(`EyeSync: ${shortText(m.error, 160) || 'that didn\'t work.'}`, 'error');
+  },
+  apply(m) {
+    const prev = this.status;
+    const s = sanitizeStatus(m);
+    this.status = s;
+    this.seen = true;
+    if (!prev) {
+      Discovery.userClosed = false;
+      Discovery.startFailed = false;
+      toast(`Connected to EyeSync${s.version ? ` ${s.version}` : ''}.`, 'ok');
+      Release.load().then(renderUpdate);
+    }
+    if (prev?.calibrating && !s.calibrating) {     // step "done" = finished (text: the result); "" = cancelled
+      if (s.step === 'done') toast(s.stepText || 'EyeSync is calibrated.', 'ok');
+      else toast('Calibration cancelled. EyeSync keeps its previous settings.');
+    }
+    renderEyeSync();
+    renderLink();
+  },
+  send(action, value) {
+    const msg = value === undefined ? { action } : { action, value };
+    if (this.connected && Link.send(msg)) return true;
+    toast('EyeSync isn\'t connected. Press Connect on the Dashboard.', 'error');
+    renderEyeSync();                   // undo what the click changed
+    return false;
+  },
+};
+
+// The camera view. Pictures are only ever put on the <img>: never stored, uploaded or logged.
+const JPEG_PREFIX = 'data:image/jpeg;base64,';
+const Camera = {
+  on: false,
+  img: $('#cam-img'),
+  start() {
+    if (!EyeSync.send('preview', true)) return;
+    this.on = true;
+    this.paint();
+  },
+  off(tell = true) {
+    if (this.on && tell && EyeSync.connected) Link.send({ action: 'preview', value: false });
+    this.on = false;
+    this.img.removeAttribute('src');
+    this.paint();
+  },
+  frame(image) {
+    if (!this.on || Router.current !== 'dashboard') return;     // late pictures after "off" are dropped
+    if (typeof image !== 'string' || !image.startsWith(JPEG_PREFIX)) return;
+    if (!/^[A-Za-z0-9+/]+={0,2}$/.test(image.slice(JPEG_PREFIX.length))) return;
+    this.img.src = image;
+    this.paint();
+  },
+  paint() {
+    const showing = this.on && this.img.hasAttribute('src');
+    this.img.hidden = !showing;
+    $('#cam-toggle').checked = this.on;
+    $('#cam-toggle').disabled = !EyeSync.connected;
+    const empty = $('#cam-empty');
+    empty.hidden = showing;
+    empty.textContent = !EyeSync.connected ? 'Connect to EyeSync to see the camera' : this.on ? 'Waiting for the camera…' : 'Camera view is off';
+  },
+};
+
+// downloads/latest.json, written by EyeSync's make_release.py next to the zip.
+function sanitizeRelease(d) {
+  if (!isObj(d) || !isVersion(d.version) || typeof d.file !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._-]{0,80}\.zip$/.test(d.file)) return null;
+  if (!Number.isInteger(d.size) || d.size <= 0) return null;
+  return {
+    version: d.version, file: d.file, size: d.size,
+    sha256: typeof d.sha256 === 'string' && /^[0-9a-f]{64}$/i.test(d.sha256) ? d.sha256.toLowerCase() : '',
+    date: isDay(d.date) ? d.date : '',
+  };
+}
+const Release = {
+  data: null, pending: null,
+  load() {
+    if (this.data) return Promise.resolve(this.data);
+    this.pending ??= fetch('downloads/latest.json', { cache: 'no-cache', credentials: 'omit' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => (this.data = sanitizeRelease(d)))
+      .catch(() => null)
+      .finally(() => { this.pending = null; });
+    return this.pending;
+  },
+};
+// Is version a newer than b? Compared as numbers per part, so 1.10.0 is newer than 1.9.0.
+function isNewer(a, b) {
+  const pa = a.split('.').map(Number), pb = b.split('.').map(Number);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const d = (pa[i] || 0) - (pb[i] || 0);
+    if (d) return d > 0;
+  }
+  return false;
+}
+const fmtMB = (bytes) => `${(bytes / 1e6).toFixed(1)} MB`;
+
+const DownloadPage = {
+  async render() {
+    const status = $('#dl-status');
+    status.hidden = false;
+    $('#dl-retry-row').hidden = true;
+    if (!Release.data) status.textContent = 'Loading the latest version…';
+    const r = await Release.load();
+    if (Router.current !== 'download') return;
+    $('#dl-button').hidden = $('#dl-meta').hidden = $('#dl-verify').hidden = !r;
+    if (!r) {
+      status.textContent = 'The download details couldn\'t be loaded. Check your internet connection and try again.';
+      $('#dl-retry-row').hidden = false;
+      return;
+    }
+    status.hidden = true;
+    const btn = $('#dl-button');
+    btn.href = 'downloads/' + r.file;               // the name was checked in sanitizeRelease
+    btn.setAttribute('download', r.file);
+    btn.textContent = `Download EyeSync ${r.version} for Windows (${fmtMB(r.size)})`;
+    $('#dl-version').textContent = r.version;
+    $('#dl-date').textContent = r.date ? fmtDay(r.date) : 'unknown';
+    $('#dl-size').textContent = `${fmtMB(r.size)} (${r.size.toLocaleString()} bytes)`;
+    $('#dl-sha').textContent = r.sha256 || 'not published';
+    $('#dl-verify').hidden = !r.sha256;
+    $('#dl-hashcmd').textContent = `Get-FileHash .\\${r.file}`;
+  },
+};
+
+// Chrome and Edge may ask before a website can reach apps on this device (local network access).
+// It only applies to pages from the internet: a copy served from localhost is never blocked.
+const Browser = {
+  blocked: false,
+  async check() {
+    if (!navigator.permissions?.query || LOOPBACK_HOSTS.has(location.hostname)) return;
+    const known = [];
+    for (const name of ['local-network-access', 'loopback-network', 'local-network']) {
+      try { known.push(await navigator.permissions.query({ name })); } catch { /* not a permission in this browser */ }
+    }
+    const update = () => { this.blocked = known.some((p) => p.state === 'denied'); renderLink(); };
+    known.forEach((p) => p.addEventListener('change', update));
+    update();
+  },
+};
 
 /* ---------- Render loop: cursor position via top/left, batched per animation frame ---------- */
 const cursorEl = $('#gaze-cursor');
@@ -1823,8 +2349,8 @@ function syncCursor() {
   if (!show) Dwell.reset();
 }
 
-/* ---------- Dwell selection: hold the gaze on a control to press it ---------- */
-const DWELL_SELECTOR = 'button:not([disabled]), a[href], label.check, summary, [data-dwell]';
+/* ---------- Dwell selection: hold the crosshair on a control to press it ---------- */
+const DWELL_SELECTOR = 'button:not([disabled]), a[href], label.check, label.seg-opt, summary, [data-dwell]';
 const Dwell = {
   el: null, start: 0,
   reset() {
@@ -1833,7 +2359,7 @@ const Dwell = {
     ringEl.style.setProperty('--p', '0');
   },
   update(x, y, now, blink) {
-    if (!Prefs.get('dwell') || cursorEl.hidden) { if (this.el) this.reset(); return; }
+    if (!dwellActive() || cursorEl.hidden) { if (this.el) this.reset(); return; }
     if (blink) return;                               // pause, don't restart, during a blink
     const hit = document.elementFromPoint(x, y)?.closest(DWELL_SELECTOR) || null;
     if (hit !== this.el) {
@@ -1857,13 +2383,13 @@ function updateReadouts() {
   const s = Gaze.last;
   $('#m-x').textContent = s ? String(Math.round(s.x)) : '—';
   $('#m-y').textContent = s ? String(Math.round(s.y)) : '—';
-  $('#m-eye').textContent = s ? (s.blink ? 'Blink' : 'Open') : '—';
+  $('#m-eye').textContent = s ? (s.blink ? 'Yes' : 'No') : '—';
   $('#tile-eye').classList.toggle('is-blink', !!s?.blink);
   $('#m-blinks').textContent = Gaze.blinks.toLocaleString();
   $('#m-total').textContent = Gaze.total.toLocaleString();
   $('#m-rejected').textContent = Gaze.rejected.toLocaleString();
   $('#m-reason').textContent = Gaze.reason;
-  $('#last-frame').textContent = Gaze.lastRaw || 'No frames yet';
+  $('#last-frame').textContent = Gaze.lastRaw || 'Nothing yet';
   const dot = $('#gm-dot');
   $('#gm-empty').hidden = !!s;
   dot.hidden = !s;
@@ -1875,59 +2401,163 @@ function updateReadouts() {
   }
 }
 
-const LINK_TEXT = { idle: 'Not connected', searching: 'Searching…', connecting: 'Connecting…', open: 'Connected', stale: 'No data', reconnecting: 'Retrying', sim: 'Simulator' };
-function idleDetail() {
-  if (Discovery.paused) return 'Automatic search is paused. Press Find tracker to search this computer, or enter an address yourself.';
-  if (Discovery.missed && Discovery.refused) return `A tracker at ${Discovery.refused.url} refused this page (${Discovery.refused.refused}). EyeSync accepts its own website, or an address that ends in ?key= followed by its API key. Searching again in ${Discovery.nextSecs} s.`;
-  if (Discovery.missed) return `No tracker found on this computer yet. Searching again in ${Discovery.nextSecs} s. If you closed EyeSync, press Find tracker to start it again.`;
-  if (Link.lastError) return Link.lastError;
-  return Prefs.get('autoConnect') ? 'Start your tracker and EyeSync will find it and connect by itself.' : 'Automatic search is off. Start your tracker script, then press Find tracker.';
+const LINK_TEXT = { idle: 'Not connected', searching: 'Searching…', starting: 'Starting…', connecting: 'Connecting…', open: 'Connected', stale: 'No data', reconnecting: 'Retrying', sim: 'Simulator' };
+function linkState() {
+  if (Simulator.running) return 'sim';
+  if (Discovery.starting || (Link.policy === 'starting' && (Link.state === 'connecting' || Link.state === 'reconnecting'))) return 'starting';
+  // Background checks keep showing what the last one found; only the first one and Connect say "Searching".
+  if (Link.state === 'idle' && Discovery.running && (Discovery.manual || !Discovery.report)) return 'searching';
+  return Link.state;
 }
-// The "Tracker address" box: what address is in use and how it was found.
+function idleDetail() {
+  const r = Discovery.report;
+  if (Discovery.paused) return 'Disconnected. Press Connect to connect again.';
+  if (r?.what === 'refused') return `EyeSync at ${r.url} refused this page (${r.reason}). It only accepts its own website, https://aniruddh9140.github.io/face-control-website/. Press Connect to try again.`;
+  if (Discovery.startFailed && r?.what !== 'running') return 'EyeSync didn\'t start. Open the EyeSync shortcut on your Desktop, then press Connect.';
+  if (r?.what === 'closed' || (r?.what === 'none' && Discovery.userClosed)) return 'EyeSync was closed. Press Connect to start it again.';
+  if (r?.what === 'standby') return 'EyeSync is installed and waiting. Press Connect to start it.';
+  if (r?.what === 'running') return 'EyeSync is running. Press Connect to use it here.';
+  if (r?.what === 'tracker') return `A tracker is running at ${r.url}. Press Connect to use it.`;
+  if (r?.what === 'none') return `EyeSync isn't running on this computer. Checking again in ${Discovery.nextSecs} s.`;
+  if (Link.lastError) return Link.lastError;
+  return 'Looking for EyeSync on this computer…';
+}
+// The "Address" box: what address is in use and how it was found.
 function renderAddress(state) {
   const box = $('#addr');
+  const r = Discovery.report;
   const set = (boxState, value, source) => {
     box.dataset.state = boxState;
     $('#addr-value').textContent = value;
     $('#addr-source').textContent = source;
   };
+  const how = linkSource === 'auto' ? 'found automatically' : 'entered by you';
+  const How = how[0].toUpperCase() + how.slice(1);
   if (state === 'sim') return set('sim', 'Simulator', 'Built-in practice data, no tracker needed');
-  if (state === 'open' || state === 'stale') {
-    return set('found', Link.url, linkSource === 'auto' ? 'Found automatically' : 'Entered by you');
+  if (state === 'starting') return set('waiting', eyeSyncUrl(Discovery.startPort), 'EyeSync is starting');
+  if (state === 'open' || state === 'stale') return set('found', Link.url, EyeSync.status ? `EyeSync, ${how}` : How);
+  if (state === 'connecting' || state === 'reconnecting') return set('waiting', Link.url, `${How}, connecting`);
+  if (state === 'searching') return set('detecting', 'Detecting…', 'Looking for EyeSync on this computer');
+  if (Discovery.paused) return set('off', 'Not connected', 'Disconnected');
+  if (r?.port && ['running', 'standby', 'closed'].includes(r.what)) {
+    return set('off', eyeSyncUrl(r.port), { running: 'EyeSync is running', standby: 'EyeSync is installed and waiting', closed: 'EyeSync was closed' }[r.what]);
   }
-  if (state === 'connecting' || state === 'reconnecting') {
-    return set('waiting', Link.url, linkSource === 'auto' ? 'Found automatically, connecting' : 'Entered by you, connecting');
-  }
-  if (state === 'searching') return set('detecting', 'Detecting…', `Checking ${Discovery.checked} addresses on this computer`);
-  if (Discovery.paused) return set('off', 'Not connected', 'Automatic search is paused');
-  if (!Prefs.get('autoConnect')) return set('off', 'Not connected', 'Automatic search is off');
-  if (Discovery.missed) return set('detecting', 'Detecting…', `Not found yet, checking again in ${Discovery.nextSecs} s`);
-  return set('detecting', 'Detecting…', 'Looking for your tracker on this computer');
+  if (r?.what === 'tracker') return set('off', r.url, 'A tracker is running here');
+  if (r?.what === 'refused') return set('off', r.url, 'Refused this page');
+  if (r?.what === 'none') return set('detecting', 'Detecting…', `Not found yet, checking again in ${Discovery.nextSecs} s`);
+  return set('detecting', 'Detecting…', 'Looking for EyeSync on this computer');
 }
 function renderLink() {
-  const state = Simulator.running ? 'sim' : Link.state === 'idle' && Discovery.running ? 'searching' : Link.state;
+  const state = linkState();
   $$('.js-link-pill').forEach((p) => { p.dataset.state = state; $('.js-link-text', p).textContent = LINK_TEXT[state]; });
   const detail = {
     idle: idleDetail(),
-    searching: `Searching this computer for your tracker (${Discovery.checked} addresses)…`,
+    searching: 'Looking for EyeSync on this computer…',
+    starting: 'Starting EyeSync… (up to 20 seconds)',
     connecting: `Opening ${Link.url}…`,
-    open: `Receiving gaze frames from ${Link.url}.`,
-    stale: `Connected to ${Link.url}, but no gaze frames arrived in the last 3 seconds.`,
+    open: EyeSync.status ? `Connected to EyeSync at ${Link.url}.` : `Receiving cursor data from ${Link.url}.`,
+    stale: `Connected to ${Link.url}, but no cursor data arrived in the last 3 seconds.`,
     reconnecting: `${Link.lastError} Trying again in ${Math.max(1, Math.round(Link.retryDelay / 1000))} s.`,
-    sim: 'The simulator is sending 60 frames per second. Stop it to use your tracker.',
+    sim: 'The simulator is sending 60 updates per second. Stop it to use EyeSync.',
   }[state];
   $('#link-detail').textContent = detail;
   renderAddress(state);
-  const linked = ['connecting', 'open', 'stale', 'reconnecting'].includes(state);
+  // Not found: offer the download, and the browser's permission if it may be blocking us.
+  const missing = state === 'idle' && !Discovery.paused && Discovery.report?.what === 'none' && !Discovery.userClosed && !Discovery.startFailed;
+  $('#link-help').hidden = !missing;
+  $('#browser-note').hidden = !(Browser.blocked || (Discovery.report?.instant && /Windows/.test(navigator.userAgent)));
+  const linked = ['connecting', 'open', 'stale', 'reconnecting', 'starting'].includes(state);
   $('#btn-connect').hidden = linked;
   $('#btn-disconnect').hidden = !linked;
+  $('#btn-disconnect').textContent = state === 'starting' ? 'Stop' : 'Disconnect';
   const find = $('#btn-find');
   find.hidden = linked;
-  find.disabled = state === 'searching';
-  find.textContent = state === 'searching' ? 'Searching…' : 'Find tracker';
+  const pressed = state === 'searching' && Discovery.manual;   // a background check never blocks Connect
+  find.disabled = pressed;
+  find.textContent = pressed ? 'Searching…' : 'Connect';
   const sim = $('#btn-sim');
   sim.setAttribute('aria-pressed', String(Simulator.running));
   sim.textContent = Simulator.running ? 'Stop simulator' : 'Run simulator';
+}
+
+// The EyeSync panel always shows EyeSync's latest status, never just what was clicked last.
+function renderEyeSync() {
+  const s = EyeSync.status, on = EyeSync.connected;
+  $('#es-panel').hidden = $('#cam-panel').hidden = !EyeSync.seen;
+  $('#es-controls').disabled = !on;
+  const [pill, label] = !on ? ['idle', 'Not connected']
+    : !s.mouseEnabled ? ['idle', 'Mouse control off']
+    : s.paused ? ['stale', 'Paused']
+    : s.active ? ['open', 'Active'] : ['stale', 'Not active'];
+  $('#es-pill').dataset.state = pill;
+  $('#es-pill-text').textContent = label;
+  $('#es-hint').hidden = !(on && s.hint);
+  $('#es-hint').textContent = on ? s.hint : '';
+  const show = (id, text) => { $(id).textContent = on ? text : '—'; };
+  show('#es-face', s?.face ? 'Face found' : 'Can\'t see your face. Check the light and your position.');
+  show('#es-camera', s?.camera ? 'On' : 'Off');
+  show('#es-control', label);
+  show('#es-calibrated', s?.calibrated ? `Calibrated on ${fmtDay(s.calibrated)}` : 'Not calibrated yet. Calibrate for better accuracy.');
+  show('#es-hw', s?.hardwareMouse ? 'XIAO hardware mouse connected' : 'Not connected');
+  show('#es-version', s?.version || 'unknown');
+  $('#es-face-help').hidden = !(on && !s.face && !Camera.on);
+  $('#es-mouse').checked = !!s?.mouseEnabled;
+  const pause = $('#es-pause');
+  pause.textContent = s?.paused ? 'Resume' : 'Pause';
+  pause.setAttribute('aria-pressed', String(!!s?.paused));
+  $$('input[name="es-speed"]').forEach((i) => { i.checked = Number(i.value) === s?.speed; });
+  $$('input[name="es-click"]').forEach((i) => { i.checked = i.value === s?.clickMode; });
+  $('#es-gestures').checked = !!s?.gestures;
+  if (!on) disarmQuit();
+  Camera.paint();
+  renderEscal();
+  renderDwell();
+  renderUpdate();
+}
+// "Calibrate EyeSync" blocks (Dashboard and Calibration page). Overall progress runs over the seven
+// measured steps; "starting" and "done" are the ends.
+function renderEscal() {
+  const s = EyeSync.status, on = EyeSync.connected;
+  const running = on && s.calibrating;
+  const at = running ? CAL_STEPS.indexOf(s.step) : -1;
+  const pct = !running ? 0 : at >= 8 ? 100 : at <= 0 ? 0 : Math.round(((at - 1 + s.progress) / 7) * 100);
+  const state = !on ? 'Connect to EyeSync on the Dashboard to calibrate it.'
+    : s.step === 'done' && s.stepText ? s.stepText          // the result, shown for a few seconds
+    : s.calibrated ? `Calibrated on ${fmtDay(s.calibrated)}. Calibrate again after moving the camera or your chair.`
+    : 'Not calibrated yet. Calibrate for better accuracy: it takes about 30 seconds.';
+  $$('.escal').forEach((box) => {
+    $('.js-escal-state', box).hidden = running;
+    $('.js-escal-state', box).textContent = state;
+    $('.js-escal-run', box).hidden = !running;
+    $('.js-escal-text', box).textContent = running ? (s.stepText || 'Starting…') : '';
+    $('.js-escal-bar', box).setAttribute('aria-valuenow', String(pct));
+    $('.js-escal-fill', box).style.width = pct + '%';
+    $$('.js-escal-steps li', box).forEach((li) => {
+      const i = CAL_STEPS.indexOf(li.dataset.step);
+      li.dataset.state = i < at ? 'done' : i === at ? 'now' : '';
+    });
+    const start = $('.js-escal-start', box);
+    start.hidden = running;
+    start.disabled = !on;
+    $('.js-escal-cancel', box).hidden = !running;
+  });
+}
+function renderUpdate() {
+  const s = EyeSync.status, r = Release.data;
+  const show = !!(EyeSync.connected && s.version && r && isNewer(r.version, s.version));
+  $('#update-notice').hidden = !show;
+  if (show) $('#update-text').textContent = `EyeSync ${r.version} is available (you have ${s.version}). To update, download it and run its install.bat. Your settings and calibration are kept.`;
+}
+// EyeSync clicks by itself (blinks, or its own dwell), so the website's dwell stays off while it's
+// connected: otherwise one look could press a button twice. The saved choice is kept for other trackers.
+const dwellActive = () => Prefs.get('dwell') && !EyeSync.connected;
+function renderDwell() {
+  const es = EyeSync.connected;
+  $('#dwell').disabled = es;
+  $('#dwell').checked = dwellActive();
+  $('#dwell-ms').disabled = es;
+  $('#dwell-note').hidden = !es;
+  if (es) Dwell.reset();
 }
 
 function renderPrefsNote() { $('#prefs-note').hidden = Consent.optional(); }
@@ -1950,13 +2580,14 @@ function renderDashboard() {
     : '';
   const last = Prefs.get('lastCal');
   $('#cal-summary-line').textContent = last
-    ? `Last calibrated ${fmtDate(last.at)}. ` + (typeof last.meanError === 'number'
+    ? `Last test ${fmtDate(last.at)}. ` + (typeof last.meanError === 'number'
         ? `Mean error ${last.meanError} px across ${last.measured} of 9 targets.`
-        : 'No gaze data was recorded, so accuracy is unknown.')
-    : 'No calibration yet. Half a minute and you\'re tuned in.';
+        : 'No cursor data was recorded, so accuracy is unknown.')
+    : 'No accuracy test yet.';
   $$('.js-unit').forEach((u) => { u.textContent = Prefs.get('mapMode') === 'viewport' ? 'window px' : 'frame px'; });
   disarmDelete();
   renderLink();
+  renderEyeSync();
   renderPrefsNote();
   updateReadouts();
 }
@@ -1971,7 +2602,7 @@ function bindSettings() {
     fw.value = Prefs.get('frameW'); fh.value = Prefs.get('frameH');
     sm.value = Prefs.get('smoothing');
     sc.checked = Prefs.get('showCursor');
-    dw.checked = Prefs.get('dwell');
+    renderDwell();
     dms.value = String(Prefs.get('dwellMs'));
     $('#cal-dwell').value = String(Prefs.get('calDwellMs'));
     $('#cal-fill').checked = Prefs.get('calFill');
@@ -1998,12 +2629,14 @@ function bindSettings() {
   dw.addEventListener('change', () => {
     Prefs.set('dwell', dw.checked);
     if (!dw.checked) Dwell.reset();
-    toast(dw.checked ? 'Dwell selection is on. Hold your gaze on a button to press it.' : 'Dwell selection is off.');
+    toast(dw.checked ? 'Dwell selection is on. Hold the crosshair on a button to press it.' : 'Dwell selection is off.');
   });
   dms.addEventListener('change', () => { const n = Number(dms.value); if ([800, 1200, 1600, 2000].includes(n)) Prefs.set('dwellMs', n); });
+  // Off, the dashboard still looks for EyeSync, but only reports what it found.
   $('#auto-connect').addEventListener('change', (e) => {
     Prefs.set('autoConnect', e.target.checked);
-    if (e.target.checked) { Discovery.paused = false; Discovery.kick(); } else { Discovery.cancel(); }
+    if (e.target.checked) { Discovery.paused = false; Discovery.startFailed = false; }
+    if (!Discovery.starting) { Discovery.cancel(); Discovery.kick(); }
     renderLink();
   });
   $('#cal-dwell').addEventListener('change', (e) => { const n = Number(e.target.value); if ([1500, 2000, 3000, 4000].includes(n)) Prefs.set('calDwellMs', n); });
@@ -2017,6 +2650,17 @@ function updateMapAspect() {
   $('#gaze-map').style.aspectRatio = String(ratio);
 }
 
+let quitArmed = false, quitTimer = 0;           // "Quit EyeSync" asks "Are you sure?" first
+function disarmQuit() {
+  quitArmed = false;
+  clearTimeout(quitTimer);
+  const b = $('#es-quit');
+  b.textContent = 'Quit EyeSync';
+  b.classList.remove('btn-danger');
+  $('#es-quit-cancel').hidden = true;
+  $('#es-quit-hint').hidden = true;
+}
+
 let deleteArmed = false, deleteTimer = 0;
 function disarmDelete() {
   deleteArmed = false;
@@ -2028,7 +2672,7 @@ function disarmDelete() {
   $('#delete-hint').hidden = true;
 }
 
-/* ---------- Calibration: 9 targets, shown one at a time ---------- */
+/* ---------- Accuracy test (the website's own 9-point calibration): 9 targets, one at a time ---------- */
 const Calibration = {
   running: false, index: -1, phase: 'idle', samples: [], results: [], timers: [], target: null,
   stage: $('#cal-stage'),
@@ -2040,8 +2684,8 @@ const Calibration = {
   renderIdle() {
     if (this.running) return;
     this.status(this.hasGaze()
-      ? 'Ready. Gaze data is coming in, so the accuracy at each target will be measured.'
-      : 'Ready. No gaze data yet. The targets still run so you can align the hardware, but accuracy can\'t be measured. Connect a tracker or run the simulator on the Dashboard.');
+      ? 'Ready. Cursor data is coming in, so the accuracy at each target will be measured.'
+      : 'Ready. No cursor data yet. The targets still run for practice, but accuracy can\'t be measured. Connect EyeSync or run the simulator on the Dashboard.');
   },
   start() {
     if (this.running) return;
@@ -2069,7 +2713,7 @@ const Calibration = {
     this.target = c;
     const n = this.index + 1;
     $('#cal-hud-text').textContent = `Target ${n} of 9`;
-    this.status(`Target ${n} of 9: ${el.dataset.label}. Look at the blue target until its centre disappears.`);
+    this.status(`Target ${n} of 9: ${el.dataset.label}. Hold the cursor on the blue target until its centre disappears.`);
     announce(`Target ${n} of 9, ${el.dataset.label}.`);
     Link.send({
       type: 'calibration', event: 'point', index: this.index, label: el.dataset.label,
@@ -2114,8 +2758,8 @@ const Calibration = {
     Prefs.set('lastCal', summary);
     Link.send({ type: 'calibration', event: 'complete', mean_error_px: meanError, points: summary.points });
     this.renderResults(meanError, measured.length);
-    this.status('Calibration complete. Results are below.');
-    toast('Calibration complete. Nicely done.', 'ok');
+    this.status('Accuracy test complete. Results are below.');
+    toast('Accuracy test complete. Nicely done.', 'ok');
     $('#cal-results').scrollIntoView({ block: 'start', behavior: 'instant' });
   },
   stop(reason) {
@@ -2123,7 +2767,7 @@ const Calibration = {
     this.cleanup();
     this.points.forEach((p) => { p.classList.remove('is-active', 'is-collecting', 'is-done'); p.removeAttribute('aria-current'); });
     Link.send({ type: 'calibration', event: 'cancel' });
-    if (reason === 'user') { this.status('Calibration stopped. Nothing was saved.'); announce('Calibration stopped.'); }
+    if (reason === 'user') { this.status('Accuracy test stopped. Nothing was saved.'); announce('Accuracy test stopped.'); }
   },
   cleanup() {
     this.timers.forEach(clearTimeout);
@@ -2148,13 +2792,13 @@ const Calibration = {
         h('td', {}, h('span', { class: 'pill', 'data-state': state }, h('span', { class: 'pill-mark' }), label)));
     }));
     $('#cal-results-summary').textContent = meanError == null
-      ? 'No gaze data was received, so this run was for hardware alignment only.'
+      ? 'No cursor data was received, so this run was for practice only.'
       : `Mean error ${meanError} px across ${measuredCount} of 9 targets.` + (Consent.optional() ? ' This result is saved on this device.' : ' Accept preference storage to keep this result after you close the tab.');
     $('#cal-results').hidden = false;
   },
 };
 
-/* ---------- Home page preview: a simulated gaze path over the nine targets ---------- */
+/* ---------- Home page preview: a simulated cursor path over the nine targets ---------- */
 const HeroPreview = {
   raf: 0, t0: 0, lastText: 0,
   cursor: $('#pv-cursor'),
@@ -2291,11 +2935,15 @@ function bindForms() {
     $('#btn-disconnect').focus();
   });
   $('#btn-disconnect').addEventListener('click', () => {
-    Discovery.paused = true;                     // a manual disconnect stops automatic search until asked again
     Discovery.cancel();
+    Discovery.paused = true;                     // a manual disconnect stops automatic search until asked again
+    Camera.off();
     Link.disconnect();
+    renderLink();
     $('#btn-find').focus();
   });
+  // Connect: probe EyeSync's ports at once, start EyeSync if it's waiting (even if the user closed
+  // it: this is the click that may), or connect to whatever is running.
   $('#btn-find').addEventListener('click', () => {
     Discovery.paused = false;
     Discovery.cancel();
@@ -2306,6 +2954,40 @@ function bindForms() {
     if (Simulator.running) { Simulator.stop(); toast('Simulator stopped.'); }
     else { Simulator.start(); toast('Simulator running. Watch the red crosshair.', 'ok'); }
   });
+
+  // EyeSync controls. Each one only sends the command; the status EyeSync sends back updates the panel.
+  $('#es-mouse').addEventListener('change', (e) => EyeSync.send('mouse', e.target.checked));
+  $('#es-pause').addEventListener('click', () => EyeSync.send('pause', !EyeSync.status?.paused));
+  $('#es-recenter').addEventListener('click', () => { if (EyeSync.send('recenter')) toast('Cursor recentred.'); });
+  $$('input[name="es-speed"]').forEach((i) => i.addEventListener('change', () => EyeSync.send('speed', Number(i.value))));
+  $$('input[name="es-click"]').forEach((i) => i.addEventListener('change', () => EyeSync.send('click_mode', i.value)));
+  $('#es-gestures').addEventListener('change', (e) => EyeSync.send('gestures', e.target.checked));
+  $('#es-window').addEventListener('click', () => { if (EyeSync.send('show_window')) toast('The EyeSync window is now in front on your PC.'); });
+  $('#es-quit').addEventListener('click', () => {
+    if (!quitArmed) {
+      quitArmed = true;
+      const b = $('#es-quit');
+      b.textContent = 'Yes, quit EyeSync';
+      b.classList.add('btn-danger');
+      $('#es-quit-cancel').hidden = false;
+      $('#es-quit-hint').hidden = false;
+      quitTimer = setTimeout(disarmQuit, 10000);
+      return;
+    }
+    disarmQuit();
+    if (EyeSync.send('quit')) {
+      Discovery.userClosed = true;               // EyeSync closes us with 4000; don't start it again
+      toast('EyeSync is closing. Press Connect to start it again.');
+    }
+  });
+  $('#es-quit-cancel').addEventListener('click', () => { disarmQuit(); $('#es-quit').focus(); });
+  $('#cam-toggle').addEventListener('change', (e) => { if (e.target.checked) Camera.start(); else Camera.off(); renderEyeSync(); });
+  $('#es-show-camera').addEventListener('click', () => { Camera.start(); renderEyeSync(); $('#cam-panel').scrollIntoView({ block: 'nearest' }); });
+  document.addEventListener('click', (e) => {    // the "Calibrate EyeSync" blocks are cloned from a template
+    if (e.target.closest('.js-escal-start')) { if (EyeSync.send('calibrate')) toast('Follow the dots on your PC screen. The guide moves on by itself.', 'ok'); }
+    else if (e.target.closest('.js-escal-cancel')) EyeSync.send('calibrate', 'cancel');
+  });
+  $('#dl-retry').addEventListener('click', () => DownloadPage.render());
 
   $('#cal-start').addEventListener('click', () => Calibration.start());
   $('#cal-stop').addEventListener('click', () => Calibration.stop('user'));
@@ -2322,9 +3004,12 @@ function bindForms() {
       return;
     }
     Discovery.cancel();
+    Discovery.reset();
     Calibration.stop('signout');
     Auth.deleteAccount();
-    Simulator.stop(false); Link.disconnect(); Gaze.reset();
+    Simulator.stop(false); Camera.off(); Link.disconnect(); Gaze.reset();
+    EyeSync.seen = false;
+    renderEyeSync();
     disarmDelete();
     syncSettings();
     Theme.apply(Prefs.get('theme'));
@@ -2401,6 +3086,7 @@ function boot() {
   Theme.apply(Prefs.get('theme'), Prefs.get('theme') !== 'system');
   $('#cookies-body').replaceChildren($('#tpl-cookies').content.cloneNode(true));
   $('#terms-body').replaceChildren($('#tpl-terms').content.cloneNode(true));
+  $$('.js-escal-slot').forEach((slot) => slot.replaceWith($('#tpl-escal').content.cloneNode(true)));
   if (!cryptoReady) {
     $$('.js-crypto-missing').forEach((n) => { n.hidden = false; });
     $$('#login-form button[type="submit"], #register-form button[type="submit"]').forEach((b) => { b.disabled = true; });
@@ -2409,6 +3095,8 @@ function boot() {
   bindForms();
   bindGlobal();
   renderLink();
+  renderEyeSync();
+  Browser.check();
   if (!Consent.state()) Banner.show(false);
   Router.resolve();
 }

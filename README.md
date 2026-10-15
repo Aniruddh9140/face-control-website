@@ -1,20 +1,28 @@
 # face-control-website
 
-**EyeSync**, the control dashboard for the face control eye-tracker project. It is a single static page (`index.html`) with inline CSS and an inline JavaScript module, built to run on GitHub Pages with no build step and no server.
+**EyeSync**: the website for EyeSync, a Windows program that turns a webcam into a mouse you steer with your head and click with a blink. The site is where people download EyeSync and the dashboard they control it from. It is a single static page (`index.html`) with inline CSS and an inline JavaScript module, built to run on GitHub Pages with no build step and no server.
+
+The EyeSync program lives in its own folder (`E:\EyeSync`); its `WEBSITE.md` is the protocol reference this site follows.
 
 ## What it does
 
-- **Home page.** Visitors land on an introduction (`#home`) covering what EyeSync does, a simulated gaze preview, how to get started, and the privacy and accessibility approach. Buttons there lead to sign-in and registration.
+- **Home page.** Visitors land on an introduction (`#home`) covering what EyeSync does, a simulated cursor preview, how to get started, and the privacy and accessibility approach.
+- **Download page.** `#download` reads `downloads/latest.json` and offers the zip next to it, for example "Download EyeSync 1.1.0 for Windows (3.4 MB)", with the release date, size and SHA-256. It also explains how to install, update and remove EyeSync. Guests can open it without an account.
 - **Accounts in the browser.** Registration and sign-in use the Web Crypto API. Passwords are salted (16 random bytes) and hashed with PBKDF2-HMAC-SHA-256 at 600,000 rounds before anything is saved. Plain-text passwords are never stored.
 - **Session lock.** A successful sign-in creates a random 32-byte session token; the account record stores just its SHA-256, for up to 5 active sign-ins. With **Keep me signed in** (ticked by default), the token goes in `localStorage`, so you stay signed in after closing the site, in every tab, for 30 days since your last visit. Unticked, it stays in `sessionStorage` for this tab only and expires after 30 minutes without activity. Protected views (`#dashboard`, `#calibration`) check the token on every navigation, and signing out in one tab signs out the others.
 - **Brute-force slowdown.** After 5 failed sign-ins, that username is locked for 30 s, doubling on each further failure up to 15 minutes.
 - **Cookie consent.** A banner appears on the first visit. Optional preference storage (`fc.prefs`) stays in memory until the visitor chooses **Accept**. Choosing **Essential only** deletes it. The Cookie Policy and Terms and Conditions open as pages (`#cookies`, `#terms`) or as dialogs from the registration form.
 - **Mandatory agreement.** The registration form has an unchecked "I agree to the Terms and Conditions and Cookie Policy" checkbox. No account is created unless it is checked, and the versions agreed to are recorded with the account.
-- **Live gaze.** A WebSocket client connects to the tracker (loopback addresses only). It validates every frame, reconnects with exponential backoff, and flags a stale stream. The red crosshair is positioned with CSS `top`/`left` from each `{"x", "y", "blink"}` frame.
-- **Automatic discovery.** On the Dashboard and Calibration pages, the dashboard looks for the tracker on this computer and connects to the first server that sends a valid gaze frame. It checks the last address that worked, then `ws://localhost` ports 8765–8770, 8080 and 8000. If nothing answers, it searches again after 5 s, 10 s, then every 15 s, so a tracker started later is picked up. After three failed reconnects it searches again, in case the tracker moved to another port. **Disconnect** pauses searching; **Find tracker** searches right away. The setting can be turned off under Tracker connection. The **Tracker address** box shows "Detecting…" until a tracker is found, then the address in use and whether it was found automatically or entered by you. Typing an address is only needed for an unusual port, under **Enter an address yourself**.
-- **9-point calibration.** Targets in the corners, edges, and centre light up one at a time. While each target is showing, the dashboard measures the gaze error at that target and sends calibration events back to the tracker.
+- **Connecting to EyeSync.** On the Dashboard and Calibration pages, the site asks EyeSync whether it is installed, running or closed (see [Connecting to EyeSync](#connecting-to-eyesync)). It connects to a running EyeSync, starts a waiting one, and never restarts an EyeSync the user closed: only a click on **Connect** does. When nothing answers, it says so and links to the Download page.
+- **EyeSync controls.** Once EyeSync answers, a panel shows its status (face found, camera, cursor control, advice such as "too dark", calibration date, hardware mouse, version) and its controls: mouse control on/off, pause, recenter, speed 1 to 5, click by blinking or by holding still, face gestures, show the EyeSync window, and quit (with an "Are you sure?" step). EyeSync pushes every change, so a smile that pauses it on the PC shows up on the page by itself.
+- **Calibrate EyeSync.** Starts EyeSync's own 30-second calibration, which shows a full-screen guide on the PC, with live progress and a Cancel button on the page. It is on the Dashboard and first on the Calibration page.
+- **Accuracy test.** The site's own 9-point routine. Targets light up one at a time while the page measures how far the cursor lands from each one. It sends its events to the tracker, which EyeSync only logs.
+- **Camera view.** An optional "Show camera" switch shows EyeSync's camera picture (320×240, mirrored, with the face mesh) about 8 times a second. The pictures are only put on an `<img>`: never stored, uploaded or logged. The view turns off when you leave the Dashboard.
+- **Update notice.** When the connected EyeSync is older than `latest.json`, the Dashboard says so and links to the Download page. Versions are compared as numbers per part, so 1.10.0 is newer than 1.9.0.
+- **Live cursor.** The red crosshair is positioned with CSS `top`/`left` from each `{"x", "y", "blink"}` update. Every update is validated, and a stale stream is flagged.
+- **Other trackers.** Any program that sends `{"x", "y", "blink"}` on ports 8766 to 8770 or 8000, or on an address entered under **Enter an address yourself**, still works, with automatic reconnects.
 - **Typography.** Fraunces (headings), Atkinson Hyperlegible (body text, designed for low vision) and IBM Plex Mono (labels) are bundled in `fonts/` as Latin-subset WOFF files, about 113 KB in total, under the SIL Open Font License (licence texts included). No font host is ever contacted.
-- **Assistive extras.** Every control is at least 56 px with solid colour-inversion hover states. Optional dwell-to-select lets you press any button by holding your gaze on it. Light and dark themes are both included, and reduced-motion preferences are respected.
+- **Assistive extras.** Every control is at least 56 px with solid colour-inversion hover states. Light and dark themes are both included, and reduced-motion preferences are respected. Optional dwell-to-select presses a button when the crosshair rests on it; it is switched off while EyeSync is connected, because EyeSync clicks by itself and a button would otherwise be pressed twice.
 
 ## Run it locally
 
@@ -22,30 +30,66 @@
 python -m http.server 8000
 ```
 
-Then open http://localhost:8000. You can also open `index.html` directly from disk.
+Then open http://localhost:8000. You can also open `index.html` directly from disk, but then the Download page can't read `latest.json`.
+
+EyeSync only trusts the GitHub Pages origin, so a local copy can't talk to the real EyeSync. Use the mock below, or EyeSync's API key as described in its `WEBSITE.md`.
 
 ## Test without hardware
 
-Click **Run simulator** on the Dashboard, or run the mock tracker, which uses the real WebSocket path:
+The dashboard has a built-in simulator: click **Run simulator** on the Dashboard.
+
+`tools/mock_eyesync.py` plays EyeSync 1.1 and its standby: probes, starting, status pushes, every command, calibration progress, the camera view (with Pillow) and quitting with code 4000. Type `smile`, `speed 3`, `face off`, `hint …`, `quit` or `idle` while it runs to act "on the PC".
 
 ```bash
-pip install websockets
-python tools/mock_tracker.py
+pip install websockets pillow
+python tools/mock_eyesync.py                     # standby, as after login
+python tools/mock_eyesync.py --state running --version 1.0.0   # shows the update notice
 ```
 
-The mock streams 60 frames per second on `ws://localhost:8765` and prints the calibration events it receives. It only accepts pages from the GitHub Pages site and `http://localhost:8000`. Use `--origin` to add others, or `--allow-file` for a page opened from disk.
+If the real EyeSync is already using ports 8765 and 8080, run the mock with `--ports 8771 8772` and test a copy of `index.html` whose `EYESYNC_PORTS` is `[8771, 8772]`.
 
-## Tracker protocol
+`tools/mock_tracker.py` is a plain tracker that only streams `{"x", "y", "blink"}` at 60 updates a second and prints the accuracy-test events it receives:
 
-**Tracker → dashboard**, one JSON text frame per sample:
+```bash
+python tools/mock_tracker.py --port 8766
+```
+
+Both mocks only accept pages from the GitHub Pages site and `http://localhost:8000`. Use `--origin` to change that.
+
+## Connecting to EyeSync
+
+EyeSync and its standby listen on `ws://localhost:8765` and `ws://localhost:8080` (`EYESYNC_PORTS`). The standby runs from login, has no camera, and starts EyeSync when asked. The site makes three kinds of request:
+
+| Request | Sent when | Standby (EyeSync closed) | EyeSync running |
+|---|---|---|---|
+| `?probe=1` | every automatic check, every 5 s while the Dashboard or Calibration page is open and nothing is connected | `{"type":"eyesync","state":"standby","closed_by_user":…}`, close 4003; never starts EyeSync | `{"type":"eyesync","state":"running",…}`, close 4003 |
+| `?start=1` | a click on **Connect**, or auto-connect when `closed_by_user` is false | `"starting"`, close 4002, and EyeSync starts; the site then tries the plain address every second for up to 30 s | a normal connection; the site closes it and connects to the plain address |
+| plain address | only after EyeSync said it is running, or while it starts | refused (HTTP 503, seen as 1006) | the live connection: updates and commands |
+
+What the Dashboard does with the answers:
+
+- **Nothing answers:** "EyeSync isn't running on this computer", with a Download link and "Already installed? Open the EyeSync shortcut on your Desktop, or restart the PC."
+- **Running:** connect.
+- **Waiting, not closed by the user:** start it if **Connect to EyeSync automatically** is ticked, otherwise say "Press Connect to start it".
+- **Closed by the user** (mouth gesture, Quit, F12 or the website's Quit): never start it by itself. "EyeSync was closed. Press Connect to start it."
+- **Close 4000 while connected:** the same; the site doesn't reconnect by itself.
+- **Close 4001** (the page's origin isn't trusted): show the reason and stop trying until Connect is pressed.
+
+Right after connecting, the site sends `{"action":"status"}`. From then on EyeSync pushes every status change. Messages with a `"type"` (`status`, `preview`, `eyesync`, `error`) are routed to the EyeSync panel and never counted as rejected updates; errors appear as a toast.
+
+EyeSync 1.0's standby ignored `probe` and `start` and treated two tries within 0.75 s as a Connect click, so automatic tries to EyeSync's ports stay at least 1.5 s apart (`EYESYNC_GAP_MS`).
+
+### Tracking data and other trackers
+
+Each update is one JSON text frame, about 30 a second from EyeSync:
 
 ```json
-{"x": 400, "y": 300, "blink": false}
+{"x": 412.6, "y": 301.2, "blink": false, "confidence": 1.0, "face": true}
 ```
 
-`x` and `y` are numbers. By default they are pixels in an 800×600 tracker frame, which is scaled to the browser window; set the frame size on the Dashboard to match your tracker, or switch to "window pixels". `blink` is optional and defaults to `false`. The dashboard rejects frames over 4 KB, frames that aren't JSON, and frames without numeric `x`/`y`.
+`x` and `y` are numbers. By default they are pixels in an 800×600 tracker frame, which is EyeSync's frame and is scaled to the browser window; leave **Tracker frame** at 800×600 for EyeSync. `blink` is optional and defaults to `false`. Updates over 4 KB, updates that aren't JSON, and updates without numeric `x`/`y` are rejected.
 
-**Dashboard → tracker**, sent during calibration:
+During the accuracy test the page sends:
 
 ```json
 {"type": "calibration", "event": "start", "points": 9, "viewport": {"w": 1280, "h": 800}, "frame": {"w": 800, "h": 600}}
@@ -55,21 +99,16 @@ The mock streams 60 frames per second on `ws://localhost:8765` and prints the ca
 {"type": "calibration", "event": "cancel"}
 ```
 
-`source` is the target position in tracker-frame coordinates. Your tracker can ignore these messages if it doesn't calibrate.
+`source` is the target position in tracker-frame coordinates. A tracker can ignore these messages.
 
-### Working with the EyeSync app's standby
+## Publishing a new EyeSync version
 
-The EyeSync app (`E:\EyeSync`, see its `WEBSITE.md`) keeps a small standby listener on ports 8765 and 8080 while it is closed, and answers with HTTP 503. It starts EyeSync when this website is opened, with one exception: after you quit EyeSync on purpose, it only restarts on two tries within 0.75 s, which is what a click on **Connect** produces. To respect that:
+In the EyeSync folder, run `python make_release.py`. Copy `dist/EyeSync-<version>.zip` and `dist/latest.json` into `downloads/` here, delete the previous zip, and push. The page itself doesn't change: the Download button and the update notice both come from `latest.json`.
 
-- automatic searches and reconnects always keep tries to ports 8765 and 8080 at least 1.5 s apart (`AUTO_GAP_MS`), so they never restart EyeSync after you quit it;
-- **Connect** and **Find tracker** make their tries close together, so pressing either one starts EyeSync again.
+## Browser notes
 
-A server that opens the socket and then closes it with code 4001 or 1008 (EyeSync does this for pages it doesn't recognise) is reported as a refusal, with its reason, and isn't retried as a match.
-
-### Browser notes
-
-- GitHub Pages is served over HTTPS. Chrome, Edge, and Firefox allow an HTTPS page to open `ws://localhost`; Safari blocks it, so use `wss://` or serve the page locally there.
-- Newer Chrome versions may ask for permission to access devices on your local network the first time the page connects. Allow it.
+- GitHub Pages is served over HTTPS. Browsers allow an HTTPS page to open `ws://localhost`, which is exempt from mixed-content blocking. Chrome, Edge and Firefox work the same way.
+- Newer Chrome and Edge versions may ask the user to allow the site to reach "apps and services on this device" (local network access). If that is denied, the Dashboard says: "Allow this site to connect to apps on this device (click the icon in the address bar), then reload."
 - To accept a tracker on another machine, add its host to both `LOOPBACK_HOSTS` in the script and `connect-src` in the Content-Security-Policy meta tag.
 
 ## Security model
@@ -78,7 +117,9 @@ Everything runs in the browser, so this is local-first protection, not server-gr
 
 - stores only salted PBKDF2 hashes, compares them in constant time, and hashes unknown usernames too, so timing doesn't reveal which accounts exist;
 - builds all DOM with `textContent` and element APIs (no `innerHTML`), and enforces Trusted Types in Chromium browsers;
-- sets a strict Content-Security-Policy: no external hosts, and WebSockets to loopback only;
+- sets a strict Content-Security-Policy: `fetch` only to its own files (`latest.json`), WebSockets to loopback only, images only from `data:` URLs (the camera view);
+- checks every message from EyeSync: status fields are typed and length-limited, camera pictures must be base64 JPEG data URLs, and `latest.json` file names must look like `EyeSync-1.2.0.zip`;
+- never asks for or stores EyeSync's API key, and never stores camera pictures;
 - refuses to run sign-in when framed by another site (clickjacking guard), since GitHub Pages can't send `frame-ancestors` headers.
 
 ## Legal text
