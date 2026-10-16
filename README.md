@@ -6,7 +6,9 @@ The EyeSync program lives in its own folder (`E:\EyeSync`); its `WEBSITE.md` is 
 
 ## What it does
 
-- **Home page.** Visitors land on an introduction (`#home`) covering what EyeSync does, a simulated cursor preview, how to get started, and the privacy and accessibility approach.
+- **Home page.** Visitors land on an introduction (`#home`) dressed as a little retro desktop: a menu bar with a clock, and sections as windows you can nudge by their title bars. It covers what EyeSync does, the face gestures, how to get started, and the privacy and accessibility approach.
+- **Live head demo.** "Try it with your head" under the home page's CRT lets a visitor steer that screen with their own head and blink to click, with no install. The face tracking is Google's MediaPipe face landmarker, served by this site from `vendor/mediapipe/` (see its README) and loaded only when the button is pressed. Camera pictures stay in the tab: nothing is stored or sent, and the camera turns off on Stop, when the tab is hidden, or when the visitor leaves the page. The library's own usage reporting is switched off.
+- **Sync, the mascot.** A small pixel computer in the corner of the home page watches the pointer, blinks when you click, and has tips when pressed.
 - **Download page.** `#download` reads `downloads/latest.json` and offers the zip next to it, for example "Download EyeSync 1.1.0 for Windows (3.4 MB)", with the release date, size and SHA-256. It also explains how to install, update and remove EyeSync. Guests can open it without an account.
 - **Accounts in the browser.** Registration and sign-in use the Web Crypto API. Passwords are salted (16 random bytes) and hashed with PBKDF2-HMAC-SHA-256 at 600,000 rounds before anything is saved. Plain-text passwords are never stored.
 - **Session lock.** A successful sign-in creates a random 32-byte session token; the account record stores just its SHA-256, for up to 5 active sign-ins. With **Keep me signed in** (ticked by default), the token goes in `localStorage`, so you stay signed in after closing the site, in every tab, for 30 days since your last visit. Unticked, it stays in `sessionStorage` for this tab only and expires after 30 minutes without activity. Protected views (`#dashboard`, `#calibration`) check the token on every navigation, and signing out in one tab signs out the others.
@@ -116,8 +118,8 @@ In the EyeSync folder, run `python make_release.py`. Copy `dist/EyeSync-<version
 Everything runs in the browser, so this is local-first protection, not server-grade authentication. Anyone with access to the browser profile can read or clear `localStorage`, which also resets the sign-in throttle. Within that limit, the page:
 
 - stores only salted PBKDF2 hashes, compares them in constant time, and hashes unknown usernames too, so timing doesn't reveal which accounts exist;
-- builds all DOM with `textContent` and element APIs (no `innerHTML`), and enforces Trusted Types in Chromium browsers;
-- sets a strict Content-Security-Policy: `fetch` only to its own files (`latest.json`), WebSockets to loopback only, images only from `data:` URLs (the camera view);
+- builds all DOM with `textContent` and element APIs (no `innerHTML`), and enforces Trusted Types in Chromium browsers. Its one exception is a default policy that lets the face tracker load its helper script, and only same-origin scripts under `/vendor/mediapipe/`;
+- sets a strict Content-Security-Policy: scripts only inline or from this site (the bundled face tracker, with `'wasm-unsafe-eval'` for its WebAssembly), `fetch` only to its own files (`latest.json`, the face model), WebSockets to loopback only, images only from `data:` URLs (the camera view);
 - checks every message from EyeSync: status fields are typed and length-limited, camera pictures must be base64 JPEG data URLs, and `latest.json` file names must look like `EyeSync-1.2.0.zip`;
 - never asks for or stores EyeSync's API key, and never stores camera pictures;
 - refuses to run sign-in when framed by another site (clickjacking guard), since GitHub Pages can't send `frame-ancestors` headers.

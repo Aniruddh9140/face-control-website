@@ -5,12 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <!--
   Content Security Policy. Everything ships inline, so nothing is loaded from any other host.
-  fetch() may only read this site's own files (downloads/latest.json); WebSocket connections are
+  Scripts may also come from this site itself (vendor/mediapipe, the face-tracking library behind the
+  home page's live head demo), which also needs WebAssembly ('wasm-unsafe-eval').
+  fetch() may only read this site's own files (latest.json, the face model); WebSocket connections are
   limited to this computer (localhost / 127.0.0.1). Camera pictures from EyeSync arrive as data: URLs.
   require-trusted-types-for blocks string-to-HTML sinks such as innerHTML in Chromium browsers;
   the app builds every element with DOM APIs and never needs them.
 -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; font-src 'self'; connect-src 'self' ws://localhost:* ws://127.0.0.1:* wss://localhost:* wss://127.0.0.1:*; base-uri 'none'; form-action 'none'; object-src 'none'; require-trusted-types-for 'script'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'unsafe-inline'; img-src data:; font-src 'self'; connect-src 'self' ws://localhost:* ws://127.0.0.1:* wss://localhost:* wss://127.0.0.1:*; base-uri 'none'; form-action 'none'; object-src 'none'; require-trusted-types-for 'script'">
 <meta name="referrer" content="no-referrer">
 <title>EyeSync</title>
 <meta name="description" content="EyeSync turns your webcam into a mouse you steer with your head and click with a blink. Download it for Windows and control it from this dashboard.">
@@ -532,6 +534,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 /* CRT extras: the trail, rolling band and floating pixels only show when things move */
 .preview { position: relative; }
 .pv-ghost, .pv-roll { display: none; }
+.pv-pixels { position: absolute; left: 0; right: 0; top: 0; aspect-ratio: 4 / 3; pointer-events: none; }   /* over the screen only */
 .pv-pixels span { position: absolute; width: 14px; height: 14px; background: var(--accent); box-shadow: 3px 3px 0 var(--shadow); pointer-events: none; }
 .pv-pixels span:nth-child(1) { left: 4%; top: -18px; background: var(--danger); }
 .pv-pixels span:nth-child(2) { right: 2%; top: 14%; background: var(--warn); width: 10px; height: 10px; }
@@ -607,6 +610,28 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 .win-flat { box-shadow: var(--drop); }
 @media (min-width: 721px) { .win { padding-left: 30px; padding-right: 30px; } }
 @media (max-width: 560px) { .win { padding: 50px 18px 18px; } .win > .win-bar { height: 30px; } }
+
+/* Live head demo: the visitor's own camera picture, mirrored like a selfie, in a corner of the CRT */
+.pv-cam { position: absolute; right: 8px; bottom: 8px; z-index: 4; width: 34%; aspect-ratio: 4 / 3; object-fit: cover; transform: scaleX(-1); background: var(--crt); border: 3px solid var(--phosphor); }
+.headtry { display: grid; gap: 10px; padding: 14px; background: var(--bg); border: var(--bw) solid var(--accent); }
+.headtry .hint { color: var(--ink); }
+#try-head[aria-pressed="true"] { background: var(--danger); border-color: var(--danger); }
+
+/* Sync, the home page mascot: a little pixel computer that watches your pointer and blinks when you click */
+.mascot { position: fixed; right: 18px; bottom: calc(18px + env(safe-area-inset-bottom, 0px) + var(--lift, 0px)); z-index: 900; display: grid; justify-items: end; gap: 10px; pointer-events: none; }
+.mascot-btn { pointer-events: auto; display: block; width: 76px; height: 76px; padding: 0; border: 0; background: none; cursor: pointer; }
+.mascot-btn:focus-visible { outline: 4px solid var(--focus); outline-offset: 4px; }
+.mascot-svg { display: block; width: 100%; height: 100%; shape-rendering: crispEdges; overflow: visible; }
+.ms-line { fill: var(--line); }
+.ms-body { fill: var(--bezel); }
+.ms-screen { fill: var(--crt); }
+.ms-eye, .ms-mouth rect { fill: var(--phosphor); }
+.ms-eye { transform-box: fill-box; transform-origin: center; }
+.mascot.is-blink .ms-eye { transform: scaleY(0.2); }
+.mascot.is-happy .ms-mouth { transform: translateY(-1px); }
+.mascot-say { pointer-events: auto; position: relative; max-width: min(250px, calc(100vw - 48px)); margin: 0; padding: 10px 13px; background: var(--ink); color: var(--bg); font: 700 0.875rem/1.4 var(--font-mono); box-shadow: var(--drop); }
+.mascot-say::after { content: ""; position: absolute; right: 30px; bottom: -9px; width: 12px; height: 9px; background: var(--ink); clip-path: polygon(0 0, 100% 0, 100% 100%); }
+@media (max-width: 560px) { .mascot { right: 12px; } .mascot-btn { width: 56px; height: 56px; } }
 
 @media (prefers-reduced-motion: no-preference) {
   /* Whole views slide in when you move between pages */
@@ -684,7 +709,17 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
   .js-reveal .win.reveal:not(.is-in) { transform: translateY(28px) scale(0.985); }
   .win-btns i { transition: background-color 120ms ease; }
   .win:hover .win-btns i:last-child { background: var(--danger); }
+
+  /* Sync pops up a moment after the page opens, floats gently, and hops when hovered */
+  .mascot { animation: fc-mascot-in 640ms cubic-bezier(0.2, 0.8, 0.2, 1.5) 1.6s backwards; }
+  .mascot-svg { animation: fc-float 3.6s ease-in-out infinite alternate; }
+  .mascot-btn:hover .mascot-svg { animation: fc-hop 520ms cubic-bezier(0.2, 0.8, 0.2, 1.4); }
+  .mascot-say:not([hidden]) { animation: fc-say 260ms cubic-bezier(0.2, 0.8, 0.2, 1.3) backwards; transform-origin: 85% 100%; }
 }
+@keyframes fc-mascot-in { from { opacity: 0; transform: translateY(40px) scale(0.6); } }
+@keyframes fc-float { to { transform: translateY(-4px); } }
+@keyframes fc-hop { 40% { transform: translateY(-10px) rotate(-6deg); } }
+@keyframes fc-say { from { opacity: 0; transform: scale(0.7); } }
 @keyframes fc-view { from { opacity: 0; translate: 0 14px; } }
 @keyframes fc-rise { from { opacity: 0; translate: 0 22px; } }
 @keyframes fc-word { from { opacity: 0; transform: translateY(0.55em) rotate(4deg); } }
@@ -810,11 +845,19 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
             <span class="pv-ring"></span>
             <span class="pv-ghost"></span><span class="pv-ghost"></span><span class="pv-ghost"></span><span class="pv-ghost"></span>
             <span class="pv-cursor" id="pv-cursor"></span>
+            <video class="pv-cam" id="pv-video" playsinline muted hidden></video>
           </div>
           <div class="pv-pixels" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span></div>
           <div class="preview-tracker" aria-hidden="true"><span></span><span class="lens"></span><span></span></div>
           <figcaption class="preview-caption">
-            <span class="pv-hint">Try it: move your mouse over the screen to steer, click to blink.</span>
+            <div class="headtry">
+              <div class="row">
+                <button class="btn btn-primary" type="button" id="try-head">Try it with your head</button>
+                <button class="btn" type="button" id="try-recenter" hidden>Recenter</button>
+              </div>
+              <p class="hint" id="try-status" role="status">Steer this screen with your own head, right here. Your camera turns on only when you press the button, and the picture never leaves your browser.</p>
+            </div>
+            <span class="pv-hint">Or move your mouse over the screen to steer, and click to blink.</span>
             <span class="label">What EyeSync sends this page, about 30 times a second</span>
             <pre class="payload-pre" id="pv-frame" aria-hidden="true">{"x": 400, "y": 300, "blink": false}</pre>
           </figcaption>
@@ -939,7 +982,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
           <h2 id="privacy-title">Private by design</h2>
           <ul class="ticks">
             <li>There is no EyeSync server. The website runs in your browser and talks only to EyeSync on this computer.</li>
-            <li>The camera picture is processed on your PC. The optional camera view on the dashboard is never uploaded or saved.</li>
+            <li>The camera picture is processed on your PC. The optional camera view on the dashboard, and the live head demo on this page, run on your device and never upload or save a picture.</li>
             <li>Your password is salted and hashed with PBKDF2-SHA-256, 600,000 rounds deep. The password itself is never saved.</li>
             <li>Cursor positions travel only from EyeSync to this page, and are never stored.</li>
             <li>No cookies, no analytics, no third-party scripts. Even the fonts are bundled in.</li>
@@ -959,6 +1002,21 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
             <li>Keyboards and screen readers are welcome too.</li>
           </ul>
         </section>
+      </div>
+
+      <div class="mascot" id="mascot">
+        <p class="mascot-say" id="mascot-say" role="status" hidden></p>
+        <button class="mascot-btn" type="button" id="mascot-btn" aria-label="Sync, the EyeSync mascot: show a tip">
+          <svg class="mascot-svg" viewBox="0 0 20 20" aria-hidden="true">
+            <rect class="ms-line" x="0" y="0" width="20" height="16"></rect>
+            <rect class="ms-body" x="1" y="1" width="18" height="14"></rect>
+            <rect class="ms-screen" x="3" y="3" width="14" height="10"></rect>
+            <g class="ms-eyes"><rect class="ms-eye" x="6" y="5" width="2" height="3"></rect><rect class="ms-eye" x="12" y="5" width="2" height="3"></rect></g>
+            <g class="ms-mouth"><rect x="7" y="9" width="1" height="1"></rect><rect x="12" y="9" width="1" height="1"></rect><rect x="8" y="10" width="4" height="1"></rect></g>
+            <rect class="ms-line" x="8" y="16" width="4" height="2"></rect>
+            <rect class="ms-line" x="5" y="18" width="10" height="2"></rect>
+          </svg>
+        </button>
       </div>
 
       <section class="cta-band win" data-win="start.exe" aria-labelledby="cta-title">
@@ -1491,7 +1549,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 
 <template id="tpl-cookies">
   <div class="policy">
-    <p class="meta">Version 1.2 · Last updated 15 October 2026</p>
+    <p class="meta">Version 1.3 · Last updated 16 October 2026</p>
     <p>EyeSync sets no HTTP cookies and loads nothing from other websites. It does use your browser's local storage and session storage, which privacy laws such as the EU ePrivacy Directive and UK PECR treat the same way as cookies. This policy lists every item it stores and why.</p>
     <h2>What is stored on your device</h2>
     <div class="table-wrap">
@@ -1511,6 +1569,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
     <h2>Cursor and camera data</h2>
     <p>Cursor positions travel from EyeSync (or other tracker software) on your own computer to this page over a local WebSocket (localhost or 127.0.0.1 only). They are processed in memory to draw the cursor and are never stored or sent anywhere else. With preference storage on, only a summary of your last accuracy test is saved.</p>
     <p>If you turn on the camera view, EyeSync sends small camera pictures to this page the same way. They are shown on the page and are never stored, uploaded or logged. They stop when you turn the camera view off or leave the Dashboard.</p>
+    <p>The home page's live head demo uses your camera only after you press “Try it with your head” and your browser asks for permission. The face tracking runs in your browser, from files served by this site; camera pictures are never stored, uploaded or logged, and the camera turns off when you press Stop or leave the page.</p>
     <h2>Hosting</h2>
     <p>The page and the EyeSync download are served by GitHub Pages. GitHub may log technical data such as your IP address when it delivers them; see the <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener noreferrer">GitHub General Privacy Statement</a>. EyeSync has no server of its own and receives none of your data.</p>
     <h2>Changing your choice or deleting your data</h2>
@@ -1587,7 +1646,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 const APP = 'EyeSync';
 const CONSENT_VERSION = 1;
 const TERMS_VERSION = '1.2';
-const COOKIE_POLICY_VERSION = '1.2';
+const COOKIE_POLICY_VERSION = '1.3';
 const KDF_ITERATIONS = 600000;            // OWASP 2023 guidance for PBKDF2-HMAC-SHA-256
 const SESSION_IDLE_MS = 30 * 60 * 1000;          // sign-in for this tab only
 const REMEMBER_MS = 30 * 24 * 60 * 60 * 1000;    // "Keep me signed in": 30 days since last use
@@ -1598,6 +1657,22 @@ const MAX_FRAME_CHARS = 4096;
 const MAX_MESSAGE_CHARS = 512 * 1024;     // EyeSync's typed messages: a camera picture is ~20 KB
 const STALE_MS = 3000;
 const SETTLE_MS = 700;
+
+/* ---------- Trusted Types: one narrow exception ----------
+   The face-tracking library behind the home page's live head demo (vendor/mediapipe) loads its helper
+   script by setting a script's src from a string. This default policy lets exactly that through:
+   same-origin scripts under /vendor/mediapipe/. HTML and inline-script sinks stay blocked. */
+if (window.trustedTypes?.createPolicy) {
+  try {
+    trustedTypes.createPolicy('default', {
+      createScriptURL(url) {
+        const u = new URL(url, location.href);
+        if (u.origin === location.origin && u.pathname.includes('/vendor/mediapipe/')) return u.href;
+        throw new TypeError('Blocked a script that is not part of the face-tracking library.');
+      },
+    });
+  } catch { /* a default policy already exists */ }
+}
 
 /* ---------- DOM helpers ---------- */
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -1972,6 +2047,7 @@ const Router = {
   show(name, authed) {
     if (this.current === 'calibration' && name !== 'calibration') Calibration.stop('left');
     if (this.current === 'dashboard' && name !== 'dashboard') Camera.off();
+    if (name !== 'home' && HeadDemo.state !== 'off') HeadDemo.stop('Stopped when you left the page. Your camera is off.');
     this.current = name;
     $$('[data-view]').forEach((v) => { v.hidden = v.dataset.view !== name; });
     document.title = `${ROUTES[name]?.title || 'Page not found'} · ${APP}`;
@@ -1982,7 +2058,7 @@ const Router = {
     if (name === 'download') DownloadPage.render();
     if (name === 'home') HeroPreview.start(); else HeroPreview.stop();
     if (name === 'home' || name === 'download') Reveal.setup(name);
-    if (name === 'home') Effects.home();
+    if (name === 'home') { Effects.home(); Mascot.queue(); }
     window.scrollTo(0, 0);
     $(`[data-view="${name}"] h1`)?.focus({ preventScroll: true });
     syncCursor();
@@ -3128,34 +3204,46 @@ const HeroPreview = {
   ghosts: $$('.pv-ghost'),                        // a phosphor trail: where the cursor was 5, 10, 15, 20 frames ago
   trail: [],
   x: 0.5, y: 0.5, pointer: null, clickAt: -1e9, bound: false,
-  // Try it: the visitor's pointer steers the preview cursor, and a click is a blink that "clicks"
-  // the target under it.
+  // Try it: the visitor's pointer (or, in the live demo, their head) steers the preview cursor, and a
+  // click (or a blink) "clicks" the target under it. The live demo takes over from the mouse.
   bind() {
     if (this.bound) return;
     this.bound = true;
-    const screen = $('.preview-screen'), ring = $('.pv-ring');
+    const screen = $('.preview-screen');
     const at = (e) => {
       const r = screen.getBoundingClientRect();
       return { x: clamp((e.clientX - r.left) / r.width, 0.02, 0.98), y: clamp((e.clientY - r.top) / r.height, 0.02, 0.98) };
     };
     screen.addEventListener('pointermove', (e) => {
+      if (HeadDemo.state !== 'off') return;
       this.pointer = at(e);
       if (!this.raf) this.place(this.pointer.x, this.pointer.y, false);   // reduced motion: no loop running
     });
-    screen.addEventListener('pointerleave', () => { this.pointer = null; });
+    screen.addEventListener('pointerleave', () => { if (HeadDemo.state === 'off') this.pointer = null; });
     screen.addEventListener('pointerdown', (e) => {
+      if (HeadDemo.state !== 'off') return;
       const p = this.pointer = at(e);
-      this.clickAt = performance.now();
-      if (motionOK()) {
-        ring.style.left = (p.x * 100).toFixed(2) + '%';
-        ring.style.top = (p.y * 100).toFixed(2) + '%';
-        ring.classList.remove('is-on');
-        void ring.offsetWidth;                     // restart the ring's animation
-        ring.classList.add('is-on');
-      }
-      const hit = this.targets.find((el, i) => Math.hypot(this.spots[i].x - p.x, this.spots[i].y - p.y) < 0.09);
-      if (hit) { hit.classList.add('is-hit'); setTimeout(() => hit.classList.remove('is-hit'), 420); }
+      this.click(p.x, p.y);
     });
+  },
+  click(x, y) {
+    this.clickAt = performance.now();
+    if (motionOK()) {
+      const ring = $('.pv-ring');
+      ring.style.left = (x * 100).toFixed(2) + '%';
+      ring.style.top = (y * 100).toFixed(2) + '%';
+      ring.classList.remove('is-on');
+      void ring.offsetWidth;                       // restart the ring's animation
+      ring.classList.add('is-on');
+    }
+    const hit = this.targets.find((el, i) => Math.hypot(this.spots[i].x - x, this.spots[i].y - y) < 0.09);
+    if (hit) { hit.classList.add('is-hit'); setTimeout(() => hit.classList.remove('is-hit'), 420); }
+  },
+  // The live head demo steers from here, once per camera frame.
+  drive(x, y, click) {
+    this.pointer = { x, y };
+    if (click) this.click(x, y);
+    if (!this.raf) this.place(x, y, click);
   },
   spots: [0.1, 0.5, 0.9].flatMap((y) => [0.1, 0.5, 0.9].map((x) => ({ x, y: y === 0.1 ? 0.12 : y === 0.9 ? 0.88 : y }))),
   start() {
@@ -3406,6 +3494,202 @@ const Effects = {
       if (k < 1) requestAnimationFrame(step);
     };
     requestAnimationFrame(step);
+  },
+};
+
+/* ---------- Live head demo: steer the home page's CRT with your own head, in the browser ----------
+   Uses Google's MediaPipe face landmarker, served by this site (vendor/mediapipe) and loaded only when
+   the visitor presses the button. The camera picture goes from the camera to the tracker in this tab
+   and nowhere else; nothing is stored or sent. The head's turn and tilt are measured against where it
+   was when the demo started (or Recenter was pressed), and both eyes closing is a click. */
+const MP_BASE = new URL('vendor/mediapipe/', location.href);
+const MP_VERSION = '1.1.1-quiet';                 // bump when the files change, so browsers fetch the new copy
+async function loadLandmarker() {
+  const { FilesetResolver, FaceLandmarker } = await import(new URL(`vision_bundle.mjs?v=${MP_VERSION}`, MP_BASE).href);
+  const files = await FilesetResolver.forVisionTasks(new URL('wasm', MP_BASE).href);
+  const options = (delegate) => ({
+    baseOptions: { modelAssetPath: new URL('face_landmarker.task', MP_BASE).href, delegate },
+    runningMode: 'VIDEO', numFaces: 1, outputFaceBlendshapes: true,
+  });
+  try { return await FaceLandmarker.createFromOptions(files, options('GPU')); }
+  catch { return FaceLandmarker.createFromOptions(files, options('CPU')); }
+}
+const HeadDemo = {
+  state: 'off',                                    // off | loading | on
+  tracker: null, stream: null, loop: 0, lastTime: -1, lastSeen: 0, lost: false,
+  center: null, warm: [], eyesShut: false, lastClick: 0,
+  video: $('#pv-video'), btn: $('#try-head'), recenterBtn: $('#try-recenter'), status: $('#try-status'),
+  init() {
+    this.btn.addEventListener('click', () => (this.state === 'off' ? this.start() : this.stop('Stopped. Your camera is off.')));
+    this.recenterBtn.addEventListener('click', () => this.recenter());
+    document.addEventListener('visibilitychange', () => { if (document.hidden && this.state !== 'off') this.stop('Stopped while the tab was hidden. Your camera is off.'); });
+  },
+  say(msg) { this.status.textContent = msg; },
+  render() {
+    const on = this.state === 'on';
+    this.btn.disabled = this.state === 'loading';
+    this.btn.textContent = this.state === 'loading' ? 'Starting…' : on ? 'Stop' : 'Try it with your head';
+    this.btn.setAttribute('aria-pressed', String(on));
+    this.recenterBtn.hidden = !on;
+  },
+  async start() {
+    if (!navigator.mediaDevices?.getUserMedia || !window.isSecureContext) { this.say('This browser can\'t use a camera on this page.'); return; }
+    this.state = 'loading';
+    this.render();
+    this.say('Starting your camera. Your browser will ask first.');
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }, audio: false });
+    } catch (err) {
+      this.state = 'off';
+      this.render();
+      this.say(err?.name === 'NotAllowedError' ? 'Camera access was blocked. Allow it from the camera icon in the address bar, then try again.'
+        : err?.name === 'NotFoundError' ? 'No camera was found on this device.'
+        : 'The camera couldn\'t start. Close other apps that use it, then try again.');
+      return;
+    }
+    if (this.state !== 'loading') { stream.getTracks().forEach((t) => t.stop()); return; }   // stopped meanwhile
+    this.stream = stream;
+    this.video.srcObject = stream;
+    this.video.hidden = false;
+    try { await this.video.play(); } catch { /* it plays once frames arrive */ }
+    if (!this.tracker) {
+      this.say('Loading face tracking. The first time, that\'s about 18 MB…');
+      try { this.tracker = await loadLandmarker(); }
+      catch { this.stop('Face tracking couldn\'t load. Check your connection and try again.'); return; }
+    }
+    if (this.state !== 'loading') return;
+    this.state = 'on';
+    this.render();
+    this.recenter();
+    this.lastSeen = performance.now();
+    Mascot.speak('I can see you! Turn your head to steer, and blink to click.');
+    this.tick();
+  },
+  recenter() {
+    this.center = null;
+    this.warm = [];
+    this.say('Look straight at the screen and hold still for a moment…');
+  },
+  tick() {
+    this.loop = requestAnimationFrame(() => this.tick());
+    const v = this.video;
+    if (v.readyState < 2 || v.currentTime === this.lastTime) return;
+    this.lastTime = v.currentTime;
+    const now = performance.now();
+    let result;
+    try { result = this.tracker.detectForVideo(v, now); } catch { return; }
+    const face = result.faceLandmarks?.[0];
+    if (!face) {
+      if (!this.lost && now - this.lastSeen > 1200) { this.lost = true; this.say('I can\'t see your face. Move into the camera\'s view, with light in front of you.'); }
+      return;
+    }
+    if (this.lost) { this.lost = false; this.say('Got you again. Turn your head to steer, and blink to click.'); }
+    this.lastSeen = now;
+    // Turn and tilt: where the nose tip sits between the cheeks and between forehead and chin.
+    const nose = face[1], a = face[234], b = face[454], top = face[10], chin = face[152];
+    const yaw = (nose.x - (a.x + b.x) / 2) / Math.max(0.01, Math.abs(b.x - a.x));
+    const pitch = (nose.y - (top.y + chin.y) / 2) / Math.max(0.01, Math.abs(chin.y - top.y));
+    if (!this.center) {
+      this.warm.push([yaw, pitch]);
+      if (this.warm.length >= 12) {
+        this.center = [0, 1].map((k) => this.warm.reduce((s, w) => s + w[k], 0) / this.warm.length);
+        this.say('Ready! Turn your head to steer and blink to click a target. Press Recenter if it drifts.');
+      }
+      return;
+    }
+    // The camera sees you unmirrored: turning to your right moves your nose left in its picture.
+    const x = clamp(0.5 - (yaw - this.center[0]) * 3.2, 0.03, 0.97);
+    const y = clamp(0.5 + (pitch - this.center[1]) * 4.5, 0.03, 0.97);
+    const shapes = result.faceBlendshapes?.[0]?.categories || [];
+    const score = (name) => shapes.find((c) => c.categoryName === name)?.score || 0;
+    const shut = score('eyeBlinkLeft') > 0.5 && score('eyeBlinkRight') > 0.5;
+    const click = shut && !this.eyesShut && now - this.lastClick > 600;
+    if (click) this.lastClick = now;
+    this.eyesShut = shut;
+    HeroPreview.drive(x, y, click);
+    Mascot.follow(x, y, click);
+  },
+  stop(msg) {
+    cancelAnimationFrame(this.loop);
+    this.loop = 0;
+    this.stream?.getTracks().forEach((t) => t.stop());
+    this.stream = null;
+    this.video.srcObject = null;
+    this.video.hidden = true;
+    this.state = 'off';
+    HeroPreview.pointer = null;
+    this.render();
+    if (msg) this.say(msg);
+  },
+};
+
+/* ---------- Sync, the mascot: watches your pointer, blinks when you click, and has tips ---------- */
+const Mascot = {
+  el: $('#mascot'), eyes: $('.ms-eyes'), bubble: $('#mascot-say'),
+  tips: [
+    'Hi, I\'m Sync! I follow your pointer, the way EyeSync follows your head.',
+    'Blink to click. Wink your right eye for a right click.',
+    'Hold a big smile for 1.5 seconds to pause EyeSync.',
+    'Press “Try it with your head” and steer the little screen yourself.',
+    'Your camera picture never leaves your PC. Promise.',
+    'Grab a window by its title bar to move it. Double-click to put it back.',
+  ],
+  tip: 0, x: -1, y: -1, raf: 0, hideTimer: 0, blinkTimer: 0, idleTimer: 0,
+  init() {
+    $('#mascot-btn').addEventListener('click', () => { this.speak(this.tips[this.tip++ % this.tips.length]); this.happy(); });
+    addEventListener('pointermove', (e) => { this.x = e.clientX; this.y = e.clientY; this.queue(); }, { passive: true });
+    addEventListener('scroll', () => this.queue(), { passive: true });
+    addEventListener('resize', () => this.queue());
+    document.addEventListener('pointerdown', () => this.blink(), { passive: true });   // you click, Sync blinks
+    if (motionOK()) this.idle();
+    setTimeout(() => { if (Router.current === 'home') this.speak('Hi, I\'m Sync! Press me for tips.'); }, 2600);
+    this.queue();
+  },
+  queue() { if (!this.raf) this.raf = requestAnimationFrame(() => this.frame()); },
+  frame() {
+    this.raf = 0;
+    if (Router.current !== 'home') return;
+    // Stay clear of the footer when the page is scrolled to the bottom.
+    const footTop = $('.footer').getBoundingClientRect().top;
+    this.el.style.setProperty('--lift', Math.max(0, innerHeight - footTop) + 'px');
+    if (this.x >= 0 && HeadDemo.state !== 'on') this.lookAt(this.x, this.y);
+  },
+  // Pupils shift one pixel towards a point on the page (pixel art: no half steps).
+  lookAt(px, py) {
+    const r = this.eyes.getBoundingClientRect();
+    const dx = px - (r.left + r.width / 2), dy = py - (r.top + r.height / 2);
+    const d = Math.hypot(dx, dy);
+    const sx = d < 24 ? 0 : Math.round((dx / d) * 1.3), sy = d < 24 ? 0 : Math.round((dy / d) * 1.3);
+    this.eyes.style.transform = `translate(${sx}px, ${sy}px)`;
+  },
+  // During the live demo Sync watches the cursor on the CRT, and blinks when the visitor does.
+  follow(x, y, click) {
+    const r = $('.preview-screen').getBoundingClientRect();
+    this.lookAt(r.left + x * r.width, r.top + y * r.height);
+    if (click) this.blink();
+  },
+  blink() {
+    this.el.classList.add('is-blink');
+    clearTimeout(this.blinkTimer);
+    this.blinkTimer = setTimeout(() => this.el.classList.remove('is-blink'), 150);
+  },
+  happy() {
+    this.el.classList.add('is-happy');
+    setTimeout(() => this.el.classList.remove('is-happy'), 900);
+  },
+  idle() {                                         // now and then, a blink of its own
+    clearTimeout(this.idleTimer);
+    this.idleTimer = setTimeout(() => { if (Router.current === 'home' && !document.hidden) this.blink(); this.idle(); }, 2500 + Math.random() * 3500);
+  },
+  speak(text) {
+    const b = this.bubble;
+    b.hidden = true;
+    void b.offsetWidth;                            // replay the pop-in
+    b.textContent = text;
+    b.hidden = false;
+    clearTimeout(this.hideTimer);
+    this.hideTimer = setTimeout(() => { b.hidden = true; }, 5200);
   },
 };
 
@@ -3678,6 +3962,8 @@ function boot() {
   renderEyeSync();
   Browser.check();
   Effects.start();
+  HeadDemo.init();
+  Mascot.init();
   if (!Consent.state()) Banner.show(false);
   Router.resolve();
 }
