@@ -58,6 +58,7 @@
   --bw: 3px;
   --drop: 5px 5px 0 var(--shadow);
   --drop-lg: 8px 8px 0 var(--shadow);
+  --dots: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22'%3E%3Crect width='2' height='2' fill='%232b2823'/%3E%3C/svg%3E");
   color-scheme: dark;
 }
 @media (prefers-color-scheme: light) {
@@ -65,17 +66,20 @@
     --bg: #efe8d8; --surface: #f8f3e7; --surface-2: #e3d9c3; --ink: #1c1a17; --ink-2: #4d463a;
     --line: #1c1a17; --line-soft: #b0a48b; --shadow: #1c1a17; --accent-ink: #1b5c94; --danger-ink: #a8301f;
     --focus: #1c1a17; --bezel: #d8ccb2; color-scheme: light;
+    --dots: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22'%3E%3Crect width='2' height='2' fill='%23ddd3bd'/%3E%3C/svg%3E");
   }
 }
 :root[data-theme="light"] {
   --bg: #efe8d8; --surface: #f8f3e7; --surface-2: #e3d9c3; --ink: #1c1a17; --ink-2: #4d463a;
   --line: #1c1a17; --line-soft: #b0a48b; --shadow: #1c1a17; --accent-ink: #1b5c94; --danger-ink: #a8301f;
   --focus: #1c1a17; --bezel: #d8ccb2; color-scheme: light;
+  --dots: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22'%3E%3Crect width='2' height='2' fill='%23ddd3bd'/%3E%3C/svg%3E");
 }
 :root[data-theme="dark"] {
   --bg: #1c1a17; --surface: #26231e; --surface-2: #332f28; --ink: #f4ecda; --ink-2: #c9bfa9;
   --line: #efe6d2; --line-soft: #5a5242; --shadow: #0b0a08; --accent-ink: #7cc0ef; --danger-ink: #ff9a85;
   --focus: #f2b632; --bezel: #3b362d; color-scheme: dark;
+  --dots: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22'%3E%3Crect width='2' height='2' fill='%232b2823'/%3E%3C/svg%3E");
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -149,7 +153,7 @@ code, pre, .mono { font-family: var(--font-mono); }
 .is-dwell-target { outline: 5px solid var(--danger) !important; outline-offset: 4px; }
 
 /* Main + views */
-main { flex: 1; padding-block: 32px 64px; }
+main { flex: 1; padding-block: 32px 64px; background-image: var(--dots); }
 main:focus { outline: none; }
 .view { display: grid; gap: 28px; }
 .view-head { display: flex; flex-wrap: wrap; gap: 16px 24px; align-items: flex-end; justify-content: space-between; }
@@ -540,6 +544,40 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 .burst { position: fixed; left: 0; top: 0; z-index: 1300; pointer-events: none; }
 .burst span { position: absolute; width: 8px; height: 8px; margin: -4px 0 0 -4px; background: var(--c, var(--accent)); animation: fc-burst 560ms cubic-bezier(0.2, 0.7, 0.3, 1) forwards; }
 
+/* Headline highlights: a solid bar behind "head." and "blink." */
+.hl { position: relative; z-index: 0; white-space: nowrap; }
+.hl::before { content: ""; position: absolute; left: -0.06em; right: -0.06em; bottom: 0.08em; z-index: -1; height: 0.3em; background: var(--accent); transform-origin: left; }
+.hl-2::before { background: var(--warn); }
+
+/* The CRT can be played with: a click ring, a "hit" on targets, and a hint for mouse users */
+.preview-screen { cursor: crosshair; touch-action: pan-y; }
+.pv-ring { position: absolute; z-index: 3; width: 44px; height: 44px; margin: -22px 0 0 -22px; border: 3px solid var(--warn); border-radius: 50%; opacity: 0; pointer-events: none; }
+.pv-ring.is-on { animation: fc-ring 480ms ease-out forwards; }
+.pv-target.is-hit { background: var(--warn); border-color: var(--warn); }
+.pv-hint { display: none; font: 700 0.875rem/1.3 var(--font-mono); color: var(--phosphor-dim); }
+@media (hover: hover) and (pointer: fine) { .pv-hint { display: block; color: var(--ok); } }
+
+/* Gestures: a pixel face on a small CRT tile per gesture, with what it does. Without motion the
+   faces simply show the gesture. */
+.gestures { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px; margin: 0; padding: 0; list-style: none; }
+@media (max-width: 1020px) { .gestures { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .gestures { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.gesture { display: grid; gap: 10px; align-content: start; min-width: 0; padding: 16px; background: var(--surface); border: var(--bw) solid var(--line-soft); transition: border-color 160ms ease, box-shadow 160ms ease, translate 160ms ease; }
+.gesture:hover { border-color: var(--line); box-shadow: var(--drop); }
+.gesture h3 { font-size: 1.125rem; }
+.gesture p { font-size: 0.9375rem; color: var(--ink-2); }
+.g-screen { display: grid; place-items: center; aspect-ratio: 1; background: var(--crt); border: 8px solid var(--bezel); border-radius: 12px; outline: var(--bw) solid var(--line); outline-offset: -2px; }
+.face { width: 72%; height: auto; shape-rendering: crispEdges; }
+.f-head { fill: var(--phosphor); }
+.f-eye, .f-mouth { fill: var(--crt); transform-box: fill-box; transform-origin: center; }
+.f-rest { opacity: 0; }
+.g-blink .f-eye, .g-wink .f-eye-r { transform: scaleY(0.25); }
+.g-hold { display: block; height: 8px; background: var(--bg); border: 2px solid var(--line-soft); }
+.g-hold > span { display: block; height: 100%; background: var(--ok); transform-origin: left; }
+.g-does { justify-self: start; padding: 5px 10px; background: var(--bg); border: 2px solid var(--line-soft); font: 700 0.8125rem/1.2 var(--font-mono); letter-spacing: 0.04em; text-transform: uppercase; }
+.gesture:nth-child(1) { --gd: 0s; } .gesture:nth-child(2) { --gd: -0.7s; } .gesture:nth-child(3) { --gd: -1.4s; }
+.gesture:nth-child(4) { --gd: -2.1s; } .gesture:nth-child(5) { --gd: -2.8s; }
+
 @media (prefers-reduced-motion: no-preference) {
   /* Whole views slide in when you move between pages */
   .view:not([hidden]) { animation: fc-view 420ms cubic-bezier(0.2, 0.7, 0.2, 1) backwards; }
@@ -571,7 +609,21 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
   .ticker:hover .ticker-track { animation-play-state: paused; }
 
   /* Cards lift towards the pointer; marks and step numbers come alive */
-  .feature:hover, .step:hover, .stat:hover { translate: -4px -4px; }
+  .feature:hover, .step:hover, .stat:hover, .gesture:hover { translate: -4px -4px; }
+
+  /* The headline's highlight bars sweep in after the words land */
+  .hl::before { animation: fc-sweep 560ms cubic-bezier(0.2, 0.7, 0.2, 1) 1.05s backwards; }
+  .hl-2::before { animation-delay: 1.3s; }
+
+  /* Gesture faces act their gesture on a loop, each card out of step with the next; the
+     result lights up when the gesture counts (hold gestures fill their bar first) */
+  .gesture .f-eye, .gesture .f-mouth, .gesture .g-hold > span, .gesture .g-does { animation: 3.4s linear var(--gd, 0s) infinite; }
+  .g-blink .f-eye, .g-wink .f-eye-r { animation-name: fc-g-blink; }
+  .g-blink .g-does, .g-wink .g-does { animation-name: fc-g-pill-short; }
+  .gesture .f-rest { animation-name: fc-g-off; }
+  .gesture .f-act { animation-name: fc-g-on; }
+  .gesture .g-hold > span { animation-name: fc-g-hold; }
+  .g-smile .g-does, .g-side .g-does, .g-open .g-does { animation-name: fc-g-pill; }
   .feature-mark { transition: transform 320ms cubic-bezier(0.2, 0.7, 0.2, 1.5); }
   .feature:hover .feature-mark { transform: rotate(90deg) scale(1.15); }
   .step.seen .step-n { animation: fc-pop 560ms cubic-bezier(0.2, 0.8, 0.2, 1.5) backwards; animation-delay: calc(var(--delay, 0ms) + 200ms); }
@@ -609,6 +661,22 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 @keyframes fc-up { from { translate: 0 100%; } }
 @keyframes fc-beat { 30% { transform: scale(1.3); } 60% { transform: scale(0.95); } }
 @keyframes fc-burst { to { opacity: 0; transform: translate(var(--dx), var(--dy)) rotate(90deg) scale(0.4); } }
+@keyframes fc-sweep { from { transform: scaleX(0); } }
+@keyframes fc-ring { from { opacity: 1; transform: scale(0.3); } to { opacity: 0; transform: scale(1.5); } }
+@keyframes fc-g-blink { 0%, 58% { transform: none; } 61%, 67% { transform: scaleY(0.15); } 70%, 100% { transform: none; } }
+@keyframes fc-g-on { 0%, 42% { opacity: 0; } 45%, 88% { opacity: 1; } 91%, 100% { opacity: 0; } }
+@keyframes fc-g-off { 0%, 42% { opacity: 1; } 45%, 88% { opacity: 0; } 91%, 100% { opacity: 1; } }
+@keyframes fc-g-hold { 0%, 45% { transform: scaleX(0); } 85%, 88% { transform: scaleX(1); } 91%, 100% { transform: scaleX(0); } }
+@keyframes fc-g-pill {
+  0%, 84% { background: var(--bg); color: var(--ink); border-color: var(--line-soft); }
+  86%, 97% { background: var(--accent); color: var(--on-color); border-color: var(--accent); }
+  99%, 100% { background: var(--bg); color: var(--ink); border-color: var(--line-soft); }
+}
+@keyframes fc-g-pill-short {
+  0%, 66% { background: var(--bg); color: var(--ink); border-color: var(--line-soft); }
+  68%, 90% { background: var(--accent); color: var(--on-color); border-color: var(--accent); }
+  93%, 100% { background: var(--bg); color: var(--ink); border-color: var(--line-soft); }
+}
 
 @media (max-width: 560px) {
   .topbar { position: static; }
@@ -665,7 +733,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
       <div class="hero">
         <div class="hero-copy">
           <p class="eyebrow prompt">Webcam head mouse for Windows</p>
-          <h1 id="home-title" tabindex="-1">Steer your screen with your head. Click with a blink.</h1>
+          <h1 id="home-title" tabindex="-1">Steer your screen with your <span class="hl">head.</span> Click with a <span class="hl hl-2">blink.</span></h1>
           <p class="lede">EyeSync turns your webcam into a mouse. Move your head a little and the cursor follows; blink to click. This website is its control room: start EyeSync, tune it to you and change its settings from one tab.</p>
           <div class="hero-actions js-guest">
             <a class="btn btn-primary btn-lg btn-dl" href="#download">Download EyeSync</a>
@@ -689,12 +757,14 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
             <span class="pv-target pv-c0 pv-r1"></span><span class="pv-target pv-c1 pv-r1"></span><span class="pv-target pv-c2 pv-r1"></span>
             <span class="pv-target pv-c0 pv-r2"></span><span class="pv-target pv-c1 pv-r2"></span><span class="pv-target pv-c2 pv-r2"></span>
             <span class="pv-roll"></span>
+            <span class="pv-ring"></span>
             <span class="pv-ghost"></span><span class="pv-ghost"></span><span class="pv-ghost"></span><span class="pv-ghost"></span>
             <span class="pv-cursor" id="pv-cursor"></span>
           </div>
           <div class="pv-pixels" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span></div>
           <div class="preview-tracker" aria-hidden="true"><span></span><span class="lens"></span><span></span></div>
           <figcaption class="preview-caption">
+            <span class="pv-hint">Try it: move your mouse over the screen to steer, click to blink.</span>
             <span class="label">What EyeSync sends this page, about 30 times a second</span>
             <pre class="payload-pre" id="pv-frame" aria-hidden="true">{"x": 400, "y": 300, "blink": false}</pre>
           </figcaption>
@@ -742,6 +812,49 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
         <div class="stat"><span class="stat-n" data-count="30" data-suffix=" s">30 s</span><span class="stat-l">to tune it to you</span></div>
         <div class="stat"><span class="stat-n" data-count="5">5</span><span class="stat-l">face gestures, no hands needed</span></div>
         <div class="stat"><span class="stat-n" data-count="0" data-from="100">0</span><span class="stat-l">camera pictures uploaded, ever</span></div>
+      </section>
+
+      <section class="home-section" aria-labelledby="gestures-title">
+        <div class="section-head">
+          <p class="eyebrow">Gestures</p>
+          <h2 id="gestures-title">Your face is the mouse</h2>
+          <p class="lede">Nothing to reach for. EyeSync reads a handful of simple face gestures, so every click and command is a blink or a smile away.</p>
+        </div>
+        <ul class="gestures">
+          <li class="gesture g-blink">
+            <div class="g-screen" aria-hidden="true"><svg class="face" viewBox="0 0 16 16"><path class="f-head" d="M5 2h6v1h1v1h1v8h-1v1h-1v1H5v-1H4v-1H3V4h1V3h1z"/><rect class="f-eye f-eye-r" x="5" y="6" width="2" height="2"/><rect class="f-eye f-eye-l" x="9" y="6" width="2" height="2"/><rect class="f-mouth" x="6" y="10" width="4" height="1"/></svg></div>
+            <h3>Blink</h3>
+            <p>Blink both eyes, or wink your left eye for about ⅓ s.</p>
+            <span class="g-does">Left click</span>
+          </li>
+          <li class="gesture g-wink">
+            <div class="g-screen" aria-hidden="true"><svg class="face" viewBox="0 0 16 16"><path class="f-head" d="M5 2h6v1h1v1h1v8h-1v1h-1v1H5v-1H4v-1H3V4h1V3h1z"/><rect class="f-eye f-eye-r" x="5" y="6" width="2" height="2"/><rect class="f-eye f-eye-l" x="9" y="6" width="2" height="2"/><rect class="f-mouth" x="6" y="10" width="4" height="1"/></svg></div>
+            <h3>Wink right</h3>
+            <p>A short wink of your right eye.</p>
+            <span class="g-does">Right click</span>
+          </li>
+          <li class="gesture g-smile">
+            <div class="g-screen" aria-hidden="true"><svg class="face" viewBox="0 0 16 16"><path class="f-head" d="M5 2h6v1h1v1h1v8h-1v1h-1v1H5v-1H4v-1H3V4h1V3h1z"/><rect class="f-eye f-eye-r" x="5" y="6" width="2" height="2"/><rect class="f-eye f-eye-l" x="9" y="6" width="2" height="2"/><rect class="f-mouth f-rest" x="6" y="10" width="4" height="1"/><path class="f-mouth f-act" d="M5 9h1v1h4V9h1v2H5z"/></svg></div>
+            <span class="g-hold" aria-hidden="true"><span></span></span>
+            <h3>Smile</h3>
+            <p>A big smile, held for 1.5 s.</p>
+            <span class="g-does">Pause or resume</span>
+          </li>
+          <li class="gesture g-side">
+            <div class="g-screen" aria-hidden="true"><svg class="face" viewBox="0 0 16 16"><path class="f-head" d="M5 2h6v1h1v1h1v8h-1v1h-1v1H5v-1H4v-1H3V4h1V3h1z"/><rect class="f-eye f-eye-r" x="5" y="6" width="2" height="2"/><rect class="f-eye f-eye-l" x="9" y="6" width="2" height="2"/><rect class="f-mouth f-rest" x="6" y="10" width="4" height="1"/><path class="f-mouth f-act" d="M8 10h3V9h1v2H8z"/></svg></div>
+            <span class="g-hold" aria-hidden="true"><span></span></span>
+            <h3>Mouth to one side</h3>
+            <p>Pull your mouth to one side for 1.5 s.</p>
+            <span class="g-does">Next speed</span>
+          </li>
+          <li class="gesture g-open">
+            <div class="g-screen" aria-hidden="true"><svg class="face" viewBox="0 0 16 16"><path class="f-head" d="M5 2h6v1h1v1h1v8h-1v1h-1v1H5v-1H4v-1H3V4h1V3h1z"/><rect class="f-eye f-eye-r" x="5" y="6" width="2" height="2"/><rect class="f-eye f-eye-l" x="9" y="6" width="2" height="2"/><rect class="f-mouth f-rest" x="6" y="10" width="4" height="1"/><rect class="f-mouth f-act" x="6" y="9" width="4" height="3"/></svg></div>
+            <span class="g-hold" aria-hidden="true"><span></span></span>
+            <h3>Mouth wide open</h3>
+            <p>Open your mouth wide for 3 s.</p>
+            <span class="g-does">Quit EyeSync</span>
+          </li>
+        </ul>
       </section>
 
       <section class="home-section" aria-labelledby="how-title">
@@ -2964,14 +3077,51 @@ const HeroPreview = {
   targets: $$('.pv-target'),
   ghosts: $$('.pv-ghost'),                        // a phosphor trail: where the cursor was 5, 10, 15, 20 frames ago
   trail: [],
+  x: 0.5, y: 0.5, pointer: null, clickAt: -1e9, bound: false,
+  // Try it: the visitor's pointer steers the preview cursor, and a click is a blink that "clicks"
+  // the target under it.
+  bind() {
+    if (this.bound) return;
+    this.bound = true;
+    const screen = $('.preview-screen'), ring = $('.pv-ring');
+    const at = (e) => {
+      const r = screen.getBoundingClientRect();
+      return { x: clamp((e.clientX - r.left) / r.width, 0.02, 0.98), y: clamp((e.clientY - r.top) / r.height, 0.02, 0.98) };
+    };
+    screen.addEventListener('pointermove', (e) => {
+      this.pointer = at(e);
+      if (!this.raf) this.place(this.pointer.x, this.pointer.y, false);   // reduced motion: no loop running
+    });
+    screen.addEventListener('pointerleave', () => { this.pointer = null; });
+    screen.addEventListener('pointerdown', (e) => {
+      const p = this.pointer = at(e);
+      this.clickAt = performance.now();
+      if (motionOK()) {
+        ring.style.left = (p.x * 100).toFixed(2) + '%';
+        ring.style.top = (p.y * 100).toFixed(2) + '%';
+        ring.classList.remove('is-on');
+        void ring.offsetWidth;                     // restart the ring's animation
+        ring.classList.add('is-on');
+      }
+      const hit = this.targets.find((el, i) => Math.hypot(this.spots[i].x - p.x, this.spots[i].y - p.y) < 0.09);
+      if (hit) { hit.classList.add('is-hit'); setTimeout(() => hit.classList.remove('is-hit'), 420); }
+    });
+  },
   spots: [0.1, 0.5, 0.9].flatMap((y) => [0.1, 0.5, 0.9].map((x) => ({ x, y: y === 0.1 ? 0.12 : y === 0.9 ? 0.88 : y }))),
   start() {
     if (this.raf) return;
+    this.bind();
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) { this.place(0.5, 0.5, false); return; }
     this.t0 = performance.now();
     const step = (now) => {
       const t = (now - this.t0) / 1000;
-      this.place(0.5 + 0.4 * Math.sin(t * 0.9), 0.5 + 0.38 * Math.sin(t * 1.3 + 0.6), (t % 3.5) < 0.15, now);
+      // Over the screen the cursor follows the visitor's pointer; otherwise it wanders on its own.
+      const aim = this.pointer || { x: 0.5 + 0.4 * Math.sin(t * 0.9), y: 0.5 + 0.38 * Math.sin(t * 1.3 + 0.6) };
+      const ease = this.pointer ? 0.28 : 0.12;
+      this.x += (aim.x - this.x) * ease;
+      this.y += (aim.y - this.y) * ease;
+      const blink = this.pointer ? now - this.clickAt < 170 : (t % 3.5) < 0.15;
+      this.place(this.x, this.y, blink, now);
       this.raf = requestAnimationFrame(step);
     };
     this.raf = requestAnimationFrame(step);
@@ -3020,7 +3170,7 @@ const Reveal = {
     setTimeout(() => el.classList.remove('reveal', 'is-in'), 1300 + (parseInt(el.style.getPropertyValue('--delay'), 10) || 0));
   },
   groups: {
-    home: ['.ticker', '.home-section .section-head', '.features > .feature', '.stats > .stat', '.steps > .step', '.view-home > .grid-2 > section', '.cta-band'],
+    home: ['.ticker', '.home-section .section-head', '.features > .feature', '.stats > .stat', '.gestures > .gesture', '.steps > .step', '.view-home > .grid-2 > section', '.cta-band'],
     download: ['.view[data-view="download"] > .view-head', '.view[data-view="download"] .grid-2 > section', '.view[data-view="download"] .grid-3 > section'],
   },
   setup(view) {
@@ -3118,14 +3268,12 @@ const Effects = {
   home() {
     if (!motionOK()) return;
     const title = $('#home-title');
-    if (!title.dataset.split) {
+    if (!title.dataset.split) {                    // highlighted words (.hl) stay whole, as one word each
       title.dataset.split = '1';
-      const words = title.textContent.trim().split(/\s+/);
-      title.replaceChildren(...words.flatMap((w, i) => {
-        const span = h('span', { class: 'w', text: w });
-        span.style.setProperty('--i', String(i));
-        return i ? [' ', span] : [span];
-      }));
+      const words = [...title.childNodes].flatMap((n) => (n.nodeType === Node.TEXT_NODE
+        ? n.textContent.split(/\s+/).filter(Boolean).map((w) => h('span', { text: w })) : [n]));
+      words.forEach((w, i) => { w.classList.add('w'); w.style.setProperty('--i', String(i)); });
+      title.replaceChildren(...words.flatMap((w, i) => (i ? [' ', w] : [w])));
     }
     const prompt = $('.hero .prompt');
     const full = prompt.dataset.text || (prompt.dataset.text = prompt.textContent);
