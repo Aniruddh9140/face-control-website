@@ -578,6 +578,36 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 .gesture:nth-child(1) { --gd: 0s; } .gesture:nth-child(2) { --gd: -0.7s; } .gesture:nth-child(3) { --gd: -1.4s; }
 .gesture:nth-child(4) { --gd: -2.1s; } .gesture:nth-child(5) { --gd: -2.8s; }
 
+/* ---- Retro desktop: the home page is a little computer. A menu bar with a clock, and each
+   section framed as a window with a title bar you can grab. Only the home view; the app stays plain. ---- */
+.menubar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; padding: 7px 14px; background: var(--ink); color: var(--bg); border: var(--bw) solid var(--ink); box-shadow: var(--drop); font: 700 0.9375rem/1 var(--font-mono); }
+.mb-logo { display: inline-flex; align-items: center; gap: 9px; font-weight: 800; letter-spacing: 0.02em; }
+.mb-mark { width: 18px; height: 18px; shape-rendering: crispEdges; }
+.mb-mark .bm-fill { fill: var(--accent); } .mb-mark .bm-cut { fill: var(--ink); } .mb-mark .bm-hi { fill: var(--bg); }
+.mb-menu { display: flex; flex-wrap: wrap; gap: 2px; }
+.mb-menu a, .mb-menu button { appearance: none; border: 0; background: transparent; color: inherit; font: inherit; padding: 5px 10px; cursor: pointer; text-decoration: none; }
+.mb-menu a:hover, .mb-menu button:hover, .mb-menu a:focus-visible, .mb-menu button:focus-visible { background: var(--bg); color: var(--ink); outline: none; }
+.mb-clock { margin-left: auto; font-variant-numeric: tabular-nums; letter-spacing: 0.05em; padding: 5px 10px; background: var(--bg); color: var(--ink); }
+
+/* Windows: a title bar (built by the script from data-win) sits on a bordered, shadowed body */
+.win { position: relative; background: var(--surface); border: var(--bw) solid var(--line); box-shadow: var(--drop-lg); padding: 26px; }
+.win > .win-bar { position: absolute; left: 0; right: 0; top: 0; display: flex; align-items: center; gap: 12px; height: 34px; padding: 0 12px; background: var(--line); color: var(--on-color); }
+.win { padding-top: 60px; }
+.win.panel-strong::before, .win.panel-strong::after { content: none; }     /* the window bar replaces the old strip */
+.win-dots { display: inline-flex; gap: 6px; flex: none; }
+.win-dots i { width: 9px; height: 9px; background: var(--danger); }
+.win-dots i:nth-child(2) { background: var(--warn); } .win-dots i:nth-child(3) { background: var(--ok); }
+.win-name { font: 700 0.8125rem/1 var(--font-mono); letter-spacing: 0.04em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.win-btns { margin-left: auto; display: inline-flex; gap: 6px; flex: none; }
+.win-btns i { display: grid; place-items: center; width: 16px; height: 16px; background: var(--surface); box-shadow: inset 0 0 0 2px var(--on-color); font: 700 10px/1 var(--font-mono); font-style: normal; color: var(--on-color); }
+.hero.win { align-items: stretch; }
+.hero.win > .win-bar { align-items: center; }
+.win.cta-band { align-items: center; }
+/* The two grid-2 panels keep their own padding scale but gain the bar */
+.win-flat { box-shadow: var(--drop); }
+@media (min-width: 721px) { .win { padding-left: 30px; padding-right: 30px; } }
+@media (max-width: 560px) { .win { padding: 50px 18px 18px; } .win > .win-bar { height: 30px; } }
+
 @media (prefers-reduced-motion: no-preference) {
   /* Whole views slide in when you move between pages */
   .view:not([hidden]) { animation: fc-view 420ms cubic-bezier(0.2, 0.7, 0.2, 1) backwards; }
@@ -644,6 +674,16 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
   .toast:not(:empty) { animation: fc-toast 320ms cubic-bezier(0.2, 0.8, 0.2, 1.2) backwards; }
   .cookie-banner:not([hidden]) { animation: fc-up 460ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
   .made:hover .heart { animation: fc-beat 760ms ease-in-out infinite; }
+
+  /* Windows can be grabbed by the title bar and nudged; they spring open when revealed */
+  .win { transform: translate(var(--wx, 0px), var(--wy, 0px)); }
+  .win > .win-bar { cursor: grab; }
+  .win.is-drag > .win-bar { cursor: grabbing; }
+  .win.is-drag { box-shadow: 12px 12px 0 var(--shadow); z-index: 20; }
+  .win.reveal { transform-origin: top center; }
+  .js-reveal .win.reveal:not(.is-in) { transform: translateY(28px) scale(0.985); }
+  .win-btns i { transition: background-color 120ms ease; }
+  .win:hover .win-btns i:last-child { background: var(--danger); }
 }
 @keyframes fc-view { from { opacity: 0; translate: 0 14px; } }
 @keyframes fc-rise { from { opacity: 0; translate: 0 22px; } }
@@ -730,7 +770,17 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 
     <!-- Home -->
     <section class="view view-home" data-view="home" hidden aria-labelledby="home-title">
-      <div class="hero">
+      <div class="menubar" role="presentation">
+        <span class="mb-logo"><svg class="mb-mark" viewBox="0 0 16 16" aria-hidden="true"><rect class="bm-fill" width="16" height="16"></rect><path class="bm-cut" d="M5 5h6v1h2v1h1v2h-1v1h-2v1H5v-1H3V9H2V7h1V6h2z"></path><rect class="bm-fill" x="6" y="6" width="4" height="4"></rect><rect class="bm-hi" x="7" y="7" width="1" height="1"></rect></svg>EyeSync OS</span>
+        <nav class="mb-menu" aria-label="Jump to a window">
+          <a href="#download">Download</a>
+          <button type="button" data-win-go="gestures.exe">Gestures</button>
+          <button type="button" data-win-go="setup.bas">Setup</button>
+          <button type="button" data-win-go="privacy.sys">Privacy</button>
+        </nav>
+        <span class="mb-clock" id="mb-clock" aria-hidden="true">--:--</span>
+      </div>
+      <div class="hero win" data-win="welcome.txt">
         <div class="hero-copy">
           <p class="eyebrow prompt">Webcam head mouse for Windows</p>
           <h1 id="home-title" tabindex="-1">Steer your screen with your <span class="hl">head.</span> Click with a <span class="hl hl-2">blink.</span></h1>
@@ -778,7 +828,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
         </div>
       </div>
 
-      <section class="home-section" aria-labelledby="features-title">
+      <section class="home-section win" data-win="features.app" aria-labelledby="features-title">
         <div class="section-head">
           <p class="eyebrow">What it does</p>
           <h2 id="features-title">A hands-free mouse, run from one tab</h2>
@@ -814,7 +864,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
         <div class="stat"><span class="stat-n" data-count="0" data-from="100">0</span><span class="stat-l">camera pictures uploaded, ever</span></div>
       </section>
 
-      <section class="home-section" aria-labelledby="gestures-title">
+      <section class="home-section win" data-win="gestures.exe" aria-labelledby="gestures-title">
         <div class="section-head">
           <p class="eyebrow">Gestures</p>
           <h2 id="gestures-title">Your face is the mouse</h2>
@@ -857,7 +907,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
         </ul>
       </section>
 
-      <section class="home-section" aria-labelledby="how-title">
+      <section class="home-section win" data-win="setup.bas" aria-labelledby="how-title">
         <div class="section-head">
           <p class="eyebrow">How it works</p>
           <h2 id="how-title">Up and running in three steps</h2>
@@ -884,7 +934,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
       </section>
 
       <div class="grid-2">
-        <section class="panel panel-strong" aria-labelledby="privacy-title">
+        <section class="panel panel-strong win win-flat" data-win="privacy.sys" aria-labelledby="privacy-title">
           <p class="eyebrow">Privacy</p>
           <h2 id="privacy-title">Private by design</h2>
           <ul class="ticks">
@@ -899,7 +949,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
             <a class="btn btn-quiet" href="#terms">Terms and Conditions</a>
           </div>
         </section>
-        <section class="panel" aria-labelledby="a11y-title">
+        <section class="panel win win-flat" data-win="access.cfg" aria-labelledby="a11y-title">
           <p class="eyebrow">Accessibility</p>
           <h2 id="a11y-title">Built for hands-free use</h2>
           <ul class="ticks">
@@ -911,7 +961,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
         </section>
       </div>
 
-      <section class="cta-band" aria-labelledby="cta-title">
+      <section class="cta-band win" data-win="start.exe" aria-labelledby="cta-title">
         <div>
           <h2 id="cta-title">Ready when you are.</h2>
           <p class="hint js-guest">Download EyeSync, then create an account. It takes under a minute and never leaves this device.</p>
@@ -3198,11 +3248,70 @@ const Effects = {
   start() {                                        // once, at boot
     if (this.started) return;
     this.started = true;
+    this.windows();
+    this.clock();
     this.progress();
     if (!motionOK()) return;
     this.ticker();
     this.tilt();
     this.bursts();
+    this.drag();
+  },
+  // Gives each home section a window title bar, and wires the menu to jump between them.
+  windows() {
+    for (const win of $$('.win')) {
+      if ($('.win-bar', win)) continue;
+      const bar = h('div', { class: 'win-bar', 'aria-hidden': 'true' },
+        h('span', { class: 'win-dots' }, h('i'), h('i'), h('i')),
+        h('span', { class: 'win-name', text: win.dataset.win || 'window' }),
+        h('span', { class: 'win-btns' }, h('i', { text: '–' }), h('i', { text: '□' }), h('i', { text: '×' })));
+      win.prepend(bar);
+    }
+    document.addEventListener('click', (e) => {
+      const go = e.target.closest('[data-win-go]');
+      if (!go) return;
+      $(`.win[data-win="${go.dataset.winGo}"]`)?.scrollIntoView({ block: 'start', behavior: motionOK() ? 'smooth' : 'auto' });
+    });
+  },
+  // The menu-bar clock, updated once a second while the home page is open.
+  clock() {
+    const el = $('#mb-clock');
+    const tick = () => {
+      const d = new Date();
+      el.textContent = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    };
+    tick();
+    setInterval(tick, 1000 * 15);
+  },
+  // Grab a window's title bar to nudge it around its spot (kept within reach); double-click resets.
+  drag() {
+    if (!matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+    let win = null, id = 0, ox = 0, oy = 0, bx = 0, by = 0;
+    const clampTo = (v) => clamp(v, -70, 70);
+    document.addEventListener('pointerdown', (e) => {
+      const bar = e.target.closest('.win-bar');
+      if (!bar || e.button !== 0) return;
+      win = bar.parentElement;
+      id = e.pointerId;
+      ox = e.clientX; oy = e.clientY;
+      bx = parseFloat(win.style.getPropertyValue('--wx')) || 0;
+      by = parseFloat(win.style.getPropertyValue('--wy')) || 0;
+      win.classList.add('is-drag');
+      bar.setPointerCapture(id);
+      e.preventDefault();
+    });
+    document.addEventListener('pointermove', (e) => {
+      if (!win || e.pointerId !== id) return;
+      win.style.setProperty('--wx', clampTo(bx + e.clientX - ox) + 'px');
+      win.style.setProperty('--wy', clampTo(by + e.clientY - oy) + 'px');
+    });
+    const drop = () => { if (win) { win.classList.remove('is-drag'); win = null; } };
+    document.addEventListener('pointerup', drop);
+    document.addEventListener('pointercancel', drop);
+    document.addEventListener('dblclick', (e) => {
+      const bar = e.target.closest('.win-bar');
+      if (bar) { bar.parentElement.style.removeProperty('--wx'); bar.parentElement.style.removeProperty('--wy'); }
+    });
   },
   // A bar along the top shows how far down the page you are.
   progress() {
