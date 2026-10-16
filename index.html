@@ -436,6 +436,9 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 /* Footer */
 .footer { background: var(--surface); border-top: var(--bw) solid var(--line-soft); }
 .footer-inner { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; justify-content: space-between; padding-block: 16px; }
+.credits { display: grid; gap: 4px; min-width: 0; }
+.made { display: flex; flex-wrap: wrap; align-items: center; gap: 0 8px; font-family: var(--font-display); font-size: 1.125rem; font-weight: 700; }
+.heart { width: 21px; height: 18px; flex: none; fill: var(--danger); shape-rendering: crispEdges; }
 .footer nav { display: flex; flex-wrap: wrap; gap: 8px; }
 
 .framed { display: grid; gap: 16px; max-width: 60ch; margin: 64px auto; padding: 24px; }
@@ -1130,7 +1133,10 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 
 <footer class="footer">
   <div class="wrap footer-inner">
-    <p class="hint">EyeSync v1.1 · runs in your browser · no server, no trackers</p>
+    <div class="credits">
+      <p class="made">Made with <svg class="heart" viewBox="0 0 7 6" role="img" aria-label="love"><path d="M1 0h2v1h1V0h2v1h1v2H6v1H5v1H4v1H3V5H2V4H1V3H0V1h1z"></path></svg> by Aniruddh and Rudra</p>
+      <p class="hint">EyeSync v1.1 · runs in your browser · no server, no trackers</p>
+    </div>
     <nav aria-label="Legal">
       <a class="btn btn-quiet" href="#cookies">Cookie Policy</a>
       <a class="btn btn-quiet" href="#terms">Terms and Conditions</a>
