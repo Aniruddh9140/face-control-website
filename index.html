@@ -483,6 +483,133 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 .js-reveal .reveal { opacity: 0; transform: translateY(28px); transition: opacity 520ms ease-out, transform 520ms cubic-bezier(0.2, 0.7, 0.2, 1); transition-delay: var(--delay, 0ms); }
 .js-reveal .reveal.is-in { opacity: 1; transform: none; }
 
+/* ---- Polish and motion. Static parts first; everything that moves is in the
+   "prefers-reduced-motion: no-preference" block below, so reduced motion gets a calm page.
+   Flat throughout: solid fills, hard offset shadows, no gradients. ---- */
+
+/* Scroll progress: a solid accent bar along the top edge of the window */
+.scroll-progress { position: fixed; left: 0; right: 0; top: 0; z-index: 1200; height: 5px; pointer-events: none; }
+.scroll-progress span { display: block; height: 100%; background: var(--accent); transform-origin: left; transform: scaleX(var(--p, 0)); }
+
+/* Ticker: a mono strip of what EyeSync does (static and wrapped without motion) */
+.ticker { overflow: hidden; background: var(--ink); color: var(--bg); border: var(--bw) solid var(--ink); box-shadow: var(--drop); }
+.ticker-track { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 40px; padding: 14px 20px; font: 700 0.9375rem/1.2 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; }
+.ticker-track span { display: inline-flex; align-items: center; gap: 14px; white-space: nowrap; }
+.ticker-track span::before { content: ""; width: 10px; height: 10px; flex: none; background: var(--accent); }
+.ticker-track span:nth-child(3n+2)::before { background: var(--ok); }
+.ticker-track span:nth-child(3n)::before { background: var(--warn); }
+
+/* Stats band: big numbers on cards with a coloured top edge */
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; }
+@media (max-width: 900px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.stat { display: grid; gap: 8px; align-content: start; min-width: 0; padding: 20px 22px 22px; background: var(--surface); border: var(--bw) solid var(--line); border-top-width: 10px; border-top-color: var(--accent); box-shadow: var(--drop); }
+.stat:nth-child(2) { border-top-color: var(--ok); }
+.stat:nth-child(3) { border-top-color: var(--warn); }
+.stat:nth-child(4) { border-top-color: var(--danger); }
+.stat-n { font: 800 clamp(2.5rem, 2rem + 2vw, 3.5rem)/1 var(--font-display); font-variant-numeric: tabular-nums; }
+.stat-l { font-weight: 700; color: var(--ink-2); }
+
+/* Download buttons carry a pixel arrow, drawn in the button's text colour */
+.btn-dl::after {
+  content: ""; width: 16px; height: 16px; flex: none; background-color: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3E%3Cpath d='M3 0h2v4h3v1h-1v1h-1v1h-1v1H3v-1H2V6H1V5H0V4h3z'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3E%3Cpath d='M3 0h2v4h3v1h-1v1h-1v1h-1v1H3v-1H2V6H1V5H0V4h3z'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+/* Section headings get a solid accent bar, which draws itself in when revealed */
+.section-head h2::after { content: ""; display: block; width: 72px; height: 6px; margin-top: 16px; background: var(--accent); transform-origin: left; transition: transform 600ms 220ms cubic-bezier(0.2, 0.7, 0.2, 1); }
+.js-reveal .section-head.reveal:not(.seen) h2::after { transform: scaleX(0); }
+
+/* Cards answer the pointer with a firmer edge and shadow */
+.feature, .step, .stat { transition: border-color 160ms ease, box-shadow 160ms ease, translate 160ms ease; }
+.feature:hover { border-color: var(--line); box-shadow: var(--drop); }
+.step:hover, .stat:hover { box-shadow: var(--drop-lg); }
+
+/* CRT extras: the trail, rolling band and floating pixels only show when things move */
+.preview { position: relative; }
+.pv-ghost, .pv-roll { display: none; }
+.pv-pixels span { position: absolute; width: 14px; height: 14px; background: var(--accent); box-shadow: 3px 3px 0 var(--shadow); pointer-events: none; }
+.pv-pixels span:nth-child(1) { left: 4%; top: -18px; background: var(--danger); }
+.pv-pixels span:nth-child(2) { right: 2%; top: 14%; background: var(--warn); width: 10px; height: 10px; }
+.pv-pixels span:nth-child(3) { left: 0; top: 46%; background: var(--ok); width: 10px; height: 10px; }
+.pv-pixels span:nth-child(4) { right: 6%; top: 70%; }
+.pv-pixels span:nth-child(5) { left: 18%; bottom: 0; background: var(--warn); width: 8px; height: 8px; }
+.pv-pixels span:nth-child(6) { right: 24%; top: -12px; background: var(--ok); width: 8px; height: 8px; }
+
+/* Pixel burst thrown off by a primary button click (home and download pages) */
+.burst { position: fixed; left: 0; top: 0; z-index: 1300; pointer-events: none; }
+.burst span { position: absolute; width: 8px; height: 8px; margin: -4px 0 0 -4px; background: var(--c, var(--accent)); animation: fc-burst 560ms cubic-bezier(0.2, 0.7, 0.3, 1) forwards; }
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Whole views slide in when you move between pages */
+  .view:not([hidden]) { animation: fc-view 420ms cubic-bezier(0.2, 0.7, 0.2, 1) backwards; }
+
+  /* Hero entrance: the prompt types, the headline rises word by word, the rest follows */
+  .hero-copy > * { animation: fc-rise 700ms cubic-bezier(0.2, 0.7, 0.2, 1) backwards; }
+  .hero-copy > h1 { animation: none; }
+  .hero-copy > :nth-child(3) { animation-delay: 560ms; }
+  .hero-copy > :nth-child(4), .hero-copy > :nth-child(5) { animation-delay: 700ms; }
+  .hero-copy > :nth-child(6) { animation-delay: 840ms; }
+  .hero h1 .w { display: inline-block; animation: fc-word 680ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards; animation-delay: calc(160ms + var(--i) * 60ms); }
+
+  /* The CRT powers on: the glass opens from a bright line in the middle */
+  .preview-screen::before, .preview-screen::after { content: ""; position: absolute; left: 0; right: 0; z-index: 5; height: 50%; background: var(--crt); animation: 650ms cubic-bezier(0.7, 0, 0.3, 1) 380ms both; }
+  .preview-screen::before { top: 0; border-bottom: 3px solid var(--phosphor); animation-name: fc-crt-top; }
+  .preview-screen::after { bottom: 0; border-top: 3px solid var(--phosphor); animation-name: fc-crt-bottom; }
+  .pv-roll { display: block; position: absolute; left: 0; right: 0; top: 0; z-index: 1; height: 22%; background: var(--phosphor); opacity: 0.06; pointer-events: none; animation: fc-roll 7s linear infinite; }
+  .pv-ghost { display: block; position: absolute; left: 50%; top: 50%; z-index: 2; width: 10px; height: 10px; margin: -5px 0 0 -5px; background: var(--danger); opacity: 0.45; }
+  .pv-ghost:nth-of-type(2) { width: 8px; height: 8px; margin: -4px 0 0 -4px; opacity: 0.32; }
+  .pv-ghost:nth-of-type(3) { width: 6px; height: 6px; margin: -3px 0 0 -3px; opacity: 0.2; }
+  .pv-ghost:nth-of-type(4) { width: 4px; height: 4px; margin: -2px 0 0 -2px; opacity: 0.12; }
+  .preview { transform: perspective(1100px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)); transition: transform 180ms ease-out; }
+  .pv-pixels span { animation: fc-bob 3.4s ease-in-out infinite alternate; }
+  .pv-pixels span:nth-child(2n) { animation-duration: 4.2s; animation-delay: -1.3s; }
+  .pv-pixels span:nth-child(3n) { animation-duration: 2.8s; animation-delay: -0.6s; }
+
+  /* Ticker scrolls on a loop (the script doubles its content) and stops under the pointer */
+  .ticker-track.is-looping { flex-wrap: nowrap; justify-content: flex-start; width: max-content; padding-inline: 0; animation: fc-ticker 34s linear infinite; }
+  .ticker:hover .ticker-track { animation-play-state: paused; }
+
+  /* Cards lift towards the pointer; marks and step numbers come alive */
+  .feature:hover, .step:hover, .stat:hover { translate: -4px -4px; }
+  .feature-mark { transition: transform 320ms cubic-bezier(0.2, 0.7, 0.2, 1.5); }
+  .feature:hover .feature-mark { transform: rotate(90deg) scale(1.15); }
+  .step.seen .step-n { animation: fc-pop 560ms cubic-bezier(0.2, 0.8, 0.2, 1.5) backwards; animation-delay: calc(var(--delay, 0ms) + 200ms); }
+
+  /* Buttons rise a little to meet the pointer, and press down when clicked */
+  .btn { transition: transform 80ms ease, box-shadow 80ms ease, translate 120ms ease; }
+  .btn:not(.btn-quiet):not([disabled]):hover { --drop: 7px 7px 0 var(--shadow); translate: -2px -2px; }
+  .btn:not(.btn-quiet):not([disabled]):active { translate: 0 0; }
+  .btn-dl:hover::after { animation: fc-drop 720ms ease-in-out infinite; }
+
+  /* The logo's eye blinks now and then */
+  .brand-mark > :not(:first-child) { transform-box: view-box; transform-origin: 8px 8px; animation: fc-blink 6.5s infinite; }
+
+  /* Status lights flicker while something is in progress */
+  .pill[data-state="searching"] .pill-mark, .pill[data-state="starting"] .pill-mark,
+  .pill[data-state="connecting"] .pill-mark, .pill[data-state="reconnecting"] .pill-mark { animation: fc-led 0.9s steps(1) infinite; }
+
+  .toast:not(:empty) { animation: fc-toast 320ms cubic-bezier(0.2, 0.8, 0.2, 1.2) backwards; }
+  .cookie-banner:not([hidden]) { animation: fc-up 460ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
+  .made:hover .heart { animation: fc-beat 760ms ease-in-out infinite; }
+}
+@keyframes fc-view { from { opacity: 0; translate: 0 14px; } }
+@keyframes fc-rise { from { opacity: 0; translate: 0 22px; } }
+@keyframes fc-word { from { opacity: 0; transform: translateY(0.55em) rotate(4deg); } }
+@keyframes fc-crt-top { to { transform: translateY(-102%); } }
+@keyframes fc-crt-bottom { to { transform: translateY(102%); } }
+@keyframes fc-roll { from { transform: translateY(-100%); } to { transform: translateY(560%); } }
+@keyframes fc-bob { to { translate: 0 -12px; } }
+@keyframes fc-ticker { to { transform: translateX(-50%); } }
+@keyframes fc-pop { from { opacity: 0; transform: scale(0.3) rotate(-12deg); } }
+@keyframes fc-drop { 50% { translate: 0 3px; } }
+@keyframes fc-blink { 0%, 93%, 100% { transform: none; } 95% { transform: scaleY(0.1); } }
+@keyframes fc-led { 50% { opacity: 0.2; } }
+@keyframes fc-toast { from { opacity: 0; translate: 28px 0; } }
+@keyframes fc-up { from { translate: 0 100%; } }
+@keyframes fc-beat { 30% { transform: scale(1.3); } 60% { transform: scale(0.95); } }
+@keyframes fc-burst { to { opacity: 0; transform: translate(var(--dx), var(--dy)) rotate(90deg) scale(0.4); } }
+
 @media (max-width: 560px) {
   .topbar { position: static; }
   .panel { --pad: 18px; }
@@ -499,6 +626,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 </head>
 <body>
 <button class="btn btn-primary skip" type="button" data-action="skip">Skip to content</button>
+<div class="scroll-progress" aria-hidden="true"><span id="scroll-bar"></span></div>
 
 <header class="topbar">
   <div class="wrap topbar-inner">
@@ -540,7 +668,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
           <h1 id="home-title" tabindex="-1">Steer your screen with your head. Click with a blink.</h1>
           <p class="lede">EyeSync turns your webcam into a mouse. Move your head a little and the cursor follows; blink to click. This website is its control room: start EyeSync, tune it to you and change its settings from one tab.</p>
           <div class="hero-actions js-guest">
-            <a class="btn btn-primary btn-lg" href="#download">Download EyeSync</a>
+            <a class="btn btn-primary btn-lg btn-dl" href="#download">Download EyeSync</a>
             <a class="btn btn-lg" href="#register">Create an account</a>
           </div>
           <div class="hero-actions js-member" hidden>
@@ -560,14 +688,24 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
             <span class="pv-target pv-c0 pv-r0"></span><span class="pv-target pv-c1 pv-r0"></span><span class="pv-target pv-c2 pv-r0"></span>
             <span class="pv-target pv-c0 pv-r1"></span><span class="pv-target pv-c1 pv-r1"></span><span class="pv-target pv-c2 pv-r1"></span>
             <span class="pv-target pv-c0 pv-r2"></span><span class="pv-target pv-c1 pv-r2"></span><span class="pv-target pv-c2 pv-r2"></span>
+            <span class="pv-roll"></span>
+            <span class="pv-ghost"></span><span class="pv-ghost"></span><span class="pv-ghost"></span><span class="pv-ghost"></span>
             <span class="pv-cursor" id="pv-cursor"></span>
           </div>
+          <div class="pv-pixels" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span></div>
           <div class="preview-tracker" aria-hidden="true"><span></span><span class="lens"></span><span></span></div>
           <figcaption class="preview-caption">
             <span class="label">What EyeSync sends this page, about 30 times a second</span>
             <pre class="payload-pre" id="pv-frame" aria-hidden="true">{"x": 400, "y": 300, "blink": false}</pre>
           </figcaption>
         </figure>
+      </div>
+
+      <div class="ticker" aria-hidden="true">
+        <div class="ticker-track">
+          <span>Blink to click</span><span>Wink right for a right click</span><span>Smile to pause</span>
+          <span>Calibrated in 30 seconds</span><span>Your camera picture stays on your PC</span><span>Free for Windows 10 and 11</span>
+        </div>
       </div>
 
       <section class="home-section" aria-labelledby="features-title">
@@ -599,6 +737,13 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
         </div>
       </section>
 
+      <section class="stats" aria-label="EyeSync in numbers">
+        <div class="stat"><span class="stat-n" data-count="30">30</span><span class="stat-l">cursor updates every second</span></div>
+        <div class="stat"><span class="stat-n" data-count="30" data-suffix=" s">30 s</span><span class="stat-l">to tune it to you</span></div>
+        <div class="stat"><span class="stat-n" data-count="5">5</span><span class="stat-l">face gestures, no hands needed</span></div>
+        <div class="stat"><span class="stat-n" data-count="0" data-from="100">0</span><span class="stat-l">camera pictures uploaded, ever</span></div>
+      </section>
+
       <section class="home-section" aria-labelledby="how-title">
         <div class="section-head">
           <p class="eyebrow">How it works</p>
@@ -609,7 +754,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
             <span class="step-n" aria-hidden="true">1</span>
             <h3>Download and install</h3>
             <p>Get EyeSync for Windows, extract the zip and double-click <span class="mono">install.bat</span>. Setup takes a few minutes.</p>
-            <a class="btn" href="#download">Download EyeSync</a>
+            <a class="btn btn-dl" href="#download">Download EyeSync</a>
           </li>
           <li class="step">
             <span class="step-n" aria-hidden="true">2</span>
@@ -660,7 +805,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
           <p class="hint js-member" hidden>Your dashboard is warmed up and waiting.</p>
         </div>
         <div class="hero-actions js-guest">
-          <a class="btn btn-primary btn-lg" href="#download">Download EyeSync</a>
+          <a class="btn btn-primary btn-lg btn-dl" href="#download">Download EyeSync</a>
           <a class="btn btn-lg" href="#register">Create an account</a>
         </div>
         <div class="hero-actions js-member" hidden>
@@ -808,7 +953,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
             <div class="link-help" id="link-help" hidden>
               <p>Already installed? Open the EyeSync shortcut on your Desktop, or restart the PC.</p>
               <p class="hint" id="browser-note" hidden>If EyeSync is installed and this keeps happening, your browser may be blocking the connection. Allow this site to connect to apps on this device (click the icon in the address bar), then reload the page.</p>
-              <div class="row"><a class="btn btn-primary" href="#download">Download EyeSync</a></div>
+              <div class="row"><a class="btn btn-primary btn-dl" href="#download">Download EyeSync</a></div>
             </div>
             <div class="field">
               <label class="check" for="auto-connect"><input type="checkbox" id="auto-connect" aria-describedby="auto-connect-hint"><span>Connect to EyeSync automatically</span></label>
@@ -1073,7 +1218,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
       <div class="grid-2">
         <section class="panel panel-strong" aria-labelledby="dl-get-title">
           <h2 id="dl-get-title">Download</h2>
-          <a class="btn btn-primary btn-lg btn-block" id="dl-button" href="#download" hidden>Download EyeSync</a>
+          <a class="btn btn-primary btn-lg btn-block btn-dl" id="dl-button" href="#download" hidden>Download EyeSync</a>
           <p class="status-line" id="dl-status" role="status">Loading the latest version…</p>
           <div class="row" id="dl-retry-row" hidden><button class="btn" type="button" id="dl-retry">Try again</button></div>
           <dl class="kv" id="dl-meta" hidden>
@@ -1674,6 +1819,7 @@ const Router = {
     if (name === 'download') DownloadPage.render();
     if (name === 'home') HeroPreview.start(); else HeroPreview.stop();
     if (name === 'home' || name === 'download') Reveal.setup(name);
+    if (name === 'home') Effects.home();
     window.scrollTo(0, 0);
     $(`[data-view="${name}"] h1`)?.focus({ preventScroll: true });
     syncCursor();
@@ -2816,6 +2962,8 @@ const HeroPreview = {
   cursor: $('#pv-cursor'),
   frame: $('#pv-frame'),
   targets: $$('.pv-target'),
+  ghosts: $$('.pv-ghost'),                        // a phosphor trail: where the cursor was 5, 10, 15, 20 frames ago
+  trail: [],
   spots: [0.1, 0.5, 0.9].flatMap((y) => [0.1, 0.5, 0.9].map((x) => ({ x, y: y === 0.1 ? 0.12 : y === 0.9 ? 0.88 : y }))),
   start() {
     if (this.raf) return;
@@ -2833,6 +2981,13 @@ const HeroPreview = {
     this.cursor.style.left = (nx * 100).toFixed(2) + '%';
     this.cursor.style.top = (ny * 100).toFixed(2) + '%';
     this.cursor.classList.toggle('is-blink', blink);
+    this.trail.unshift([nx, ny]);
+    this.trail.length = Math.min(this.trail.length, 21);
+    this.ghosts.forEach((g, i) => {
+      const [gx, gy] = this.trail[Math.min((i + 1) * 5, this.trail.length - 1)];
+      g.style.left = (gx * 100).toFixed(2) + '%';
+      g.style.top = (gy * 100).toFixed(2) + '%';
+    });
     this.targets.forEach((el, i) => el.classList.toggle('is-near', Math.hypot(this.spots[i].x - nx, this.spots[i].y - ny) < 0.08));
     if (now - this.lastText > 120 || !now) {
       this.lastText = now;
@@ -2852,12 +3007,20 @@ const Reveal = {
     if (!('IntersectionObserver' in window) || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     document.documentElement.classList.add('js-reveal');
     this.io = new IntersectionObserver((entries) => {
-      for (const e of entries) if (e.isIntersecting) { e.target.classList.add('is-in'); this.io.unobserve(e.target); }
+      for (const e of entries) if (e.isIntersecting) this.show(e.target);
     }, { rootMargin: '0px 0px -8% 0px', threshold: 0.12 });
     this.ready = true;
   },
+  // "seen" stays for good (it starts the step and counter animations); "reveal" comes off once the
+  // block has settled, so its own hover lift isn't held down by the reveal's transform.
+  show(el) {
+    this.io.unobserve(el);
+    el.classList.add('is-in', 'seen');
+    if (el.classList.contains('stat')) Effects.count($('.stat-n', el));
+    setTimeout(() => el.classList.remove('reveal', 'is-in'), 1300 + (parseInt(el.style.getPropertyValue('--delay'), 10) || 0));
+  },
   groups: {
-    home: ['.view-home > .hero > *', '.home-section .section-head', '.features > .feature', '.steps > .step', '.view-home > .grid-2 > section', '.cta-band'],
+    home: ['.ticker', '.home-section .section-head', '.features > .feature', '.stats > .stat', '.steps > .step', '.view-home > .grid-2 > section', '.cta-band'],
     download: ['.view[data-view="download"] > .view-head', '.view[data-view="download"] .grid-2 > section', '.view[data-view="download"] .grid-3 > section'],
   },
   setup(view) {
@@ -2866,7 +3029,8 @@ const Reveal = {
     for (const sel of this.groups[view]) {
       const perParent = new Map();                 // cards in one row follow one another
       for (const el of $$(sel)) {
-        if (el.classList.contains('reveal')) continue;
+        if (el.dataset.reveal) continue;
+        el.dataset.reveal = '1';
         const i = perParent.get(el.parentNode) || 0;
         perParent.set(el.parentNode, i + 1);
         el.style.setProperty('--delay', Math.min(i, 4) * 70 + 'ms');
@@ -2874,6 +3038,117 @@ const Reveal = {
         this.io.observe(el);
       }
     }
+  },
+};
+
+/* ---------- Effects: the home page's moving parts. All of them stay off with reduced motion. ---------- */
+const motionOK = () => !matchMedia('(prefers-reduced-motion: reduce)').matches;
+const Effects = {
+  started: false,
+  start() {                                        // once, at boot
+    if (this.started) return;
+    this.started = true;
+    this.progress();
+    if (!motionOK()) return;
+    this.ticker();
+    this.tilt();
+    this.bursts();
+  },
+  // A bar along the top shows how far down the page you are.
+  progress() {
+    const bar = $('#scroll-bar');
+    let queued = false;
+    const paint = () => {
+      queued = false;
+      const room = document.documentElement.scrollHeight - innerHeight;
+      bar.style.setProperty('--p', room > 40 ? clamp(scrollY / room, 0, 1).toFixed(4) : '0');
+    };
+    const kick = () => { if (!queued) { queued = true; requestAnimationFrame(paint); } };
+    addEventListener('scroll', kick, { passive: true });
+    addEventListener('resize', kick);
+    addEventListener('hashchange', () => setTimeout(paint, 60));
+    paint();
+  },
+  // Doubles the ticker's items so the strip can loop without a seam.
+  ticker() {
+    const track = $('.ticker-track');
+    if (!track || track.classList.contains('is-looping')) return;
+    track.append(...[...track.children].map((n) => n.cloneNode(true)));
+    track.classList.add('is-looping');
+  },
+  // The CRT leans gently towards a mouse pointer moving over the hero.
+  tilt() {
+    if (!matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+    const hero = $('.hero'), screen = $('.preview');
+    let raf = 0, x = 0, y = 0;
+    const apply = () => {
+      raf = 0;
+      const r = screen.getBoundingClientRect();
+      const dx = clamp((x - (r.left + r.width / 2)) / r.width, -1, 1);
+      const dy = clamp((y - (r.top + r.height / 2)) / r.height, -1, 1);
+      screen.style.setProperty('--ry', (dx * 7).toFixed(2) + 'deg');
+      screen.style.setProperty('--rx', (-dy * 5).toFixed(2) + 'deg');
+    };
+    hero.addEventListener('pointermove', (e) => { x = e.clientX; y = e.clientY; if (!raf) raf = requestAnimationFrame(apply); });
+    hero.addEventListener('pointerleave', () => { screen.style.setProperty('--rx', '0deg'); screen.style.setProperty('--ry', '0deg'); });
+  },
+  // A primary button click on the home or download page throws off a little burst of pixels.
+  bursts() {
+    const colors = ['var(--accent)', 'var(--danger)', 'var(--warn)', 'var(--ok)'];
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest('.btn-primary');
+      if (!btn || (Router.current !== 'home' && Router.current !== 'download') || !e.clientX) return;
+      const box = h('div', { class: 'burst', 'aria-hidden': 'true' });
+      box.style.left = e.clientX + 'px';
+      box.style.top = e.clientY + 'px';
+      for (let i = 0; i < 10; i++) {
+        const a = (i / 10) * Math.PI * 2 + Math.random() * 0.4, d = 34 + Math.random() * 30;
+        const p = h('span');
+        p.style.setProperty('--dx', (Math.cos(a) * d).toFixed(1) + 'px');
+        p.style.setProperty('--dy', (Math.sin(a) * d).toFixed(1) + 'px');
+        p.style.setProperty('--c', colors[i % colors.length]);
+        box.append(p);
+      }
+      document.body.append(box);
+      setTimeout(() => box.remove(), 650);
+    });
+  },
+  // Each time the home page opens: the prompt types itself and the headline is split into words
+  // that rise one after another (the CSS animates them).
+  home() {
+    if (!motionOK()) return;
+    const title = $('#home-title');
+    if (!title.dataset.split) {
+      title.dataset.split = '1';
+      const words = title.textContent.trim().split(/\s+/);
+      title.replaceChildren(...words.flatMap((w, i) => {
+        const span = h('span', { class: 'w', text: w });
+        span.style.setProperty('--i', String(i));
+        return i ? [' ', span] : [span];
+      }));
+    }
+    const prompt = $('.hero .prompt');
+    const full = prompt.dataset.text || (prompt.dataset.text = prompt.textContent);
+    clearInterval(this.typing);
+    let n = 0;
+    prompt.textContent = '';
+    this.typing = setInterval(() => {
+      prompt.textContent = full.slice(0, ++n);
+      if (n >= full.length) clearInterval(this.typing);
+    }, 34);
+  },
+  // Counts a stat up (or down, with data-from) to its number, easing out.
+  count(el) {
+    if (!el || !motionOK()) return;
+    const to = Number(el.dataset.count) || 0, from = Number(el.dataset.from) || 0, suffix = el.dataset.suffix || '';
+    let t0 = 0;
+    const step = (now) => {
+      t0 ||= now;
+      const k = clamp((now - t0) / 1300, 0, 1);
+      el.textContent = Math.round(from + (to - from) * (1 - (1 - k) ** 3)) + suffix;
+      if (k < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
   },
 };
 
@@ -3145,6 +3420,7 @@ function boot() {
   renderLink();
   renderEyeSync();
   Browser.check();
+  Effects.start();
   if (!Consent.state()) Banner.show(false);
   Router.resolve();
 }
