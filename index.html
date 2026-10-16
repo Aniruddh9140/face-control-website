@@ -959,7 +959,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
           <li class="step">
             <span class="step-n" aria-hidden="true">1</span>
             <h3>Download and install</h3>
-            <p>Get EyeSync for Windows, extract the zip and double-click <span class="mono">install.bat</span>. Setup takes a few minutes.</p>
+            <p>Download <span class="mono">EyeSync.exe</span> for Windows and open it. Click <strong>Install</strong>, then <strong>Finish</strong>. Nothing else to set up.</p>
             <a class="btn btn-dl" href="#download">Download EyeSync</a>
           </li>
           <li class="step">
@@ -1172,9 +1172,12 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
             </div>
             <p class="status-line" id="link-detail" role="status">Looking for EyeSync on this computer.</p>
             <div class="link-help" id="link-help" hidden>
-              <p>Already installed? Open the EyeSync shortcut on your Desktop, or restart the PC.</p>
+              <p>Installed already? <strong>Open EyeSync</strong> starts it from here; your browser asks first. Not installed yet? <strong>Download EyeSync</strong>.</p>
+              <div class="row">
+                <a class="btn btn-primary" id="btn-open-es" href="eyesync://start">Open EyeSync</a>
+                <a class="btn btn-dl" href="#download">Download EyeSync</a>
+              </div>
               <p class="hint" id="browser-note" hidden>If EyeSync is installed and this keeps happening, your browser may be blocking the connection. Allow this site to connect to apps on this device (click the icon in the address bar), then reload the page.</p>
-              <div class="row"><a class="btn btn-primary btn-dl" href="#download">Download EyeSync</a></div>
             </div>
             <div class="field">
               <label class="check" for="auto-connect"><input type="checkbox" id="auto-connect" aria-describedby="auto-connect-hint"><span>Connect to EyeSync automatically</span></label>
@@ -1450,21 +1453,22 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
           </dl>
           <div class="stack-sm" id="dl-verify" hidden>
             <p class="hint">To check the download, run this in PowerShell in your Downloads folder and compare the hash with the SHA-256 above:</p>
-            <code class="cmd" id="dl-hashcmd">Get-FileHash EyeSync.zip</code>
+            <code class="cmd" id="dl-hashcmd">Get-FileHash .\EyeSync.exe</code>
           </div>
           <dl class="kv">
             <dt>Needs</dt><dd>Windows 10 or 11 and a webcam</dd>
-            <dt>Setup</dt><dd>a few minutes, online</dd>
+            <dt>Rights</dt><dd>no administrator rights needed</dd>
+            <dt>Setup</dt><dd>one file that installs itself; no Python or anything else</dd>
           </dl>
+          <p class="hint" id="dl-zip" hidden>For developers: the Python version, <a id="dl-zip-link" href="#download">the source zip</a>. Extract it and run <span class="mono">install.bat</span>.</p>
         </section>
 
         <section class="panel" aria-labelledby="dl-steps-title">
-          <h2 id="dl-steps-title">Install in four steps</h2>
+          <h2 id="dl-steps-title">Install in three steps</h2>
           <ol class="dl-steps">
-            <li><p><strong>Download</strong> the zip with the button.</p></li>
-            <li><p><strong>Extract it:</strong> right-click the zip, choose <strong>Extract All…</strong>, then <strong>Extract</strong>. Opening the zip without extracting it doesn't work.</p></li>
-            <li><p><strong>Install:</strong> in the extracted folder, double-click <span class="mono">install.bat</span>. If Windows shows “Windows protected your PC”, click <strong>More info</strong>, then <strong>Run anyway</strong>. Setup takes a few minutes and installs Python if needed, so stay online.</p></li>
-            <li><p><strong>Connect:</strong> when setup finishes, this website opens. Go to the <strong>Dashboard</strong> and press <strong>Connect</strong>.</p></li>
+            <li><p><strong>Download</strong> EyeSync with the button. If your browser warns that <span class="mono">EyeSync.exe</span> isn't commonly downloaded, choose <strong>Keep</strong>.</p></li>
+            <li><p><strong>Open</strong> the downloaded <span class="mono">EyeSync.exe</span>. If Windows shows “Windows protected your PC”, click <strong>More info</strong>, then <strong>Run anyway</strong>. EyeSync is new, so Windows and some antivirus programs are wary of it; it's safe to allow.</p></li>
+            <li><p>Click <strong>Install</strong>, then <strong>Finish</strong>. This website opens: go to the <strong>Dashboard</strong> and press <strong>Connect</strong>. The very first start takes about half a minute.</p></li>
           </ol>
         </section>
       </div>
@@ -1472,11 +1476,11 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
       <div class="grid-3">
         <section class="panel" aria-labelledby="dl-update-title">
           <h2 id="dl-update-title">Updating</h2>
-          <p>Download the new zip and run its <span class="mono">install.bat</span> the same way. Your settings and calibration are kept. The dashboard tells you when a new version is out.</p>
+          <p>Download the new <span class="mono">EyeSync.exe</span>, open it and click <strong>Update</strong>. Your settings and calibration are kept. The dashboard tells you when a new version is out.</p>
         </section>
         <section class="panel" aria-labelledby="dl-remove-title">
           <h2 id="dl-remove-title">Removing</h2>
-          <p>Run <span class="mono">uninstall.bat</span> in <span class="mono">%LocalAppData%\Programs\EyeSync</span>.</p>
+          <p>Windows <strong>Settings</strong> → <strong>Apps</strong> → <strong>Installed apps</strong> → <strong>EyeSync</strong> → <strong>Uninstall</strong>.</p>
         </section>
         <section class="panel" aria-labelledby="dl-privacy-title">
           <h2 id="dl-privacy-title">Privacy</h2>
@@ -2383,11 +2387,13 @@ const Discovery = {
   report: null,          // what the last search found: { what: none|running|standby|closed|tracker|refused, ... }
   userClosed: false,     // EyeSync was closed by the user: say so while its standby comes back up
   startFailed: false,    // a start timed out: don't start EyeSync again by ourselves
-  reset() { Object.assign(this, { paused: false, starting: false, report: null, userClosed: false, startFailed: false }); },
+  opening: false,        // waiting for EyeSync after a click on "Open EyeSync"
+  openFailed: false,     // nothing answered after "Open EyeSync": probably not installed
+  reset() { Object.assign(this, { paused: false, starting: false, opening: false, report: null, userClosed: false, startFailed: false, openFailed: false }); },
   // Searches run while signed in, on the dashboard or calibration, with nothing connected. With
   // auto-connect off they only report what they found; with it on they connect (or start EyeSync).
   wanted() {
-    return !this.paused && !this.starting && !!Auth.current && !Simulator.running
+    return !this.paused && !this.starting && !this.opening && !!Auth.current && !Simulator.running
       && Link.state === 'idle' && (Router.current === 'dashboard' || Router.current === 'calibration');
   },
   kick() {
@@ -2397,7 +2403,7 @@ const Discovery = {
     if (wait > 0) this.timer = setTimeout(() => this.run(), wait);
     else this.run();
   },
-  cancel() { this.generation++; this.running = false; this.starting = false; clearTimeout(this.timer); },
+  cancel() { this.generation++; this.running = false; this.starting = false; this.opening = false; clearTimeout(this.timer); },
   closedByUser() { this.userClosed = true; this.report = { what: 'closed', port: Number(portOf(Link.url)) || EYESYNC_PORTS[0] }; },
 
   // EyeSync's ports one after another, stopping at the first that answers.
@@ -2438,7 +2444,7 @@ const Discovery = {
     const gen = ++this.generation;
     this.running = true;
     this.manual = manual;
-    if (manual) { this.userClosed = false; this.startFailed = false; }
+    if (manual) { this.userClosed = false; this.startFailed = false; this.openFailed = false; }
     renderLink();
     const others = this.askOthers();
     const es = await this.askEyeSync(manual, gen);
@@ -2467,6 +2473,7 @@ const Discovery = {
     else r = { what: 'none', instant: !!es.instant };
     if (r.what === 'running' || r.what === 'standby') this.userClosed = false;
     if (r.what === 'closed') this.userClosed = true;
+    if (r.what !== 'none') this.openFailed = false;
     this.report = r;
     if (r.what === 'running' && auto) return connectTo(eyeSyncUrl(r.port), source);
     if (r.what === 'tracker' && auto) {
@@ -2478,6 +2485,39 @@ const Discovery = {
     if (r.what === 'standby' && (manual || (auto && !this.startFailed))) return startEyeSync(r.port, source);
     if (r.what === 'closed' && manual) return startEyeSync(r.port, source);
     if (r.what !== 'refused') this.schedule();             // a refusal won't change by itself: stop trying
+    renderLink();
+  },
+  // "Open EyeSync" is the link eyesync://start, which the installed EyeSync registers with Windows.
+  // The browser asks the user first, then EyeSync takes a few seconds: ask its ports every second
+  // for up to START_WAIT_MS and carry on as for Connect. If nothing answers, it isn't installed.
+  // Both ports at once: on Windows a port nobody listens on takes about 3 s to refuse.
+  async open() {
+    this.cancel();
+    const gen = this.generation;
+    Object.assign(this, { paused: false, opening: true, userClosed: false, startFailed: false, openFailed: false });
+    Simulator.stop(false);
+    renderLink();
+    const end = performance.now() + START_WAIT_MS;
+    for (let next = performance.now() + 1000; next < end; ) {
+      await new Promise((r) => setTimeout(r, Math.max(0, next - performance.now())));
+      if (gen !== this.generation) return;               // Stop, Connect or signing out won meanwhile
+      next = performance.now() + 1000;
+      const answers = await Promise.race([      // a running EyeSync answers at once: a slow refusal can't hold up the deadline
+        Promise.all(EYESYNC_PORTS.map((port) => askPort(eyeSyncUrl(port, 'probe')).then((r) => ({ ...r, port })))),
+        new Promise((r) => setTimeout(() => r([]), end - performance.now())),
+      ]);
+      if (gen !== this.generation) return;
+      const es = answers.find((r) => r.kind !== 'none' && r.kind !== 'open');
+      if (!es) continue;
+      this.opening = false;
+      if (!Auth.current || Link.state !== 'idle') { renderLink(); return; }
+      this.act(true, es, null);
+      return;
+    }
+    this.opening = false;
+    this.openFailed = true;
+    this.report = { what: 'none' };
+    this.schedule();
     renderLink();
   },
   schedule() {
@@ -2633,14 +2673,19 @@ const Camera = {
   },
 };
 
-// downloads/latest.json, written by EyeSync's make_release.py next to the zip.
+// downloads/latest.json, written by EyeSync's build_exe.py. EyeSync.exe is over GitHub's 100 MB limit
+// for repositories, so it (and the source zip) are attached to the newest GitHub Release, whose
+// download links keep the same names from version to version.
+const RELEASE_URL = 'https://github.com/Aniruddh9140/face-control-website/releases/latest/download/';
+const RELEASE_FILE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,80}\.(exe|zip)$/;
 function sanitizeRelease(d) {
-  if (!isObj(d) || !isVersion(d.version) || typeof d.file !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._-]{0,80}\.zip$/.test(d.file)) return null;
+  if (!isObj(d) || !isVersion(d.version) || typeof d.file !== 'string' || !RELEASE_FILE.test(d.file)) return null;
   if (!Number.isInteger(d.size) || d.size <= 0) return null;
   return {
     version: d.version, file: d.file, size: d.size,
     sha256: typeof d.sha256 === 'string' && /^[0-9a-f]{64}$/i.test(d.sha256) ? d.sha256.toLowerCase() : '',
     date: isDay(d.date) ? d.date : '',
+    zip: typeof d.zip === 'string' && RELEASE_FILE.test(d.zip) && d.zip.endsWith('.zip') ? d.zip : '',
   };
 }
 const Release = {
@@ -2664,7 +2709,7 @@ function isNewer(a, b) {
   }
   return false;
 }
-const fmtMB = (bytes) => `${(bytes / 1e6).toFixed(1)} MB`;
+const fmtMB = (bytes) => `${(bytes / 1e6).toFixed(bytes >= 1e7 ? 0 : 1)} MB`;
 
 const DownloadPage = {
   async render() {
@@ -2682,8 +2727,7 @@ const DownloadPage = {
     }
     status.hidden = true;
     const btn = $('#dl-button');
-    btn.href = 'downloads/' + r.file;               // the name was checked in sanitizeRelease
-    btn.setAttribute('download', r.file);
+    btn.href = RELEASE_URL + r.file;                // the name was checked in sanitizeRelease
     btn.textContent = `Download EyeSync ${r.version} for Windows (${fmtMB(r.size)})`;
     $('#dl-version').textContent = r.version;
     $('#dl-date').textContent = r.date ? fmtDay(r.date) : 'unknown';
@@ -2691,6 +2735,8 @@ const DownloadPage = {
     $('#dl-sha').textContent = r.sha256 || 'not published';
     $('#dl-verify').hidden = !r.sha256;
     $('#dl-hashcmd').textContent = `Get-FileHash .\\${r.file}`;
+    $('#dl-zip').hidden = !r.zip;
+    if (r.zip) { $('#dl-zip-link').href = RELEASE_URL + r.zip; $('#dl-zip-link').textContent = r.zip; }
   },
 };
 
@@ -2801,7 +2847,7 @@ function updateReadouts() {
 const LINK_TEXT = { idle: 'Not connected', searching: 'Searching…', starting: 'Starting…', connecting: 'Connecting…', open: 'Connected', stale: 'No data', reconnecting: 'Retrying', sim: 'Simulator' };
 function linkState() {
   if (Simulator.running) return 'sim';
-  if (Discovery.starting || (Link.policy === 'starting' && (Link.state === 'connecting' || Link.state === 'reconnecting'))) return 'starting';
+  if (Discovery.starting || Discovery.opening || (Link.policy === 'starting' && (Link.state === 'connecting' || Link.state === 'reconnecting'))) return 'starting';
   // Background checks keep showing what the last one found; only the first one and Connect say "Searching".
   if (Link.state === 'idle' && Discovery.running && (Discovery.manual || !Discovery.report)) return 'searching';
   return Link.state;
@@ -2810,11 +2856,12 @@ function idleDetail() {
   const r = Discovery.report;
   if (Discovery.paused) return 'Disconnected. Press Connect to connect again.';
   if (r?.what === 'refused') return `EyeSync at ${r.url} refused this page (${r.reason}). It only accepts its own website, https://aniruddh9140.github.io/face-control-website/. Press Connect to try again.`;
-  if (Discovery.startFailed && r?.what !== 'running') return 'EyeSync didn\'t start. Open the EyeSync shortcut on your Desktop, then press Connect.';
+  if (Discovery.startFailed && r?.what !== 'running') return 'EyeSync didn\'t start. Press Open EyeSync below, or open the EyeSync shortcut on your Desktop.';
   if (r?.what === 'closed' || (r?.what === 'none' && Discovery.userClosed)) return 'EyeSync was closed. Press Connect to start it again.';
   if (r?.what === 'standby') return 'EyeSync is installed and waiting. Press Connect to start it.';
   if (r?.what === 'running') return 'EyeSync is running. Press Connect to use it here.';
   if (r?.what === 'tracker') return `A tracker is running at ${r.url}. Press Connect to use it.`;
+  if (r?.what === 'none' && Discovery.openFailed) return 'EyeSync doesn\'t seem to be installed on this computer. Download it below. If it is installed, open it from the Start menu.';
   if (r?.what === 'none') return `EyeSync isn't running on this computer. Checking again in ${Discovery.nextSecs} s.`;
   if (Link.lastError) return Link.lastError;
   return 'Looking for EyeSync on this computer…';
@@ -2831,7 +2878,7 @@ function renderAddress(state) {
   const how = linkSource === 'auto' ? 'found automatically' : 'entered by you';
   const How = how[0].toUpperCase() + how.slice(1);
   if (state === 'sim') return set('sim', 'Simulator', 'Built-in practice data, no tracker needed');
-  if (state === 'starting') return set('waiting', eyeSyncUrl(Discovery.startPort), 'EyeSync is starting');
+  if (state === 'starting') return set('waiting', eyeSyncUrl(Discovery.startPort), Discovery.opening ? 'Waiting for EyeSync to open' : 'EyeSync is starting');
   if (state === 'open' || state === 'stale') return set('found', Link.url, EyeSync.status ? `EyeSync, ${how}` : How);
   if (state === 'connecting' || state === 'reconnecting') return set('waiting', Link.url, `${How}, connecting`);
   if (state === 'searching') return set('detecting', 'Detecting…', 'Looking for EyeSync on this computer');
@@ -2850,7 +2897,7 @@ function renderLink() {
   const detail = {
     idle: idleDetail(),
     searching: 'Looking for EyeSync on this computer…',
-    starting: 'Starting EyeSync… (up to 20 seconds)',
+    starting: Discovery.opening ? 'Opening EyeSync… If your browser asks, choose Open. This can take up to 30 seconds.' : 'Starting EyeSync… (up to 20 seconds)',
     connecting: `Opening ${Link.url}…`,
     open: EyeSync.status ? `Connected to EyeSync at ${Link.url}.` : `Receiving cursor data from ${Link.url}.`,
     stale: `Connected to ${Link.url}, but no cursor data arrived in the last 3 seconds.`,
@@ -2859,8 +2906,10 @@ function renderLink() {
   }[state];
   $('#link-detail').textContent = detail;
   renderAddress(state);
-  // Not found: offer the download, and the browser's permission if it may be blocking us.
-  const missing = state === 'idle' && !Discovery.paused && Discovery.report?.what === 'none' && !Discovery.userClosed && !Discovery.startFailed;
+  // Not found or didn't start: offer Open EyeSync, the download, and the browser's permission if it
+  // may be blocking us.
+  const missing = state === 'idle' && !Discovery.paused
+    && (Discovery.startFailed || (Discovery.report?.what === 'none' && !Discovery.userClosed));
   $('#link-help').hidden = !missing;
   $('#browser-note').hidden = !(Browser.blocked || (Discovery.report?.instant && /Windows/.test(navigator.userAgent)));
   const linked = ['connecting', 'open', 'stale', 'reconnecting', 'starting'].includes(state);
@@ -2943,7 +2992,7 @@ function renderUpdate() {
   const s = EyeSync.status, r = Release.data;
   const show = !!(EyeSync.connected && s.version && r && isNewer(r.version, s.version));
   $('#update-notice').hidden = !show;
-  if (show) $('#update-text').textContent = `EyeSync ${r.version} is available (you have ${s.version}). To update, download it and run its install.bat. Your settings and calibration are kept.`;
+  if (show) $('#update-text').textContent = `EyeSync ${r.version} is available (you have ${s.version}). To update, download the new EyeSync.exe and open it. Your settings and calibration are kept.`;
 }
 // EyeSync clicks by itself (blinks, or its own dwell), so the website's dwell stays off while it's
 // connected: otherwise one look could press a button twice. The saved choice is kept for other trackers.
@@ -3033,7 +3082,7 @@ function bindSettings() {
   $('#auto-connect').addEventListener('change', (e) => {
     Prefs.set('autoConnect', e.target.checked);
     if (e.target.checked) { Discovery.paused = false; Discovery.startFailed = false; }
-    if (!Discovery.starting) { Discovery.cancel(); Discovery.kick(); }
+    if (!Discovery.starting && !Discovery.opening) { Discovery.cancel(); Discovery.kick(); }
     renderLink();
   });
   $('#cal-dwell').addEventListener('change', (e) => { const n = Number(e.target.value); if ([1500, 2000, 3000, 4000].includes(n)) Prefs.set('calDwellMs', n); });
@@ -3814,6 +3863,8 @@ function bindForms() {
     Simulator.stop(false);
     Discovery.run(true);
   });
+  // Open EyeSync: following the link (eyesync://start) asks Windows to start EyeSync; this waits for it.
+  $('#btn-open-es').addEventListener('click', () => Discovery.open());
   $('#btn-sim').addEventListener('click', () => {
     if (Simulator.running) { Simulator.stop(); toast('Simulator stopped.'); }
     else { Simulator.start(); toast('Simulator running. Watch the red crosshair.', 'ok'); }

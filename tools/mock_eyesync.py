@@ -46,7 +46,7 @@ try:
 except ImportError:          # the camera view is optional
     Image = None
 
-VERSION = "1.1.0"
+VERSION = "1.1.1"
 DEFAULT_ORIGINS = [
     "https://aniruddh9140.github.io",
     "http://localhost:8000",

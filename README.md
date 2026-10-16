@@ -9,13 +9,13 @@ The EyeSync program lives in its own folder (`E:\EyeSync`); its `WEBSITE.md` is 
 - **Home page.** Visitors land on an introduction (`#home`) dressed as a little retro desktop: a menu bar with a clock, and sections as windows you can nudge by their title bars. It covers what EyeSync does, the face gestures, how to get started, and the privacy and accessibility approach.
 - **Live head demo.** "Try it with your head" under the home page's CRT lets a visitor steer that screen with their own head and blink to click, with no install. The face tracking is Google's MediaPipe face landmarker, served by this site from `vendor/mediapipe/` (see its README) and loaded only when the button is pressed. Camera pictures stay in the tab: nothing is stored or sent, and the camera turns off on Stop, when the tab is hidden, or when the visitor leaves the page. The library's own usage reporting is switched off.
 - **Sync, the mascot.** A small pixel computer in the corner of the home page watches the pointer, blinks when you click, and has tips when pressed.
-- **Download page.** `#download` reads `downloads/latest.json` and offers the zip next to it, for example "Download EyeSync 1.1.0 for Windows (3.4 MB)", with the release date, size and SHA-256. It also explains how to install, update and remove EyeSync. Guests can open it without an account.
+- **Download page.** `#download` reads `downloads/latest.json` and offers `EyeSync.exe` from the newest GitHub Release, for example "Download EyeSync 1.1.1 for Windows (124 MB)", with the release date, size and SHA-256, and the source zip for developers. EyeSync.exe is the whole program and installs itself. The page explains how to install, update and remove it. Guests can open it without an account.
 - **Accounts in the browser.** Registration and sign-in use the Web Crypto API. Passwords are salted (16 random bytes) and hashed with PBKDF2-HMAC-SHA-256 at 600,000 rounds before anything is saved. Plain-text passwords are never stored.
 - **Session lock.** A successful sign-in creates a random 32-byte session token; the account record stores just its SHA-256, for up to 5 active sign-ins. With **Keep me signed in** (ticked by default), the token goes in `localStorage`, so you stay signed in after closing the site, in every tab, for 30 days since your last visit. Unticked, it stays in `sessionStorage` for this tab only and expires after 30 minutes without activity. Protected views (`#dashboard`, `#calibration`) check the token on every navigation, and signing out in one tab signs out the others.
 - **Brute-force slowdown.** After 5 failed sign-ins, that username is locked for 30 s, doubling on each further failure up to 15 minutes.
 - **Cookie consent.** A banner appears on the first visit. Optional preference storage (`fc.prefs`) stays in memory until the visitor chooses **Accept**. Choosing **Essential only** deletes it. The Cookie Policy and Terms and Conditions open as pages (`#cookies`, `#terms`) or as dialogs from the registration form.
 - **Mandatory agreement.** The registration form has an unchecked "I agree to the Terms and Conditions and Cookie Policy" checkbox. No account is created unless it is checked, and the versions agreed to are recorded with the account.
-- **Connecting to EyeSync.** On the Dashboard and Calibration pages, the site asks EyeSync whether it is installed, running or closed (see [Connecting to EyeSync](#connecting-to-eyesync)). It connects to a running EyeSync, starts a waiting one, and never restarts an EyeSync the user closed: only a click on **Connect** does. When nothing answers, it says so and links to the Download page.
+- **Connecting to EyeSync.** On the Dashboard and Calibration pages, the site asks EyeSync whether it is installed, running or closed (see [Connecting to EyeSync](#connecting-to-eyesync)). It connects to a running EyeSync, starts a waiting one, and never restarts an EyeSync the user closed: only a click on **Connect** does. When nothing answers, it offers **Open EyeSync** and the Download page.
 - **EyeSync controls.** Once EyeSync answers, a panel shows its status (face found, camera, cursor control, advice such as "too dark", calibration date, hardware mouse, version) and its controls: mouse control on/off, pause, recenter, speed 1 to 5, click by blinking or by holding still, face gestures, show the EyeSync window, and quit (with an "Are you sure?" step). EyeSync pushes every change, so a smile that pauses it on the PC shows up on the page by itself.
 - **Calibrate EyeSync.** Starts EyeSync's own 30-second calibration, which shows a full-screen guide on the PC, with live progress and a Cancel button on the page. It is on the Dashboard and first on the Calibration page.
 - **Accuracy test.** The site's own 9-point routine. Targets light up one at a time while the page measures how far the cursor lands from each one. It sends its events to the tracker, which EyeSync only logs.
@@ -70,7 +70,7 @@ EyeSync and its standby listen on `ws://localhost:8765` and `ws://localhost:8080
 
 What the Dashboard does with the answers:
 
-- **Nothing answers:** "EyeSync isn't running on this computer", with a Download link and "Already installed? Open the EyeSync shortcut on your Desktop, or restart the PC."
+- **Nothing answers:** "EyeSync isn't running on this computer", with **Open EyeSync** and **Download EyeSync**. Open EyeSync is the link `eyesync://start`, which the installed EyeSync registers with Windows. After the browser asks the user, EyeSync starts minimised; the site asks its ports every second for up to 30 s and then carries on as for Connect. If nothing answers by then: "EyeSync doesn't seem to be installed on this computer."
 - **Running:** connect.
 - **Waiting, not closed by the user:** start it if **Connect to EyeSync automatically** is ticked, otherwise say "Press Connect to start it".
 - **Closed by the user** (mouth gesture, Quit, F12 or the website's Quit): never start it by itself. "EyeSync was closed. Press Connect to start it."
@@ -105,7 +105,12 @@ During the accuracy test the page sends:
 
 ## Publishing a new EyeSync version
 
-In the EyeSync folder, run `python make_release.py`. Copy `dist/EyeSync-<version>.zip` and `dist/latest.json` into `downloads/` here, delete the previous zip, and push. The page itself doesn't change: the Download button and the update notice both come from `latest.json`.
+In the EyeSync folder, run `py -3.15 build_exe.py` (and `python make_release.py` for the source zip). Both write to `E:\EyeSync-Release`.
+
+1. `EyeSync.exe` is over GitHub's 100 MB limit for files in a repository, so it doesn't go in here. Create a GitHub Release in this repository (tag `v<version>`, for example `v1.1.1`) and attach `EyeSync.exe` and `EyeSync-<version>.zip`. Keep those file names: the page links to `https://github.com/Aniruddh9140/face-control-website/releases/latest/download/EyeSync.exe`, which always gives the newest release.
+2. Copy `latest.json` into `downloads/` here and push.
+
+The page itself doesn't change: the Download button and the update notice both come from `latest.json`. Browsers can't `fetch` files on the Releases page from this site (no CORS), which is why `latest.json` lives here.
 
 ## Browser notes
 
@@ -120,7 +125,7 @@ Everything runs in the browser, so this is local-first protection, not server-gr
 - stores only salted PBKDF2 hashes, compares them in constant time, and hashes unknown usernames too, so timing doesn't reveal which accounts exist;
 - builds all DOM with `textContent` and element APIs (no `innerHTML`), and enforces Trusted Types in Chromium browsers. Its one exception is a default policy that lets the face tracker load its helper script, and only same-origin scripts under `/vendor/mediapipe/`;
 - sets a strict Content-Security-Policy: scripts only inline or from this site (the bundled face tracker, with `'wasm-unsafe-eval'` for its WebAssembly), `fetch` only to its own files (`latest.json`, the face model), WebSockets to loopback only, images only from `data:` URLs (the camera view);
-- checks every message from EyeSync: status fields are typed and length-limited, camera pictures must be base64 JPEG data URLs, and `latest.json` file names must look like `EyeSync-1.2.0.zip`;
+- checks every message from EyeSync: status fields are typed and length-limited, camera pictures must be base64 JPEG data URLs, and `latest.json` file names must look like `EyeSync.exe` or `EyeSync-1.2.0.zip`;
 - never asks for or stores EyeSync's API key, and never stores camera pictures;
 - refuses to run sign-in when framed by another site (clickjacking guard), since GitHub Pages can't send `frame-ancestors` headers.
 
