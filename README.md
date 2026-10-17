@@ -10,11 +10,10 @@ The EyeSync program lives in its own folder (`E:\EyeSync`); its `WEBSITE.md` is 
 - **Live head demo.** "Try it with your head" under the home page's CRT lets a visitor steer that screen with their own head and blink to click, with no install. The face tracking is Google's MediaPipe face landmarker, served by this site from `vendor/mediapipe/` (see its README) and loaded only when the button is pressed. Camera pictures stay in the tab: nothing is stored or sent, and the camera turns off on Stop, when the tab is hidden, or when the visitor leaves the page. The library's own usage reporting is switched off.
 - **Sync, the mascot.** A small pixel computer in the corner of the home page watches the pointer, blinks when you click, and has tips when pressed.
 - **Download page.** `#download` reads `downloads/latest.json` and offers `EyeSync.exe` from the newest GitHub Release, for example "Download EyeSync 1.1.1 for Windows (124 MB)", with the release date, size and SHA-256, and the source zip for developers. EyeSync.exe is the whole program and installs itself. The page explains how to install, update and remove it. Guests can open it without an account.
-- **Accounts in the browser.** Registration and sign-in use the Web Crypto API. Passwords are salted (16 random bytes) and hashed with PBKDF2-HMAC-SHA-256 at 600,000 rounds before anything is saved. Plain-text passwords are never stored.
-- **Session lock.** A successful sign-in creates a random 32-byte session token; the account record stores just its SHA-256, for up to 5 active sign-ins. With **Keep me signed in** (ticked by default), the token goes in `localStorage`, so you stay signed in after closing the site, in every tab, for 30 days since your last visit. Unticked, it stays in `sessionStorage` for this tab only and expires after 30 minutes without activity. Protected views (`#dashboard`, `#calibration`) check the token on every navigation, and signing out in one tab signs out the others.
-- **Brute-force slowdown.** After 5 failed sign-ins, that username is locked for 30 s, doubling on each further failure up to 15 minutes.
+- **Accounts with Supabase.** People sign up and sign in with an email address and password, handled by Supabase Auth (see [Accounts](#accounts)), so an account works on any computer. Supabase keeps only a bcrypt hash of the password and rate-limits sign-in attempts. The dashboard settings and the last accuracy test are saved to the account a moment after each change and loaded after signing in.
+- **Sessions.** With **Keep me signed in** (ticked by default), the Supabase session goes in `localStorage`, so you stay signed in after closing the site, in every tab, for 30 days since your last visit. Unticked, it stays in `sessionStorage` for this tab only and ends after 30 minutes without activity. Protected views (`#dashboard`, `#calibration`) check it on every navigation; Supabase confirms it on each visit and every 10 minutes, so a deleted account is signed out everywhere. Signing out in one tab signs out the others.
 - **Cookie consent.** A banner appears on the first visit. Optional preference storage (`fc.prefs`) stays in memory until the visitor chooses **Accept**. Choosing **Essential only** deletes it. The Cookie Policy and Terms and Conditions open as pages (`#cookies`, `#terms`) or as dialogs from the registration form.
-- **Mandatory agreement.** The registration form has an unchecked "I agree to the Terms and Conditions and Cookie Policy" checkbox. No account is created unless it is checked, and the versions agreed to are recorded with the account.
+- **Mandatory agreement.** The registration form has an unchecked "I agree to the Terms and Conditions and Cookie Policy" checkbox. No account is created unless it is checked, and the versions agreed to are recorded with the account (in its Supabase user data and its `profiles` row).
 - **Connecting to EyeSync.** On the Dashboard and Calibration pages, the site asks EyeSync whether it is installed, running or closed (see [Connecting to EyeSync](#connecting-to-eyesync)). It connects to a running EyeSync, starts a waiting one, and never restarts an EyeSync the user closed: only a click on **Connect** does. When nothing answers, it offers **Open EyeSync** and the Download page.
 - **EyeSync controls.** Once EyeSync answers, a panel shows its status (face found, camera, cursor control, advice such as "too dark", calibration date, hardware mouse, version) and its controls: mouse control on/off, pause, recenter, speed 1 to 5, click by blinking or by holding still, face gestures, show the EyeSync window, and quit (with an "Are you sure?" step). EyeSync pushes every change, so a smile that pauses it on the PC shows up on the page by itself.
 - **Calibrate EyeSync.** Starts EyeSync's own 30-second calibration, which shows a full-screen guide on the PC, with live progress and a Cancel button on the page. It is on the Dashboard and first on the Calibration page.
@@ -118,13 +117,30 @@ The page itself doesn't change: the Download button and the update notice both c
 - Newer Chrome and Edge versions may ask the user to allow the site to reach "apps and services on this device" (local network access). If that is denied, the Dashboard says: "Allow this site to connect to apps on this device (click the icon in the address bar), then reload."
 - To accept a tracker on another machine, add its host to both `LOOPBACK_HOSTS` in the script and `connect-src` in the Content-Security-Policy meta tag.
 
+## Accounts
+
+Accounts live in the Supabase project `pbztuguamyjznxldpbcc` (https://pbztuguamyjznxldpbcc.supabase.co), on the free plan. The page talks to it with plain `fetch` calls (no Supabase library), using the project's **publishable** key, which is meant to be public. What protects the data is `supabase/schema.sql`: run once in the project's SQL Editor, it creates the `profiles` table (one row per account: `prefs`, `agreed`), Row Level Security policies that let each signed-in user read and change only their own row, and `delete_my_account()`, which deletes only the caller. Never put the project's secret (service_role) key or database password in the site.
+
+Project settings this relies on: **Authentication → Sign In / Providers**: Email on, **Confirm email** off (Supabase's built-in email only reaches the project's own team; connect an email service such as Brevo or Resend under **Authentication → Emails → SMTP** before turning confirmation or password reset on). **URL Configuration**: Site URL `https://aniruddh9140.github.io/face-control-website/`.
+
+Free projects are paused after about a week without any requests. While paused, sign-in shows "The account service isn't answering"; restore it from the Supabase dashboard.
+
+To test accounts without touching the real project, run `tools/mock_supabase.py` and point a copy of the page at it:
+
+```bash
+python tools/mock_supabase.py --token-ttl 70     # short tokens, to see them refreshed
+```
+
+In the copy, set `SUPABASE_URL` to `http://127.0.0.1:54321` and put the same address in the CSP's `connect-src`.
+
 ## Security model
 
-Everything runs in the browser, so this is local-first protection, not server-grade authentication. Anyone with access to the browser profile can read or clear `localStorage`, which also resets the sign-in throttle. Within that limit, the page:
+Sign-in and passwords are Supabase's job. The page:
 
-- stores only salted PBKDF2 hashes, compares them in constant time, and hashes unknown usernames too, so timing doesn't reveal which accounts exist;
+- sends passwords only to Supabase over HTTPS, never stores them, and keeps the session tokens in `localStorage` or `sessionStorage` as described above; a deleted or signed-out-everywhere account is noticed on the next visit;
+- relies on Row Level Security, not on the page, to keep each account's data private: the publishable key alone can read nothing;
 - builds all DOM with `textContent` and element APIs (no `innerHTML`), and enforces Trusted Types in Chromium browsers. Its one exception is a default policy that lets the face tracker load its helper script, and only same-origin scripts under `/vendor/mediapipe/`;
-- sets a strict Content-Security-Policy: scripts only inline or from this site (the bundled face tracker, with `'wasm-unsafe-eval'` for its WebAssembly), `fetch` only to its own files (`latest.json`, the face model), WebSockets to loopback only, images only from `data:` URLs (the camera view);
+- sets a strict Content-Security-Policy: scripts only inline or from this site (the bundled face tracker, with `'wasm-unsafe-eval'` for its WebAssembly), `fetch` only to its own files (`latest.json`, the face model) and the Supabase project, WebSockets to loopback only, images only from `data:` URLs (the camera view);
 - checks every message from EyeSync: status fields are typed and length-limited, camera pictures must be base64 JPEG data URLs, and `latest.json` file names must look like `EyeSync.exe` or `EyeSync-1.2.0.zip`;
 - never asks for or stores EyeSync's API key, and never stores camera pictures;
 - refuses to run sign-in when framed by another site (clickjacking guard), since GitHub Pages can't send `frame-ancestors` headers.

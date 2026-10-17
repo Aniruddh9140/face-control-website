@@ -7,12 +7,13 @@
   Content Security Policy. Everything ships inline, so nothing is loaded from any other host.
   Scripts may also come from this site itself (vendor/mediapipe, the face-tracking library behind the
   home page's live head demo), which also needs WebAssembly ('wasm-unsafe-eval').
-  fetch() may only read this site's own files (latest.json, the face model); WebSocket connections are
-  limited to this computer (localhost / 127.0.0.1). Camera pictures from EyeSync arrive as data: URLs.
+  fetch() may only read this site's own files (latest.json, the face model) and reach the site's
+  Supabase project (accounts and their settings); WebSocket connections are limited to this computer
+  (localhost / 127.0.0.1). Camera pictures from EyeSync arrive as data: URLs.
   require-trusted-types-for blocks string-to-HTML sinks such as innerHTML in Chromium browsers;
   the app builds every element with DOM APIs and never needs them.
 -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'unsafe-inline'; img-src data:; font-src 'self'; connect-src 'self' ws://localhost:* ws://127.0.0.1:* wss://localhost:* wss://127.0.0.1:*; base-uri 'none'; form-action 'none'; object-src 'none'; require-trusted-types-for 'script'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'unsafe-inline'; img-src data:; font-src 'self'; connect-src 'self' https://pbztuguamyjznxldpbcc.supabase.co ws://localhost:* ws://127.0.0.1:* wss://localhost:* wss://127.0.0.1:*; base-uri 'none'; form-action 'none'; object-src 'none'; require-trusted-types-for 'script'">
 <meta name="referrer" content="no-referrer">
 <title>EyeSync</title>
 <meta name="description" content="EyeSync turns your webcam into a mouse you steer with your head and click with a blink. Download it for Windows and control it from this dashboard.">
@@ -981,9 +982,9 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
           <p class="eyebrow">Privacy</p>
           <h2 id="privacy-title">Private by design</h2>
           <ul class="ticks">
-            <li>There is no EyeSync server. The website runs in your browser and talks only to EyeSync on this computer.</li>
+            <li>The website runs in your browser and talks to EyeSync on this computer. The only online service it uses is Supabase, which keeps your account and settings.</li>
             <li>The camera picture is processed on your PC. The optional camera view on the dashboard, and the live head demo on this page, run on your device and never upload or save a picture.</li>
-            <li>Your password is salted and hashed with PBKDF2-SHA-256, 600,000 rounds deep. The password itself is never saved.</li>
+            <li>Your password is sent only to Supabase over HTTPS and kept as a bcrypt hash. The password itself is never saved, and no one else can read your account's data.</li>
             <li>Cursor positions travel only from EyeSync to this page, and are never stored.</li>
             <li>No cookies, no analytics, no third-party scripts. Even the fonts are bundled in.</li>
           </ul>
@@ -1022,7 +1023,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
       <section class="cta-band win" data-win="start.exe" aria-labelledby="cta-title">
         <div>
           <h2 id="cta-title">Ready when you are.</h2>
-          <p class="hint js-guest">Download EyeSync, then create an account. It takes under a minute and never leaves this device.</p>
+          <p class="hint js-guest">Download EyeSync, then create a free account. It takes under a minute, and your settings follow you to any computer.</p>
           <p class="hint js-member" hidden>Your dashboard is warmed up and waiting.</p>
         </div>
         <div class="hero-actions js-guest">
@@ -1048,15 +1049,14 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
         <form class="panel panel-strong auth-form stack" id="login-form" novalidate>
           <h2>Sign in</h2>
           <p class="notice" id="login-notice" role="alert" hidden></p>
-          <p class="notice js-crypto-missing" hidden>This browser can't run secure sign-in here. Open the page over https:// or from localhost.</p>
           <div class="field">
-            <label for="login-username">Username</label>
-            <input class="input" id="login-username" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="32" required aria-describedby="login-username-error">
-            <p class="error" id="login-username-error" hidden></p>
+            <label for="login-email">Email</label>
+            <input class="input" id="login-email" name="email" type="email" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="254" required aria-describedby="login-email-error">
+            <p class="error" id="login-email-error" hidden></p>
           </div>
           <div class="field">
             <label for="login-password">Password</label>
-            <input class="input" id="login-password" name="password" type="password" autocomplete="current-password" maxlength="128" required aria-describedby="login-password-error">
+            <input class="input" id="login-password" name="password" type="password" autocomplete="current-password" maxlength="72" required aria-describedby="login-password-error">
             <p class="error" id="login-password-error" hidden></p>
           </div>
           <div class="field">
@@ -1066,7 +1066,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
           <p class="form-error" tabindex="-1" role="alert" hidden></p>
           <button class="btn btn-primary btn-block" type="submit">Sign in</button>
           <a class="btn btn-block" href="#register">Create an account</a>
-          <p class="hint">EyeSync never stores your password. It keeps only a salted PBKDF2-SHA-256 hash on this device.</p>
+          <p class="hint">Your account is kept by Supabase, so you can sign in on any computer. Your password is stored only as a bcrypt hash.</p>
         </form>
       </div>
     </section>
@@ -1077,36 +1077,35 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
         <div class="auth-intro">
           <p class="eyebrow">New here?</p>
           <h1 id="register-title" tabindex="-1">Set up in a minute.</h1>
-          <p class="lede">Your account lives only in this browser. Before anything is saved, your password is salted and hashed (PBKDF2-SHA-256, 600,000 rounds), so the password itself is never stored anywhere.</p>
+          <p class="lede">Your account is kept by Supabase, so your settings follow you to any computer. Your password goes to Supabase over HTTPS and is stored only as a bcrypt hash.</p>
           <dl class="kv panel">
-            <dt>Stored</dt><dd>username, salt, hash, agreement record</dd>
-            <dt>Never stored</dt><dd>your password</dd>
-            <dt>Sent anywhere</dt><dd>nothing</dd>
+            <dt>Stored</dt><dd>email address, password hash, your settings, agreement record</dd>
+            <dt>Never stored</dt><dd>your password, camera pictures, cursor positions</dd>
+            <dt>Who can read it</dt><dd>only you, when signed in</dd>
           </dl>
         </div>
 
         <form class="panel panel-strong auth-form stack" id="register-form" novalidate>
           <h2>Create account</h2>
-          <p class="notice js-crypto-missing" hidden>This browser can't run secure sign-in here. Open the page over https:// or from localhost.</p>
           <div class="field">
-            <label for="reg-username">Username</label>
-            <input class="input" id="reg-username" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="32" required aria-describedby="reg-username-hint reg-username-error">
-            <p class="hint" id="reg-username-hint">3 to 32 characters: letters, numbers, dot, dash or underscore.</p>
-            <p class="error" id="reg-username-error" hidden></p>
+            <label for="reg-email">Email</label>
+            <input class="input" id="reg-email" name="email" type="email" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="254" required aria-describedby="reg-email-hint reg-email-error">
+            <p class="hint" id="reg-email-hint">You sign in with it. EyeSync doesn't send you newsletters or share it.</p>
+            <p class="error" id="reg-email-error" hidden></p>
           </div>
           <div class="field">
             <label for="reg-password">Password</label>
-            <input class="input" id="reg-password" name="password" type="password" autocomplete="new-password" maxlength="128" required aria-describedby="reg-rules reg-password-error">
+            <input class="input" id="reg-password" name="password" type="password" autocomplete="new-password" maxlength="72" required aria-describedby="reg-rules reg-password-error">
             <ul class="rules" id="reg-rules">
               <li data-rule="length">At least 12 characters</li>
-              <li data-rule="nouser">Doesn't contain your username</li>
+              <li data-rule="nouser">Doesn't contain the first part of your email</li>
               <li data-rule="match">Matches the confirmation below</li>
             </ul>
             <p class="error" id="reg-password-error" hidden></p>
           </div>
           <div class="field">
             <label for="reg-confirm">Confirm password</label>
-            <input class="input" id="reg-confirm" name="confirm" type="password" autocomplete="new-password" maxlength="128" required aria-describedby="reg-confirm-error">
+            <input class="input" id="reg-confirm" name="confirm" type="password" autocomplete="new-password" maxlength="72" required aria-describedby="reg-confirm-error">
             <p class="error" id="reg-confirm-error" hidden></p>
           </div>
           <div class="field">
@@ -1348,9 +1347,9 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
           <section class="panel" aria-labelledby="acct-title">
             <h2 id="acct-title">Account</h2>
             <dl class="kv">
-              <dt>Username</dt><dd id="acct-name"></dd>
+              <dt>Email</dt><dd id="acct-name"></dd>
               <dt>Created</dt><dd id="acct-created"></dd>
-              <dt>Password</dt><dd>PBKDF2-HMAC-SHA-256 · 600,000 rounds · 16-byte salt</dd>
+              <dt>Kept by</dt><dd>Supabase · password stored as a bcrypt hash</dd>
               <dt>Agreed to</dt><dd id="acct-agreed"></dd>
             </dl>
             <div class="row">
@@ -1358,7 +1357,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
               <button class="btn" type="button" id="btn-delete">Delete account</button>
               <button class="btn btn-quiet" type="button" id="btn-delete-cancel" hidden>Keep my account</button>
             </div>
-            <p class="notice" id="delete-hint" hidden>This removes your account and settings from this browser. It can't be undone.</p>
+            <p class="notice" id="delete-hint" hidden>This deletes your account and its saved settings from Supabase and signs you out everywhere. It can't be undone.</p>
           </section>
         </div>
       </div>
@@ -1510,7 +1509,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
   <div class="wrap footer-inner">
     <div class="credits">
       <p class="made">Made with <svg class="heart" viewBox="0 0 7 6" role="img" aria-label="love"><path d="M1 0h2v1h1V0h2v1h1v2H6v1H5v1H4v1H3V5H2V4H1V3H0V1h1z"></path></svg> by Aniruddh and Rudra</p>
-      <p class="hint">EyeSync v1.1 · runs in your browser · no server, no trackers</p>
+      <p class="hint">EyeSync v1.1 · runs in your browser · no ads, no trackers</p>
     </div>
     <nav aria-label="Legal">
       <a class="btn btn-quiet" href="#cookies">Cookie Policy</a>
@@ -1528,7 +1527,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
   <div class="wrap cookie-inner">
     <div class="cookie-text">
       <h2 id="cookie-title">A quick word about storage</h2>
-      <p>EyeSync keeps your account on this device so you can sign in. Say yes and it'll also remember your theme, tracker and cursor settings. Nothing is tracked, nothing is shared.</p>
+      <p>EyeSync keeps your sign-in on this device. Say yes and it'll also remember your theme, tracker and cursor settings here when you're signed out. Nothing is tracked, nothing is shared.</p>
       <p class="hint" id="cookie-current" hidden></p>
     </div>
     <div class="cookie-actions">
@@ -1553,7 +1552,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 
 <template id="tpl-cookies">
   <div class="policy">
-    <p class="meta">Version 1.3 · Last updated 16 October 2026</p>
+    <p class="meta">Version 1.4 · Last updated 17 October 2026</p>
     <p>EyeSync sets no HTTP cookies and loads nothing from other websites. It does use your browser's local storage and session storage, which privacy laws such as the EU ePrivacy Directive and UK PECR treat the same way as cookies. This policy lists every item it stores and why.</p>
     <h2>What is stored on your device</h2>
     <div class="table-wrap">
@@ -1561,26 +1560,26 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
         <thead><tr><th scope="col">Name</th><th scope="col">Where</th><th scope="col">Purpose</th><th scope="col">Kept for</th><th scope="col">Category</th></tr></thead>
         <tbody>
           <tr><td class="mono">fc.consent</td><td>Local storage</td><td>Remembers the storage choice you made in the banner.</td><td>Until you change it or clear site data</td><td>Essential</td></tr>
-          <tr><td class="mono">fc.users</td><td>Local storage</td><td>Your account: username, a random salt, a PBKDF2-SHA-256 hash of your password, fingerprints (SHA-256 hashes) of your active sign-ins, and the policy versions you agreed to. Your password itself is never stored.</td><td>Until you delete your account</td><td>Essential</td></tr>
-          <tr><td class="mono">fc.session</td><td>Local storage with “Keep me signed in”, otherwise session storage</td><td>A random sign-in token. With “Keep me signed in” it keeps you signed in after you close the site; otherwise it only works in the current tab.</td><td>Until you sign out. With “Keep me signed in”, at most 30 days since your last visit; otherwise until you close the tab or after 30 minutes without activity</td><td>Essential</td></tr>
-          <tr><td class="mono">fc.throttle</td><td>Local storage</td><td>Counts failed sign-in attempts to slow down password guessing.</td><td>Cleared after a successful sign-in</td><td>Essential</td></tr>
+          <tr><td class="mono">fc.session</td><td>Local storage with “Keep me signed in”, otherwise session storage</td><td>Your sign-in: the tokens Supabase issues (an access token valid for an hour and a refresh token), your account's ID and email address, and the policy versions you agreed to. With “Keep me signed in” it keeps you signed in after you close the site; otherwise it only works in the current tab.</td><td>Until you sign out. With “Keep me signed in”, at most 30 days since your last visit; otherwise until you close the tab or after 30 minutes without activity</td><td>Essential</td></tr>
           <tr><td class="mono">fc.prefs</td><td>Local storage</td><td>Theme, tracker address, automatic connection, cursor mapping and smoothing, dwell selection, and your last accuracy test result.</td><td>Until you withdraw consent or clear site data</td><td>Preferences (optional)</td></tr>
         </tbody>
       </table>
     </div>
+    <h2>Your account</h2>
+    <p>Accounts are run by <a href="https://supabase.com/privacy" target="_blank" rel="noopener noreferrer">Supabase</a>. It stores your email address, a bcrypt hash of your password (never the password itself), the policy versions you agreed to and when, and your dashboard settings (theme, tracker address, cursor mapping and smoothing, dwell selection, and a summary of your last accuracy test), so they follow you to any computer. Supabase may log technical data such as your IP address when you sign in. Only you can read your account's data while signed in; it is never sold or used for advertising.</p>
     <h2>Essential and optional storage</h2>
     <p>Essential items are needed for sign-in and security, so they are stored whichever option you choose. Preference storage is optional. Until you choose “Accept”, preferences are held in memory only and are lost when you close the tab. If you later switch to “Essential only”, <span class="mono">fc.prefs</span> is deleted straight away.</p>
     <h2>Cursor and camera data</h2>
-    <p>Cursor positions travel from EyeSync (or other tracker software) on your own computer to this page over a local WebSocket (localhost or 127.0.0.1 only). They are processed in memory to draw the cursor and are never stored or sent anywhere else. With preference storage on, only a summary of your last accuracy test is saved.</p>
+    <p>Cursor positions travel from EyeSync (or other tracker software) on your own computer to this page over a local WebSocket (localhost or 127.0.0.1 only). They are processed in memory to draw the cursor and are never stored or sent anywhere else. Only a summary of your last accuracy test is saved: on this device with preference storage on, and in your account.</p>
     <p>If you turn on the camera view, EyeSync sends small camera pictures to this page the same way. They are shown on the page and are never stored, uploaded or logged. They stop when you turn the camera view off or leave the Dashboard.</p>
     <p>The home page's live head demo uses your camera only after you press “Try it with your head” and your browser asks for permission. The face tracking runs in your browser, from files served by this site; camera pictures are never stored, uploaded or logged, and the camera turns off when you press Stop or leave the page.</p>
     <h2>Hosting</h2>
-    <p>The page and the EyeSync download are served by GitHub Pages. GitHub may log technical data such as your IP address when it delivers them; see the <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener noreferrer">GitHub General Privacy Statement</a>. EyeSync has no server of its own and receives none of your data.</p>
+    <p>The page and the EyeSync download are served by GitHub Pages. GitHub may log technical data such as your IP address when it delivers them; see the <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener noreferrer">GitHub General Privacy Statement</a>. Accounts are kept by Supabase, as described above. EyeSync has no other server.</p>
     <h2>Changing your choice or deleting your data</h2>
     <ul>
       <li>Change your choice at any time with “Cookie settings” at the bottom of every page.</li>
-      <li>Delete your account from the Dashboard. This removes your account record and preferences.</li>
-      <li>Remove everything by clearing this site's data in your browser settings.</li>
+      <li>Delete your account from the Dashboard. This removes your account, your saved settings and your agreement record from Supabase.</li>
+      <li>Clearing this site's data in your browser settings removes everything stored on this device and signs you out. Your account stays until you delete it.</li>
     </ul>
     <div class="row"><button class="btn" type="button" data-action="cookie-settings">Open cookie settings</button></div>
   </div>
@@ -1588,18 +1587,18 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 
 <template id="tpl-terms">
   <div class="policy">
-    <p class="meta">Version 1.2 · Last updated 15 October 2026</p>
+    <p class="meta">Version 1.3 · Last updated 17 October 2026</p>
     <p>These terms apply when you create an account on, or use, the EyeSync dashboard (“the dashboard”) published by the EyeSync project maintainers. By creating an account you agree to them.</p>
     <h2>1. What the dashboard does</h2>
-    <p>The dashboard runs entirely in your web browser. It connects to EyeSync, the head-controlled mouse program on your own computer, shows where EyeSync puts the cursor, changes EyeSync's settings when you ask it to, and runs calibration and accuracy tests. There is no EyeSync server: your account and settings live only in this browser on this device.</p>
+    <p>The dashboard runs entirely in your web browser. It connects to EyeSync, the head-controlled mouse program on your own computer, shows where EyeSync puts the cursor, changes EyeSync's settings when you ask it to, and runs calibration and accuracy tests. Your account and dashboard settings are kept by Supabase, the account service the dashboard uses (see the Cookie Policy); everything else runs in your browser.</p>
     <h2>2. Not a medical or safety device</h2>
     <p>The dashboard is not a medical device and is not designed to diagnose, treat or monitor any condition. Do not rely on it as your only way to communicate or to call for help. Keep another way to reach help available at all times.</p>
     <h2>3. Your account</h2>
     <ul>
       <li>Choose a strong password that you don't use anywhere else.</li>
-      <li>Your account exists only in this browser. Anyone who can use your browser profile may be able to read its stored data, so protect your device with its own lock.</li>
+      <li>You can sign in on any computer. Keep your password to yourself, and sign out on computers other people use.</li>
       <li>If you choose “Keep me signed in”, anyone using this browser can open your dashboard without your password until you sign out. Don't choose it on a shared computer.</li>
-      <li>There is no password recovery. If you forget your password, clear this site's data and create a new account.</li>
+      <li>There is no password reset yet. If you forget your password, create a new account, and ask us (see Contact) to delete the old one.</li>
     </ul>
     <h2>4. EyeSync and other software</h2>
     <p>You install and run EyeSync, your webcam and any other tracker software on your computer yourself, and you are responsible for them. The dashboard only accepts connections to addresses on your own computer.</p>
@@ -1643,19 +1642,16 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 /* ==========================================================================
    EyeSync dashboard: single-file SPA.
    Modules (plain objects in one ES module): Store, Consent, Prefs, Theme,
-   Crypto, Auth, Router, GazeLink, Discovery, EyeSync, Camera, Release,
+   Auth + Cloud (Supabase), Router, GazeLink, Discovery, EyeSync, Camera, Release,
    Simulator, Gaze/Render, Dwell, Calibration.
    ========================================================================== */
 
 const APP = 'EyeSync';
 const CONSENT_VERSION = 1;
-const TERMS_VERSION = '1.2';
-const COOKIE_POLICY_VERSION = '1.3';
-const KDF_ITERATIONS = 600000;            // OWASP 2023 guidance for PBKDF2-HMAC-SHA-256
+const TERMS_VERSION = '1.3';
+const COOKIE_POLICY_VERSION = '1.4';
 const SESSION_IDLE_MS = 30 * 60 * 1000;          // sign-in for this tab only
 const REMEMBER_MS = 30 * 24 * 60 * 60 * 1000;    // "Keep me signed in": 30 days since last use
-const MAX_SESSIONS = 5;                           // signed-in tabs/browsers kept per account
-const MAX_FAILS = 5;
 const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1']);  // keep in sync with the CSP connect-src
 const MAX_FRAME_CHARS = 4096;
 const MAX_MESSAGE_CHARS = 512 * 1024;     // EyeSync's typed messages: a camera picture is ~20 KB
@@ -1806,7 +1802,7 @@ const Prefs = {
   data: { ...PREF_DEFAULTS },
   load() { this.data = sanitizePrefs(Consent.optional() ? Local.get('prefs') : null); },
   get(k) { return this.data[k]; },
-  set(k, v) { this.data[k] = v; if (Consent.optional()) Local.set('prefs', this.data); },
+  set(k, v) { this.data[k] = v; if (Consent.optional()) Local.set('prefs', this.data); Cloud.queue(); },
   persist() { Local.set('prefs', this.data); },
   purge() { Local.remove('prefs'); },
   reset() { this.data = { ...PREF_DEFAULTS }; this.purge(); },
@@ -1831,183 +1827,220 @@ const Theme = {
   },
 };
 
-/* ---------- Crypto (Web Crypto API) ---------- */
-const enc = new TextEncoder();
-const cryptoReady = !!(window.crypto && window.crypto.subtle && window.crypto.getRandomValues);
-const randomBytes = (n) => crypto.getRandomValues(new Uint8Array(n));
-function toB64(bytes) { let s = ''; for (const b of bytes) s += String.fromCharCode(b); return btoa(s); }
-function fromB64(str) {
-  const s = atob(String(str));
-  const out = new Uint8Array(s.length);
-  for (let i = 0; i < s.length; i++) out[i] = s.charCodeAt(i);
-  return out;
-}
-async function sha256(bytes) { return new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)); }
-// Salted, stretched SHA-256: PBKDF2-HMAC-SHA-256 with a per-user 16-byte random salt.
-async function hashPassword(password, salt, iterations) {
-  const key = await crypto.subtle.importKey('raw', enc.encode(password.normalize('NFKC')), 'PBKDF2', false, ['deriveBits']);
-  return new Uint8Array(await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations }, key, 256));
-}
-function timingSafeEqual(a, b) {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
-  return diff === 0;
-}
-const DUMMY_SALT = cryptoReady ? randomBytes(16) : null;
+/* ---------- Auth: accounts with Supabase (supabase.com) ----------
+   Supabase Auth checks passwords (it keeps only a bcrypt hash) and issues the session: a short-lived
+   access token and a refresh token. Each account's settings are one row in the "profiles" table,
+   which its Row Level Security policies keep readable and writable by that account only (see
+   supabase/schema.sql). The publishable key is meant to be public: it lets a visitor do no more
+   than those policies allow. */
+const SUPABASE_URL = 'https://pbztuguamyjznxldpbcc.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_8ux7cdV8ef4E-_H_DnoHpg_aYfQxU2K';
+const EMAIL_RE = /^[^\s@]{1,64}@[^\s@]+\.[^\s@]{2,}$/;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/* ---------- Auth: local accounts + mock session tokens ---------- */
-class AuthError extends Error {}
-const USERNAME_RE = /^[A-Za-z0-9_.-]{3,32}$/;
-const userKey = (name) => 'u:' + name.trim().toLowerCase();   // prefix keeps names like "__proto__" inert
+// code: 'session' = the sign-in is no longer valid, 'network' = Supabase couldn't be reached.
+class AuthError extends Error { constructor(msg, code = '') { super(msg); this.code = code; } }
+function authError(status, d) {
+  const code = String(d?.error_code || d?.code || '');
+  const text = String(d?.msg || d?.message || d?.error_description || '');
+  if (code === 'invalid_credentials' || /invalid login credentials/i.test(text)) return new AuthError('That email and password don\'t match an account.');
+  if (code === 'user_already_exists' || code === 'email_exists') return new AuthError('There\'s already an account with this email. Sign in instead.');
+  if (code === 'email_not_confirmed') return new AuthError('Confirm your email address first: open the link in the email we sent you, then sign in.');
+  if (code === 'weak_password') return new AuthError('That password is too easy to guess. Choose a longer one.');
+  if (code === 'email_address_invalid' || /email/i.test(text) && code === 'validation_failed') return new AuthError('That email address doesn\'t look right.');
+  if (code === 'signup_disabled') return new AuthError('New accounts can\'t be created at the moment.');
+  if (status === 429 || /rate_limit/.test(code)) return new AuthError('Too many attempts. Wait a minute, then try again.');
+  if (['refresh_token_not_found', 'refresh_token_already_used', 'session_not_found', 'session_expired', 'user_not_found', 'bad_jwt'].includes(code)
+    || status === 401 || status === 403) return new AuthError('Your sign-in has ended. Sign in again.', 'session');
+  if (status >= 500) return new AuthError('The account service isn\'t answering. It may be waking up: try again in a minute.', 'network');
+  return new AuthError('Something went wrong with the account service. Try again.');
+}
+async function supabase(path, { method = 'GET', body, token, prefer } = {}) {
+  const headers = { apikey: SUPABASE_KEY };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  if (body !== undefined) headers['Content-Type'] = 'application/json';
+  if (prefer) headers.Prefer = prefer;
+  let res;
+  try {
+    res = await fetch(SUPABASE_URL + path, {
+      method, headers, body: body === undefined ? undefined : JSON.stringify(body),
+      credentials: 'omit', cache: 'no-store', referrerPolicy: 'no-referrer',
+    });
+  } catch {
+    throw new AuthError('Couldn\'t reach the account service. Check your internet connection and try again.', 'network');
+  }
+  let data = null;
+  try { const text = await res.text(); data = text ? JSON.parse(text) : null; } catch { data = null; }
+  if (!res.ok) throw authError(res.status, data);
+  return data;
+}
 
-const Throttle = {
-  all() { const t = Local.get('throttle'); return isObj(t) ? t : {}; },
-  remaining(key) {
-    const t = this.all();
-    return Object.hasOwn(t, key) && typeof t[key].until === 'number' ? Math.max(0, t[key].until - Date.now()) : 0;
-  },
-  fail(key) {
-    const all = this.all();
-    const t = Object.hasOwn(all, key) && isObj(all[key]) ? all[key] : { fails: 0 };
-    t.fails = (Number(t.fails) || 0) + 1;
-    if (t.fails >= MAX_FAILS) t.until = Date.now() + Math.min(15 * 60 * 1000, 30000 * 2 ** (t.fails - MAX_FAILS));
-    all[key] = t;
-    Local.set('throttle', all);
-  },
-  clear(key) { const all = this.all(); delete all[key]; Local.set('throttle', all); },
-};
+// The stored sign-in, in sessionStorage (this tab, 30 min idle) or, with "Keep me signed in", in
+// localStorage (this browser's tabs, 30 days idle). The idle limits are this site's own; Supabase
+// ends sessions too (sign-out, deleted account), which verify() notices.
+function sanitizeSession(s) {
+  if (!isObj(s) || typeof s.access !== 'string' || typeof s.refresh !== 'string' || typeof s.exp !== 'number'
+    || typeof s.expiresAt !== 'number' || !isObj(s.user) || !UUID_RE.test(String(s.user.id)) || typeof s.user.email !== 'string') return null;
+  return s;
+}
+function sanitizeAgreed(a) {
+  return isObj(a) && typeof a.terms === 'string' && typeof a.cookiePolicy === 'string' && typeof a.at === 'string'
+    ? { terms: a.terms.slice(0, 10), cookiePolicy: a.cookiePolicy.slice(0, 10), at: a.at.slice(0, 40) } : null;
+}
 
 const Auth = {
-  current: null,
+  current: null,          // { id, email, display, remember, createdAt, agreed }
   lastTouch: 0,
-  users() { const u = Local.get('users'); return isObj(u) ? u : {}; },
-  record() {
-    if (!this.current) return null;
-    const users = this.users();
-    return Object.hasOwn(users, this.current.key) ? users[this.current.key] : null;
-  },
-  async register(username, password, remember) {
-    const key = userKey(username);
-    if (Object.hasOwn(this.users(), key)) throw new AuthError('That username is already registered on this device. Choose another one, or sign in.');
-    const salt = randomBytes(16);
-    const hash = await hashPassword(password, salt, KDF_ITERATIONS);
-    const users = this.users();          // re-read: another tab may have written meanwhile
-    if (Object.hasOwn(users, key)) throw new AuthError('That username was just registered in another tab. Choose another one.');
-    const at = new Date().toISOString();
-    users[key] = {
-      display: username.trim(), kdf: 'PBKDF2-HMAC-SHA-256', iterations: KDF_ITERATIONS,
-      salt: toB64(salt), hash: toB64(hash), createdAt: at,
-      agreed: { terms: TERMS_VERSION, cookiePolicy: COOKIE_POLICY_VERSION, at },
-    };
-    Local.set('users', users);
-    await this.startSession(key, remember);
-  },
-  async login(username, password, remember) {
-    const key = userKey(username);
-    const wait = Throttle.remaining(key);
-    if (wait > 0) throw new AuthError(`Too many failed attempts. Try again in ${Math.ceil(wait / 1000)} seconds.`);
-    const users = this.users();
-    const rec = Object.hasOwn(users, key) ? users[key] : null;
-    // Unknown users still pay the full hashing cost, so timing doesn't reveal which names exist.
-    const salt = rec ? fromB64(rec.salt) : DUMMY_SALT;
-    const iterations = rec && intIn(rec.iterations, 100000, 10000000) ? rec.iterations : KDF_ITERATIONS;
-    const derived = await hashPassword(password, salt, iterations);
-    const ok = rec ? timingSafeEqual(derived, fromB64(rec.hash)) : false;
-    if (!ok) { Throttle.fail(key); throw new AuthError('That username and password don\'t match an account on this device.'); }
-    Throttle.clear(key);
-    await this.startSession(key, remember);
-  },
-
-  // Sessions. The account keeps only the SHA-256 of each session token (up to MAX_SESSIONS).
-  // The token itself lives in sessionStorage (ends with the tab, 30 min idle) or, with
-  // "Keep me signed in", in localStorage (shared by this browser's tabs, 30 days idle).
-  sessionsOf(rec) {
-    const list = Array.isArray(rec?.sessions) ? rec.sessions : isObj(rec?.session) ? [rec.session] : [];
-    const now = Date.now();
-    return list.filter((x) => isObj(x) && typeof x.hash === 'string' && typeof x.exp === 'number' && x.exp > now);
-  },
-  readToken() {
-    const ok = (t) => isObj(t) && typeof t.user === 'string' && typeof t.token === 'string' && typeof t.exp === 'number';
-    const tab = Tab.get('session');
-    if (ok(tab)) return { tok: tab, area: Tab };
-    const local = Local.get('session');
-    if (ok(local)) return { tok: local, area: Local };
+  refreshing: null,
+  read() {
+    const tab = sanitizeSession(Tab.get('session'));
+    if (tab) return { s: tab, area: Tab };
+    const local = sanitizeSession(Local.get('session'));
+    if (local) return { s: local, area: Local };
     return null;
   },
-  async startSession(key, remember = true) {
-    const token = randomBytes(32);
+  // A session answer from Supabase (sign-up, sign-in or refresh) becomes the stored sign-in.
+  keep(d, remember, area = remember ? Local : Tab) {
+    const u = isObj(d?.user) ? d.user : {};
+    if (typeof d?.access_token !== 'string' || typeof d.refresh_token !== 'string' || !UUID_RE.test(String(u.id))) {
+      throw new AuthError('Something went wrong with the account service. Try again.');
+    }
     const now = Date.now();
-    const exp = now + (remember ? REMEMBER_MS : SESSION_IDLE_MS);
-    const hash = toB64(await sha256(token));
-    const users = this.users();
-    const rec = users[key];
-    rec.sessions = [...this.sessionsOf(rec).slice(-(MAX_SESSIONS - 1)), { hash, exp, issued: now, remember: !!remember }];
-    delete rec.session;
-    Local.set('users', users);
-    Tab.remove('session');
-    Local.remove('session');
-    (remember ? Local : Tab).set('session', { user: key, token: toB64(token), exp, remember: !!remember });
-    this.current = { key, display: rec.display, hash, remember: !!remember };
+    const s = {
+      access: d.access_token, refresh: d.refresh_token,
+      expiresAt: now + clamp(Number(d.expires_in) || 3600, 60, 86400) * 1000,
+      user: { id: u.id, email: String(u.email || '').slice(0, 254), createdAt: typeof u.created_at === 'string' ? u.created_at : '', agreed: sanitizeAgreed(u.user_metadata?.agreed) },
+      remember: !!remember, exp: now + (remember ? REMEMBER_MS : SESSION_IDLE_MS),
+    };
+    if (area === (remember ? Local : Tab)) { Tab.remove('session'); Local.remove('session'); }
+    area.set('session', s);
+    this.adopt(s);
     this.lastTouch = now;
+    return s;
   },
+  adopt(s) {
+    this.current = { id: s.user.id, email: s.user.email, display: s.user.email, remember: s.remember, createdAt: s.user.createdAt, agreed: s.user.agreed };
+  },
+  async register(email, password, remember) {
+    const agreed = { terms: TERMS_VERSION, cookiePolicy: COOKIE_POLICY_VERSION, at: new Date().toISOString() };
+    const d = await supabase('/auth/v1/signup', { method: 'POST', body: { email, password, data: { agreed } } });
+    if (typeof d?.access_token !== 'string') {
+      throw new AuthError('Your account was created. Open the link in the email we sent you to confirm it, then sign in.');
+    }
+    this.keep(d, remember);
+    await Cloud.save({ agreed }).catch(() => {});   // the agreement is also in the account itself
+  },
+  async login(email, password, remember) {
+    this.keep(await supabase('/auth/v1/token?grant_type=password', { method: 'POST', body: { email, password } }), remember);
+  },
+  // Local only, so every navigation is instant: is there a sign-in that hasn't been idle too long?
   async validate() {
-    if (!cryptoReady) return false;
-    const found = this.readToken();
-    if (!found) { this.current = null; return false; }
-    const { tok } = found;
-    const users = this.users();
-    const rec = Object.hasOwn(users, tok.user) ? users[tok.user] : null;
-    let hash;
-    try { hash = await sha256(fromB64(tok.token)); } catch { hash = null; }
-    const match = rec && hash ? this.sessionsOf(rec).find((x) => timingSafeEqual(fromB64(x.hash), hash)) : null;
-    if (!match || Date.now() > tok.exp) { this.current = null; this.end(); return false; }
-    this.current = { key: tok.user, display: rec.display, hash: match.hash, remember: !!match.remember };
+    const found = this.read();
+    if (!found || Date.now() > found.s.exp) { if (found) this.forget(); this.current = null; return false; }
+    if (this.current?.id !== found.s.user.id) this.adopt(found.s);
     return true;
   },
-  touch() {   // sliding expiry, written at most every 30 s
+  // A current access token, refreshed when it's about to run out. Another tab may have refreshed
+  // already: then its new tokens are in storage.
+  async token() {
+    const found = this.read();
+    if (!found) throw new AuthError('Sign in again.', 'session');
+    if (found.s.expiresAt - Date.now() > 60000) return found.s.access;
+    this.refreshing ??= supabase('/auth/v1/token?grant_type=refresh_token', { method: 'POST', body: { refresh_token: found.s.refresh } })
+      .then((d) => {
+        const again = this.read();
+        if (!again || again.s.user.id !== found.s.user.id) throw new AuthError('Sign in again.', 'session');
+        const s = this.keep(d, again.s.remember, again.area);
+        s.exp = again.s.exp;                         // a refresh isn't activity: keep the idle limit
+        again.area.set('session', s);
+        return s.access;
+      })
+      .finally(() => { this.refreshing = null; });
+    return this.refreshing;
+  },
+  // Ask Supabase whether this sign-in still counts (it ends when the account is deleted or the user
+  // signs out everywhere). Network trouble isn't a reason to sign anyone out.
+  async verify() {
+    try {
+      const u = await supabase('/auth/v1/user', { token: await this.token() });
+      const found = this.read();
+      if (found && isObj(u) && u.id === found.s.user.id) {
+        found.s.user.email = String(u.email || found.s.user.email).slice(0, 254);
+        found.s.user.agreed = sanitizeAgreed(u.user_metadata?.agreed) || found.s.user.agreed;
+        found.area.set('session', found.s);
+        this.adopt(found.s);
+      }
+      return true;
+    } catch (err) {
+      return !(err instanceof AuthError && err.code === 'session');
+    }
+  },
+  touch() {   // sliding idle limit, written at most every 30 s
     if (!this.current) return;
     const now = Date.now();
     if (now - this.lastTouch < 30000) return;
-    const found = this.readToken();
-    const users = this.users();
-    if (!found || now > found.tok.exp || !Object.hasOwn(users, found.tok.user)) return;
-    const rec = users[found.tok.user];
-    const list = this.sessionsOf(rec);
-    const sess = list.find((x) => x.hash === this.current.hash);
-    if (!sess) return;
+    const found = this.read();
+    if (!found || now > found.s.exp) return;
     this.lastTouch = now;
-    sess.exp = found.tok.exp = now + (sess.remember ? REMEMBER_MS : SESSION_IDLE_MS);
-    rec.sessions = list;
-    delete rec.session;
-    Local.set('users', users);
-    found.area.set('session', found.tok);
+    found.s.exp = now + (found.s.remember ? REMEMBER_MS : SESSION_IDLE_MS);
+    found.area.set('session', found.s);
   },
+  forget() { Tab.remove('session'); Local.remove('session'); this.current = null; },
+  // Sign out: end this session at Supabase too (if it can be reached), then forget it here.
   end() {
-    const found = this.readToken();
-    if (found) {
-      const users = this.users();
-      if (Object.hasOwn(users, found.tok.user)) {
-        const rec = users[found.tok.user];
-        rec.sessions = this.sessionsOf(rec).filter((x) => x.hash !== this.current?.hash);
-        delete rec.session;
-        Local.set('users', users);
-      }
+    const found = this.read();
+    if (found && found.s.expiresAt > Date.now()) {
+      supabase('/auth/v1/logout?scope=local', { method: 'POST', token: found.s.access }).catch(() => {});
     }
-    Tab.remove('session');
-    Local.remove('session');
-    this.current = null;
+    Cloud.cancel();
+    this.forget();
   },
-  deleteAccount() {
-    const found = this.readToken();
-    const users = this.users();
-    if (found && Object.hasOwn(users, found.tok.user)) delete users[found.tok.user];
-    Local.set('users', users);
-    Tab.remove('session');
-    Local.remove('session');
-    this.current = null;
+  async deleteAccount() {
+    await supabase('/rest/v1/rpc/delete_my_account', { method: 'POST', body: {}, token: await this.token() });
+    Cloud.cancel();
+    this.forget();
     Prefs.reset();
   },
+  // Accounts used to live in this browser (fc.users, with fc.throttle for failed sign-ins). They
+  // can't sign in any more, so their records are removed instead of being kept around.
+  tidy() {
+    Local.remove('users');
+    Local.remove('throttle');
+    for (const area of [Local, Tab]) if (area.get('session') && !sanitizeSession(area.get('session'))) area.remove('session');
+  },
+};
+
+// The signed-in account's settings in Supabase (table "profiles"): loaded after signing in, so they
+// follow the user to any computer, and saved a moment after each change.
+const Cloud = {
+  timer: 0,
+  async load() {
+    const id = Auth.current?.id;
+    if (!id || !UUID_RE.test(id)) return;
+    const rows = await supabase(`/rest/v1/profiles?id=eq.${id}&select=prefs`, { token: await Auth.token() });
+    if (Auth.current?.id !== id) return;
+    const row = Array.isArray(rows) ? rows[0] : null;
+    if (!isObj(row?.prefs) || !Object.keys(row.prefs).length) { this.queue(0); return; }   // first visit: save these
+    Prefs.data = sanitizePrefs(row.prefs);
+    if (Consent.optional()) Prefs.persist();
+    Theme.apply(Prefs.get('theme'));
+    syncSettings();
+    if (Router.current === 'dashboard') renderDashboard();
+  },
+  save(extra = {}) {
+    const id = Auth.current?.id;
+    if (!id || !UUID_RE.test(id)) return Promise.resolve();
+    return Auth.token().then((token) => supabase('/rest/v1/profiles', {
+      method: 'POST', token, prefer: 'resolution=merge-duplicates,return=minimal',
+      body: { id, prefs: Prefs.data, updated_at: new Date().toISOString(), ...extra },
+    }));
+  },
+  queue(wait = 1500) {
+    if (!Auth.current) return;
+    clearTimeout(this.timer);
+    this.timer = setTimeout(() => this.save().catch(() => {}), wait);
+  },
+  cancel() { clearTimeout(this.timer); },
 };
 
 /* ---------- Router: hash routes with an auth guard ---------- */
@@ -2102,6 +2135,7 @@ function signOut(reason) {
   Gaze.reset();
   renderEyeSync();
   Router.notice = reason === 'elsewhere' ? 'You signed out in another tab.'
+    : reason === 'revoked' ? 'Your sign-in has ended. Sign in again.'
     : reason !== 'expired' ? ''
     : remembered ? 'Your saved sign-in expired after 30 days without a visit. Sign in again.'
     : 'You were signed out after 30 minutes without activity.';
@@ -3014,15 +3048,15 @@ const fmtDate = (iso) => {
 };
 
 function renderDashboard() {
-  const rec = Auth.record();
+  const me = Auth.current;
   $('#dash-session').textContent = !Auth.current ? ''
     : Auth.current.remember
       ? `Signed in as ${Auth.current.display}. You'll stay signed in on this device until you sign out, or after 30 days without a visit.`
       : `Signed in as ${Auth.current.display} for this tab only. You'll be signed out when you close it, or after 30 minutes without activity.`;
-  $('#acct-name').textContent = rec?.display || '';
-  $('#acct-created').textContent = rec ? fmtDate(rec.createdAt) : '';
-  $('#acct-agreed').textContent = rec?.agreed
-    ? `Terms ${rec.agreed.terms} and Cookie Policy ${rec.agreed.cookiePolicy}, ${fmtDate(rec.agreed.at)}`
+  $('#acct-name').textContent = me?.email || '';
+  $('#acct-created').textContent = me?.createdAt ? fmtDate(me.createdAt) : '';
+  $('#acct-agreed').textContent = me?.agreed
+    ? `Terms ${me.agreed.terms} and Cookie Policy ${me.agreed.cookiePolicy}, ${fmtDate(me.agreed.at)}`
     : '';
   const last = Prefs.get('lastCal');
   $('#cal-summary-line').textContent = last
@@ -3773,10 +3807,11 @@ const Modal = {
 };
 
 /* ---------- Forms ---------- */
-function passwordRules(u, p, c) {
+function passwordRules(email, p, c) {
+  const name = email.trim().split('@')[0].toLowerCase();       // the part before the @
   return {
     length: p.length >= 12,
-    nouser: p.length > 0 && (!u.trim() || !p.toLowerCase().includes(u.trim().toLowerCase())),
+    nouser: p.length > 0 && (name.length < 3 || !p.toLowerCase().includes(name)),
     match: p.length > 0 && p === c,
   };
 }
@@ -3785,25 +3820,26 @@ function bindForms() {
   login.addEventListener('submit', async (e) => {
     e.preventDefault();
     clearForm(login);
-    const u = login.elements.username, p = login.elements.password;
+    const u = login.elements.email, p = login.elements.password;
     let bad = false;
-    if (!u.value.trim()) { setError(u, 'Enter your username.'); bad = true; }
+    if (!EMAIL_RE.test(u.value.trim())) { setError(u, 'Enter the email address you signed up with.'); bad = true; }
     if (!p.value) { setError(p, 'Enter your password.'); bad = true; }
     if (bad) { $('[aria-invalid="true"]', login).focus(); return; }
-    const done = busy($('button[type="submit"]', login), 'Checking…');
+    const done = busy($('button[type="submit"]', login), 'Signing in…');
     try {
-      await Auth.login(u.value, p.value, login.elements.remember.checked);
+      await Auth.login(u.value.trim().toLowerCase(), p.value, login.elements.remember.checked);
       login.reset();
       toast(`Welcome back, ${Auth.current.display}.`, 'ok');
+      Cloud.load().catch(() => {});
       Router.go('dashboard');
     } catch (err) {
-      formError(login, err instanceof AuthError ? err.message : 'Sign-in failed because this browser blocked secure storage. Try a normal (not private) window.');
+      formError(login, err instanceof AuthError ? err.message : 'Sign-in failed. Try again.');
       p.value = '';
     } finally { done(); }
   });
 
   const reg = $('#register-form');
-  const ru = reg.elements.username, rp = reg.elements.password, rc = reg.elements.confirm, rt = reg.elements.terms;
+  const ru = reg.elements.email, rp = reg.elements.password, rc = reg.elements.confirm, rt = reg.elements.terms;
   const paintRules = () => {
     const r = passwordRules(ru.value, rp.value, rc.value);
     $$('#reg-rules li').forEach((li) => { li.dataset.ok = String(r[li.dataset.rule]); });
@@ -3815,24 +3851,24 @@ function bindForms() {
     e.preventDefault();
     clearForm(reg);
     const r = paintRules();
-    const name = ru.value.trim();
-    if (!USERNAME_RE.test(name)) setError(ru, 'Use 3 to 32 characters: letters, numbers, dot, dash or underscore.');
+    const email = ru.value.trim().toLowerCase();
+    if (!EMAIL_RE.test(email) || email.length > 254) setError(ru, 'Enter a valid email address, like name@example.com.');
     if (!r.length) setError(rp, 'Use at least 12 characters.');
-    else if (!r.nouser) setError(rp, 'Your password can\'t contain your username.');
+    else if (!r.nouser) setError(rp, 'Your password can\'t contain the first part of your email address.');
     if (!rc.value) setError(rc, 'Type your password again.');
     else if (!r.match) setError(rc, 'The two passwords don\'t match.');
     // The agreement checkbox is mandatory: no account is created without it.
     if (!rt.checked) setError(rt, 'You need to agree to the Terms and Conditions and Cookie Policy to create an account.');
     const firstBad = $('[aria-invalid="true"]', reg);
     if (firstBad) { firstBad.focus(); return; }
-    const done = busy($('button[type="submit"]', reg), 'Securing your password…');
+    const done = busy($('button[type="submit"]', reg), 'Creating your account…');
     try {
-      await Auth.register(name, rp.value, reg.elements.remember.checked);
+      await Auth.register(email, rp.value, reg.elements.remember.checked);
       reg.reset(); paintRules();
-      toast(Local.durable ? `You're in. Welcome to EyeSync, ${Auth.current.display}.` : 'Account created for this visit only: this browser is blocking storage.', 'ok');
+      toast('You\'re in. Welcome to EyeSync.', 'ok');
       Router.go('dashboard');
     } catch (err) {
-      formError(reg, err instanceof AuthError ? err.message : 'The account couldn\'t be saved because this browser blocked storage. Try a normal (not private) window.');
+      formError(reg, err instanceof AuthError ? err.message : 'The account couldn\'t be created. Try again.');
     } finally { done(); }
   });
   paintRules();
@@ -3907,7 +3943,7 @@ function bindForms() {
   $('#cal-start').addEventListener('click', () => Calibration.start());
   $('#cal-stop').addEventListener('click', () => Calibration.stop('user'));
 
-  $('#btn-delete').addEventListener('click', () => {
+  $('#btn-delete').addEventListener('click', async () => {
     const b = $('#btn-delete');
     if (!deleteArmed) {
       deleteArmed = true;
@@ -3918,10 +3954,20 @@ function bindForms() {
       deleteTimer = setTimeout(disarmDelete, 10000);
       return;
     }
+    clearTimeout(deleteTimer);
+    const done = busy(b, 'Deleting…');
+    try {
+      await Auth.deleteAccount();
+    } catch (err) {
+      done();
+      disarmDelete();
+      toast(err instanceof AuthError ? err.message : 'Your account couldn\'t be deleted. Try again.', 'error');
+      return;
+    }
+    done();
     Discovery.cancel();
     Discovery.reset();
     Calibration.stop('signout');
-    Auth.deleteAccount();
     Simulator.stop(false); Camera.off(); Link.disconnect(); Gaze.reset();
     EyeSync.seen = false;
     renderEyeSync();
@@ -3929,7 +3975,7 @@ function bindForms() {
     syncSettings();
     Theme.apply(Prefs.get('theme'));
     Router.go('login', true);
-    toast('Your account was deleted from this device.');
+    toast('Your account and its saved settings were deleted.');
   });
   $('#btn-delete-cancel').addEventListener('click', () => { disarmDelete(); $('#btn-delete').focus(); });
 }
@@ -3960,7 +4006,7 @@ function bindGlobal() {
   window.addEventListener('hashchange', () => Router.resolve());
   // Keep tabs in step: a sign-out (or a "Keep me signed in" sign-in) in one tab applies to the others.
   window.addEventListener('storage', async (e) => {
-    if (e.key !== null && e.key !== 'fc.session' && e.key !== 'fc.users') return;
+    if (e.key !== null && e.key !== 'fc.session') return;
     const was = !!Auth.current;
     const now = await Auth.validate();
     if (was && !now) signOut('elsewhere');
@@ -3980,6 +4026,15 @@ function bindGlobal() {
   setInterval(async () => {                        // session expiry check
     if (Auth.current && !(await Auth.validate())) signOut('expired');
   }, 15000);
+  setInterval(checkAccount, 10 * 60 * 1000);       // ended elsewhere (signed out everywhere, deleted)?
+}
+
+// The stored sign-in is trusted for navigation; Supabase confirms it in the background and the
+// account's settings are loaded from it.
+async function checkAccount() {
+  if (!Auth.current) return;
+  if (!(await Auth.verify())) { if (Auth.current) signOut('revoked'); return; }
+  Cloud.load().catch(() => {});
 }
 
 /* ---------- Boot ---------- */
@@ -4002,10 +4057,6 @@ function boot() {
   $('#cookies-body').replaceChildren($('#tpl-cookies').content.cloneNode(true));
   $('#terms-body').replaceChildren($('#tpl-terms').content.cloneNode(true));
   $$('.js-escal-slot').forEach((slot) => slot.replaceWith($('#tpl-escal').content.cloneNode(true)));
-  if (!cryptoReady) {
-    $$('.js-crypto-missing').forEach((n) => { n.hidden = false; });
-    $$('#login-form button[type="submit"], #register-form button[type="submit"]').forEach((b) => { b.disabled = true; });
-  }
   bindSettings();
   bindForms();
   bindGlobal();
@@ -4016,7 +4067,8 @@ function boot() {
   HeadDemo.init();
   Mascot.init();
   if (!Consent.state()) Banner.show(false);
-  Router.resolve();
+  Auth.tidy();
+  Router.resolve().then(checkAccount);
 }
 boot();
 </script>
