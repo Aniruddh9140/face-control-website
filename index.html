@@ -563,7 +563,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 
 /* Gestures: a pixel face on a small CRT tile per gesture, with what it does. Without motion the
    faces simply show the gesture. */
-.gestures { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px; margin: 0; padding: 0; list-style: none; }
+.gestures { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin: 0; padding: 0; list-style: none; }
 @media (max-width: 1020px) { .gestures { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 640px) { .gestures { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .gesture { display: grid; gap: 10px; align-content: start; min-width: 0; padding: 16px; background: var(--surface); border: var(--bw) solid var(--line-soft); transition: border-color 160ms ease, box-shadow 160ms ease, translate 160ms ease; }
@@ -580,7 +580,11 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 .g-hold > span { display: block; height: 100%; background: var(--ok); transform-origin: left; }
 .g-does { justify-self: start; padding: 5px 10px; background: var(--bg); border: 2px solid var(--line-soft); font: 700 0.8125rem/1.2 var(--font-mono); letter-spacing: 0.04em; text-transform: uppercase; }
 .gesture:nth-child(1) { --gd: 0s; } .gesture:nth-child(2) { --gd: -0.7s; } .gesture:nth-child(3) { --gd: -1.4s; }
-.gesture:nth-child(4) { --gd: -2.1s; } .gesture:nth-child(5) { --gd: -2.8s; }
+.gesture:nth-child(4) { --gd: -2.1s; } .gesture:nth-child(5) { --gd: -2.8s; } .gesture:nth-child(6) { --gd: -0.35s; }
+.gesture:nth-child(7) { --gd: -1.05s; }
+/* The tilt cards lean the whole face, as you'd see yourself in a mirror */
+.f-tilt { transform-box: view-box; transform-origin: 8px 9px; }
+.g-tilt-l .f-tilt { transform: rotate(-15deg); } .g-tilt-r .f-tilt { transform: rotate(15deg); }
 
 /* ---- Retro desktop: the home page is a little computer. A menu bar with a clock, and each
    section framed as a window with a title bar you can grab. Only the home view; the app stays plain. ---- */
@@ -679,7 +683,9 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
   .gesture .f-rest { animation-name: fc-g-off; }
   .gesture .f-act { animation-name: fc-g-on; }
   .gesture .g-hold > span { animation-name: fc-g-hold; }
-  .g-smile .g-does, .g-side .g-does, .g-open .g-does { animation-name: fc-g-pill; }
+  .g-smile .g-does, .g-side .g-does, .g-open .g-does, .g-tilt-l .g-does, .g-tilt-r .g-does { animation-name: fc-g-pill; }
+  .g-tilt-l .f-tilt, .g-tilt-r .f-tilt { animation: 3.4s ease-in-out var(--gd, 0s) infinite fc-g-tilt; }
+  .g-tilt-r .f-tilt { --tilt: 15deg; }
   .feature-mark { transition: transform 320ms cubic-bezier(0.2, 0.7, 0.2, 1.5); }
   .feature:hover .feature-mark { transform: rotate(90deg) scale(1.15); }
   .step.seen .step-n { animation: fc-pop 560ms cubic-bezier(0.2, 0.8, 0.2, 1.5) backwards; animation-delay: calc(var(--delay, 0ms) + 200ms); }
@@ -742,6 +748,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 @keyframes fc-g-blink { 0%, 58% { transform: none; } 61%, 67% { transform: scaleY(0.15); } 70%, 100% { transform: none; } }
 @keyframes fc-g-on { 0%, 42% { opacity: 0; } 45%, 88% { opacity: 1; } 91%, 100% { opacity: 0; } }
 @keyframes fc-g-off { 0%, 42% { opacity: 1; } 45%, 88% { opacity: 0; } 91%, 100% { opacity: 1; } }
+@keyframes fc-g-tilt { 0%, 38% { transform: none; } 45%, 88% { transform: rotate(var(--tilt, -15deg)); } 94%, 100% { transform: none; } }
 @keyframes fc-g-hold { 0%, 45% { transform: scaleX(0); } 85%, 88% { transform: scaleX(1); } 91%, 100% { transform: scaleX(0); } }
 @keyframes fc-g-pill {
   0%, 84% { background: var(--bg); color: var(--ink); border-color: var(--line-soft); }
@@ -867,7 +874,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 
       <div class="ticker" aria-hidden="true">
         <div class="ticker-track">
-          <span>Blink to click</span><span>Wink right for a right click</span><span>Smile to pause</span>
+          <span>Blink to click</span><span>Wink right for a right click</span><span>Smile to pause</span><span>Tilt your head to recenter</span>
           <span>Calibrated in 30 seconds</span><span>Your camera picture stays on your PC</span><span>Free for Windows 10 and 11</span>
         </div>
       </div>
@@ -904,7 +911,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
       <section class="stats" aria-label="EyeSync in numbers">
         <div class="stat"><span class="stat-n" data-count="30">30</span><span class="stat-l">cursor updates every second</span></div>
         <div class="stat"><span class="stat-n" data-count="30" data-suffix=" s">30 s</span><span class="stat-l">to tune it to you</span></div>
-        <div class="stat"><span class="stat-n" data-count="5">5</span><span class="stat-l">face gestures, no hands needed</span></div>
+        <div class="stat"><span class="stat-n" data-count="7">7</span><span class="stat-l">face gestures, no hands needed</span></div>
         <div class="stat"><span class="stat-n" data-count="0" data-from="100">0</span><span class="stat-l">camera pictures uploaded, ever</span></div>
       </section>
 
@@ -940,6 +947,20 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
             <h3>Mouth to one side</h3>
             <p>Pull your mouth to one side for 1.5 s.</p>
             <span class="g-does">Next speed</span>
+          </li>
+          <li class="gesture g-tilt-l">
+            <div class="g-screen" aria-hidden="true"><svg class="face" viewBox="0 0 16 16"><g class="f-tilt"><path class="f-head" d="M5 2h6v1h1v1h1v8h-1v1h-1v1H5v-1H4v-1H3V4h1V3h1z"/><rect class="f-eye f-eye-r" x="5" y="6" width="2" height="2"/><rect class="f-eye f-eye-l" x="9" y="6" width="2" height="2"/><rect class="f-mouth" x="6" y="10" width="4" height="1"/></g></svg></div>
+            <span class="g-hold" aria-hidden="true"><span></span></span>
+            <h3>Tilt left</h3>
+            <p>Tilt your head to the left, ear towards your shoulder, for 1.5 s.</p>
+            <span class="g-does">Recenter</span>
+          </li>
+          <li class="gesture g-tilt-r">
+            <div class="g-screen" aria-hidden="true"><svg class="face" viewBox="0 0 16 16"><g class="f-tilt"><path class="f-head" d="M5 2h6v1h1v1h1v8h-1v1h-1v1H5v-1H4v-1H3V4h1V3h1z"/><rect class="f-eye f-eye-r" x="5" y="6" width="2" height="2"/><rect class="f-eye f-eye-l" x="9" y="6" width="2" height="2"/><rect class="f-mouth" x="6" y="10" width="4" height="1"/></g></svg></div>
+            <span class="g-hold" aria-hidden="true"><span></span></span>
+            <h3>Tilt right</h3>
+            <p>Tilt your head to the right for 1.5 s.</p>
+            <span class="g-does">Calibrate</span>
           </li>
           <li class="gesture g-open">
             <div class="g-screen" aria-hidden="true"><svg class="face" viewBox="0 0 16 16"><path class="f-head" d="M5 2h6v1h1v1h1v8h-1v1h-1v1H5v-1H4v-1H3V4h1V3h1z"/><rect class="f-eye f-eye-r" x="5" y="6" width="2" height="2"/><rect class="f-eye f-eye-l" x="9" y="6" width="2" height="2"/><rect class="f-mouth f-rest" x="6" y="10" width="4" height="1"/><rect class="f-mouth f-act" x="6" y="9" width="4" height="3"/></svg></div>
@@ -1256,6 +1277,8 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
                 <li>Wink your right eye: right click.</li>
                 <li>Big smile for 1.5 s: pause or resume.</li>
                 <li>Mouth pulled to one side for 1.5 s: next speed.</li>
+                <li>Head tilted to the left (ear towards your shoulder) for 1.5 s: recenter the cursor.</li>
+                <li>Head tilted to the right for 1.5 s: calibrate EyeSync.</li>
                 <li>Mouth wide open for 3 s: quit EyeSync.</li>
               </ul>
               <p class="hint">“Start with Windows” and the API key are only in the EyeSync window on your PC.</p>
@@ -3714,6 +3737,7 @@ const Mascot = {
     'Hi, I\'m Sync! I follow your pointer, the way EyeSync follows your head.',
     'Blink to click. Wink your right eye for a right click.',
     'Hold a big smile for 1.5 seconds to pause EyeSync.',
+    'Cursor drifted? Tilt your head to the left for 1.5 seconds to recenter it. Tilt right to calibrate.',
     'Press “Try it with your head” and steer the little screen yourself.',
     'Your camera picture never leaves your PC. Promise.',
     'Grab a window by its title bar to move it. Double-click to put it back.',
