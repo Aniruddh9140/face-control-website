@@ -900,7 +900,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
           <article class="feature">
             <span class="feature-mark" data-tone="warn" aria-hidden="true"></span>
             <h3>Tuned to you</h3>
-            <p>A 30-second calibration learns how far you move, how you blink and how you smile. An accuracy test shows how well the cursor lands.</p>
+            <p>A 30-second calibration learns how far you move, how you blink and how you smile. Calibrate each time you sit down for the best accuracy; an accuracy test shows how well the cursor lands.</p>
           </article>
           <article class="feature">
             <span class="feature-mark" data-tone="ok" aria-hidden="true"></span>
@@ -996,12 +996,12 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
           <li class="step">
             <span class="step-n" aria-hidden="true">2</span>
             <h3>Open your dashboard</h3>
-            <p>Create an account, which stays in this browser, and open the Dashboard. EyeSync starts and connects by itself. No webcam handy? Try the built-in simulator first.</p>
+            <p>Create an account and open the Dashboard. EyeSync starts and connects by itself. No webcam handy? Try the built-in simulator first.</p>
           </li>
           <li class="step">
             <span class="step-n" aria-hidden="true">3</span>
-            <h3>Calibrate in half a minute</h3>
-            <p>Press Calibrate EyeSync and follow the dots on your screen. EyeSync learns your range of movement, your blink and your smile.</p>
+            <h3>Calibrate, every time</h3>
+            <p>Press Calibrate EyeSync and follow the dots on your screen. EyeSync learns your range of movement, your blink and your smile. It takes half a minute, and we suggest doing it every time you start using EyeSync.</p>
           </li>
         </ol>
         <p class="hint"><span aria-hidden="true">*</span> You'll need Windows 10 or 11, a webcam, and Chrome, Edge or Firefox on the same computer.</p>
@@ -1410,12 +1410,12 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
         <div>
           <p class="eyebrow">Calibration</p>
           <h1 id="cal-title" tabindex="-1">Tune it to you.</h1>
-          <p class="lede">Calibrate EyeSync to fit the head pointer to the way you move, blink and smile. The accuracy test then shows how well the cursor reaches targets.</p>
+          <p class="lede">Calibrate EyeSync to fit the head pointer to the way you move, blink and smile. We suggest calibrating every time you start using EyeSync: your light, your seat and how you sit change from one time to the next. The accuracy test then shows how well the cursor reaches targets.</p>
         </div>
       </div>
 
       <section class="panel panel-strong" aria-labelledby="escal-title">
-        <div class="panel-head"><h2 id="escal-title">Calibrate EyeSync</h2><span class="tag">Recommended · about 30 s</span></div>
+        <div class="panel-head"><h2 id="escal-title">Calibrate EyeSync</h2><span class="tag">Every time · about 30 s</span></div>
         <p>A full-screen guide opens on your PC, on top of this page, with dots to look at. It moves on by itself, so you don't need to click anything. Press Esc or its Cancel button to stop. The result is saved on your PC.</p>
         <div class="js-escal-slot"></div>
       </section>
@@ -1508,7 +1508,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
           <ol class="dl-steps">
             <li><p><strong>Download</strong> EyeSync with the button. If your browser warns that <span class="mono">EyeSync.exe</span> isn't commonly downloaded, choose <strong>Keep</strong>.</p></li>
             <li><p><strong>Open</strong> the downloaded <span class="mono">EyeSync.exe</span>. If Windows shows “Windows protected your PC”, click <strong>More info</strong>, then <strong>Run anyway</strong>. EyeSync is new, so Windows and some antivirus programs are wary of it; it's safe to allow.</p></li>
-            <li><p>Click <strong>Install</strong>, then <strong>Finish</strong>. This website opens: go to the <strong>Dashboard</strong> and press <strong>Connect</strong>. The very first start takes about half a minute.</p></li>
+            <li><p>Click <strong>Install</strong>, then <strong>Finish</strong>. This website opens: go to the <strong>Dashboard</strong> and press <strong>Connect</strong>. The very first start takes about half a minute. Then press <strong>Calibrate EyeSync</strong>: we suggest calibrating every time you start using EyeSync.</p></li>
           </ol>
         </section>
       </div>
@@ -2676,6 +2676,7 @@ function sanitizeStatus(m) {
 const EyeSync = {
   status: null,          // the latest status on the current link; null = not talking to EyeSync
   seen: false,           // EyeSync answered on this visit: keep its panels on screen
+  calibratedNow: false,  // a calibration finished on this visit (we suggest one every time)
   linkOpenedAt: -1,
   get connected() { return !!this.status && (Link.state === 'open' || Link.state === 'stale'); },
   // Right after the socket opens: ask for the status. From then on EyeSync pushes every change.
@@ -2703,11 +2704,11 @@ const EyeSync = {
     if (!prev) {
       Discovery.userClosed = false;
       Discovery.startFailed = false;
-      toast(`Connected to EyeSync${s.version ? ` ${s.version}` : ''}.`, 'ok');
+      toast(`Connected to EyeSync${s.version ? ` ${s.version}` : ''}.${this.calibratedNow ? '' : ' We suggest calibrating it now.'}`, 'ok');
       Release.load().then(renderUpdate);
     }
     if (prev?.calibrating && !s.calibrating) {     // step "done" = finished (text: the result); "" = cancelled
-      if (s.step === 'done') toast(s.stepText || 'EyeSync is calibrated.', 'ok');
+      if (s.step === 'done') { this.calibratedNow = true; toast(s.stepText || 'EyeSync is calibrated.', 'ok'); }
       else toast('Calibration cancelled. EyeSync keeps its previous settings.');
     }
     renderEyeSync();
@@ -3026,7 +3027,9 @@ function renderEyeSync() {
   show('#es-face', s?.face ? 'Face found' : 'Can\'t see your face. Check the light and your position.');
   show('#es-camera', s?.camera ? 'On' : 'Off');
   show('#es-control', label);
-  show('#es-calibrated', s?.calibrated ? `Calibrated on ${fmtDay(s.calibrated)}` : 'Not calibrated yet. Calibrate for better accuracy.');
+  show('#es-calibrated', EyeSync.calibratedNow ? 'Calibrated for this session'
+    : s?.calibrated ? `Last calibrated on ${fmtDay(s.calibrated)}. Calibrate again for this session.`
+    : 'Not calibrated yet. Calibrate for better accuracy.');
   show('#es-hw', s?.hardwareMouse ? 'XIAO hardware mouse connected' : 'Not connected');
   show('#es-version', s?.version || 'unknown');
   $('#es-face-help').hidden = !(on && !s.face && !Camera.on);
@@ -3060,8 +3063,9 @@ function renderEscal() {
   const pct = !running ? 0 : at >= 8 ? 100 : at <= 0 ? 0 : Math.round(((at - 1 + s.progress) / 7) * 100);
   const state = !on ? 'Connect to EyeSync on the Dashboard to calibrate it.'
     : s.step === 'done' && s.stepText ? s.stepText          // the result, shown for a few seconds
-    : s.calibrated ? `Calibrated on ${fmtDay(s.calibrated)}. Calibrate again after moving the camera or your chair.`
-    : 'Not calibrated yet. Calibrate for better accuracy: it takes about 30 seconds.';
+    : EyeSync.calibratedNow ? 'Calibrated for this session. Calibrate again if you move the camera or your chair.'
+    : s.calibrated ? `Last calibrated on ${fmtDay(s.calibrated)}. We suggest calibrating every time you start using EyeSync: it takes about 30 seconds.`
+    : 'Not calibrated yet. We suggest calibrating every time you start using EyeSync: it takes about 30 seconds.';
   $$('.escal').forEach((box) => {
     $('.js-escal-state', box).hidden = running;
     $('.js-escal-state', box).textContent = state;
@@ -3771,6 +3775,7 @@ const Mascot = {
     'Hi, I\'m Sync! I follow your pointer, the way EyeSync follows your head.',
     'Blink to click. Wink your right eye for a right click.',
     'Hold a big smile for 1.5 seconds to pause EyeSync.',
+    'Calibrate every time you start EyeSync. It takes 30 seconds and keeps the cursor on target.',
     'Cursor drifted? Tilt your head to the left for 1.5 seconds to recenter it. Tilt right to calibrate.',
     'Need to type? Click into a text box, close both eyes for 2 seconds, then just talk.',
     'Press “Try it with your head” and steer the little screen yourself.',
