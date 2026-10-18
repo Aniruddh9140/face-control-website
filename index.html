@@ -876,7 +876,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 
       <div class="ticker" aria-hidden="true">
         <div class="ticker-track">
-          <span>Blink to click</span><span>Wink right for a right click</span><span>Smile to pause</span><span>Tilt your head to recenter</span><span>Close your eyes and talk to type</span>
+          <span>Blink to click</span><span>Wink right for a right click</span><span>Smile to pause</span><span>Tilt your head to recenter</span><span>Close your eyes and talk to type</span><span>Look, nudge, and the cursor jumps there</span>
           <span>Calibrated in 30 seconds</span><span>Your camera picture stays on your PC</span><span>Free for Windows 10 and 11</span>
         </div>
       </div>
@@ -890,7 +890,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
           <article class="feature">
             <span class="feature-mark" data-tone="danger" aria-hidden="true"></span>
             <h3>Steer with your head</h3>
-            <p>Small head movements move the real mouse across your whole screen. Blink to click, or wink your right eye for a right click. To type, close your eyes for 2 s and just talk.</p>
+            <p>Small head movements move the real mouse across your whole screen. Blink to click, or wink your right eye for a right click. Going far? Look at the spot, nudge your head, and the cursor jumps there. To type, close your eyes for 2 s and just talk.</p>
           </article>
           <article class="feature">
             <span class="feature-mark" aria-hidden="true"></span>
@@ -1017,6 +1017,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
             <li>Your password is sent only to Supabase over HTTPS and kept as a bcrypt hash. The password itself is never saved, and no one else can read your account's data.</li>
             <li>Cursor positions travel only from EyeSync to this page, and are never stored.</li>
             <li>Voice typing runs on your PC, offline. What you say is typed there and never sent to this website.</li>
+            <li>For gaze jump, EyeSync works out where you look on your PC. Where you look is never sent to this website.</li>
             <li>No cookies, no analytics, no third-party scripts. Even the fonts are bundled in.</li>
           </ul>
           <div class="row">
@@ -1424,6 +1425,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
       <section class="panel panel-strong" aria-labelledby="escal-title">
         <div class="panel-head"><h2 id="escal-title">Calibrate EyeSync</h2><span class="tag">Every time · about 30 s</span></div>
         <p>A full-screen guide opens on your PC, on top of this page, with dots to look at. It moves on by itself, so you don't need to click anything. Press Esc or its Cancel button to stop. The result is saved on your PC.</p>
+        <p><strong>Calibrate eyes</strong> (EyeSync 1.3.0 and newer, about 20 s) teaches EyeSync where you look, for gaze jump: look at each of 9 dots on your PC screen with your eyes, keeping your head natural. Do it again if gaze jumps land off target.</p>
         <div class="js-escal-slot"></div>
       </section>
 
@@ -1531,7 +1533,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
         </section>
         <section class="panel" aria-labelledby="dl-privacy-title">
           <h2 id="dl-privacy-title">Privacy</h2>
-          <p>The camera picture is processed on your PC and never uploaded. So is your voice: voice typing works offline and types on your PC. EyeSync only talks to this website and to apps you give its API key.</p>
+          <p>The camera picture is processed on your PC and never uploaded. So is your voice: voice typing works offline and types on your PC. Where you look, for gaze jump, is worked out on your PC too. EyeSync only talks to this website and to apps you give its API key.</p>
         </section>
       </div>
     </section>
@@ -1600,7 +1602,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 
 <template id="tpl-cookies">
   <div class="policy">
-    <p class="meta">Version 1.5 · Last updated 18 October 2026</p>
+    <p class="meta">Version 1.6 · Last updated 18 October 2026</p>
     <p>EyeSync sets no HTTP cookies and loads nothing from other websites. It does use your browser's local storage and session storage, which privacy laws such as the EU ePrivacy Directive and UK PECR treat the same way as cookies. This policy lists every item it stores and why.</p>
     <h2>What is stored on your device</h2>
     <div class="table-wrap">
@@ -1617,10 +1619,11 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
     <p>Accounts are run by <a href="https://supabase.com/privacy" target="_blank" rel="noopener noreferrer">Supabase</a>. It stores your email address, a bcrypt hash of your password (never the password itself), the policy versions you agreed to and when, and your dashboard settings (theme, tracker address, cursor mapping and smoothing, dwell selection, and a summary of your last accuracy test), so they follow you to any computer. Supabase may log technical data such as your IP address when you sign in. Only you can read your account's data while signed in; it is never sold or used for advertising.</p>
     <h2>Essential and optional storage</h2>
     <p>Essential items are needed for sign-in and security, so they are stored whichever option you choose. Preference storage is optional. Until you choose “Accept”, preferences are held in memory only and are lost when you close the tab. If you later switch to “Essential only”, <span class="mono">fc.prefs</span> is deleted straight away.</p>
-    <h2>Cursor, camera and voice data</h2>
+    <h2>Cursor, camera, eye and voice data</h2>
     <p>Cursor positions travel from EyeSync (or other tracker software) on your own computer to this page over a local WebSocket (localhost or 127.0.0.1 only). They are processed in memory to draw the cursor and are never stored or sent anywhere else. Only a summary of your last accuracy test is saved: on this device with preference storage on, and in your account.</p>
     <p>If you turn on the camera view, EyeSync sends small camera pictures to this page the same way. They are shown on the page and are never stored, uploaded or logged. They stop when you turn the camera view off or leave the Dashboard.</p>
     <p>Voice typing is done by EyeSync on your PC, offline. What you say is typed into the program you're using there and is never sent to this page; the page only learns whether voice typing is on, and whether EyeSync is listening or typing.</p>
+    <p>Gaze jump works out where you look from the camera picture, on your PC. Where you look is never sent to this page; the page only learns whether gaze jump is on, when your eyes were last calibrated and roughly how accurate that calibration is.</p>
     <p>The home page's live head demo uses your camera only after you press “Try it with your head” and your browser asks for permission. The face tracking runs in your browser, from files served by this site; camera pictures are never stored, uploaded or logged, and the camera turns off when you press Stop or leave the page.</p>
     <h2>Hosting</h2>
     <p>The page and the EyeSync download are served by GitHub Pages. GitHub may log technical data such as your IP address when it delivers them; see the <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener noreferrer">GitHub General Privacy Statement</a>. Accounts are kept by Supabase, as described above. EyeSync has no other server.</p>
@@ -1703,7 +1706,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 const APP = 'EyeSync';
 const CONSENT_VERSION = 1;
 const TERMS_VERSION = '1.3';
-const COOKIE_POLICY_VERSION = '1.5';
+const COOKIE_POLICY_VERSION = '1.6';
 const SESSION_IDLE_MS = 30 * 60 * 1000;          // sign-in for this tab only
 const REMEMBER_MS = 30 * 24 * 60 * 60 * 1000;    // "Keep me signed in": 30 days since last use
 const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1']);  // keep in sync with the CSP connect-src
@@ -3839,6 +3842,7 @@ const Mascot = {
     'Calibrate every time you start EyeSync. It takes 30 seconds and keeps the cursor on target.',
     'Cursor drifted? Tilt your head to the left for 1.5 seconds to recenter it. Tilt right to calibrate.',
     'Need to type? Click into a text box, close both eyes for 2 seconds, then just talk.',
+    'Long way to go? Turn on gaze jump, look at the spot and nudge your head towards it.',
     'Press “Try it with your head” and steer the little screen yourself.',
     'Your camera picture never leaves your PC. Promise.',
     'Grab a window by its title bar to move it. Double-click to put it back.',
