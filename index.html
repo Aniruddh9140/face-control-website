@@ -1243,6 +1243,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
               <dt>Camera</dt><dd id="es-camera">—</dd>
               <dt>Cursor control</dt><dd id="es-control">—</dd>
               <dt>Calibration</dt><dd id="es-calibrated">—</dd>
+              <dt id="es-gaze-dt" hidden>Gaze jump</dt><dd id="es-gaze" hidden>—</dd>
               <dt>Hardware mouse</dt><dd id="es-hw">—</dd>
               <dt id="es-voice-dt" hidden>Voice typing</dt><dd id="es-voice" hidden>—</dd>
               <dt>Version</dt><dd id="es-version">—</dd>
@@ -1274,6 +1275,11 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
                 </div>
               </fieldset>
               <label class="check" for="es-gestures"><input type="checkbox" id="es-gestures"><span>Face gestures</span></label>
+              <div class="stack-sm" id="es-gaze-wrap" hidden>
+                <label class="check" for="es-gaze-on"><input type="checkbox" id="es-gaze-on" aria-describedby="es-gaze-note"><span>Gaze jump</span></label>
+                <p class="hint" id="es-gaze-note">Helps with long moves only: your head still aims the cursor. Where you look is worked out on this computer and never leaves it.</p>
+                <p class="notice" id="es-gaze-tip" hidden>Gaze jump starts working once your eyes are calibrated. Press Calibrate eyes under Calibration.</p>
+              </div>
               <div class="stack-sm" id="es-voice-wrap" hidden>
                 <label class="check" for="es-voice-on"><input type="checkbox" id="es-voice-on" aria-describedby="es-voice-note"><span>Voice typing</span></label>
                 <p class="hint" id="es-voice-note">Your voice is processed on this computer. What you say is typed on your PC and never sent to this website.</p>
@@ -1298,6 +1304,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
                 <li>Head tilted to the right for 1.5 s: calibrate EyeSync.</li>
                 <li>Both eyes closed for 2 s: voice typing on or off (or say “stop listening”).</li>
                 <li>Mouth wide open for 3 s: quit EyeSync.</li>
+                <li id="es-gaze-help" hidden>Gaze jump: look at a spot, then nudge your head towards it. The cursor jumps there.</li>
               </ul>
               <p class="hint">“Start with Windows” and the API key are only in the EyeSync window on your PC.</p>
             </div>
@@ -1666,15 +1673,20 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 <template id="tpl-escal">
   <div class="escal">
     <p class="js-escal-state">Connect to EyeSync on the Dashboard to calibrate it.</p>
+    <p class="js-escal-eyes" hidden></p>
     <div class="escal-run js-escal-run" hidden>
       <p class="js-escal-text" role="status"></p>
       <div class="bar js-escal-bar" role="progressbar" aria-label="Calibration progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span class="js-escal-fill"></span></div>
       <ol class="escal-steps js-escal-steps" aria-hidden="true">
         <li data-step="centre">Centre</li><li data-step="left">Left</li><li data-step="right">Right</li><li data-step="up">Up</li><li data-step="down">Down</li><li data-step="blink">Blink</li><li data-step="smile">Smile</li>
       </ol>
+      <ol class="escal-steps js-escal-dots" aria-hidden="true" hidden>
+        <li data-step="gaze1">1</li><li data-step="gaze2">2</li><li data-step="gaze3">3</li><li data-step="gaze4">4</li><li data-step="gaze5">5</li><li data-step="gaze6">6</li><li data-step="gaze7">7</li><li data-step="gaze8">8</li><li data-step="gaze9">9</li>
+      </ol>
     </div>
     <div class="row">
       <button class="btn btn-primary js-escal-start" type="button" disabled>Calibrate EyeSync</button>
+      <button class="btn js-escal-eyes-start" type="button" hidden>Calibrate eyes</button>
       <button class="btn btn-danger js-escal-cancel" type="button" hidden>Cancel calibration</button>
     </div>
   </div>
@@ -2653,6 +2665,13 @@ const VOICE_TEXT = { starting: 'Starting…', listening: 'Listening…', hearing
 const sanitizeVoice = (v) => (isObj(v)
   ? { on: v.on === true, state: VOICE_STATES.includes(v.state) ? v.state : 'off', hint: shortText(v.hint) }
   : null);
+// Gaze jump (EyeSync 1.3.0+; older versions send no "gaze"). Only whether it's on and how accurate
+// it is reach the page: where the user looks never does. The eye calibration's steps are one per dot.
+const GAZE_STEPS = ['gaze1', 'gaze2', 'gaze3', 'gaze4', 'gaze5', 'gaze6', 'gaze7', 'gaze8', 'gaze9'];
+const sanitizeGaze = (g) => (isObj(g)
+  ? { calibrated: isDay(g.calibrated) ? g.calibrated : '', on: g.on === true, errorPx: intIn(g.error_px, 0, 100000) ? g.error_px : 0 }
+  : null);
+const gazeState = (g) => (g.calibrated ? `Eyes calibrated (about ${g.errorPx} px)` : 'Eyes not calibrated');
 function sanitizeStatus(m) {
   const cal = isObj(m.calibration) ? m.calibration : {};
   return {
@@ -2664,12 +2683,13 @@ function sanitizeStatus(m) {
     gestures: m.gestures === true,
     calibrating: m.calibrating === true,
     calibrated: isDay(m.calibrated) ? m.calibrated : '',
-    step: CAL_STEPS.includes(cal.step) ? cal.step : '',
+    step: CAL_STEPS.includes(cal.step) || GAZE_STEPS.includes(cal.step) ? cal.step : '',
     stepText: shortText(cal.text),
     progress: typeof cal.progress === 'number' && Number.isFinite(cal.progress) ? clamp(cal.progress, 0, 1) : 0,
     hint: shortText(m.hint),
     hardwareMouse: m.hardware_mouse === true,
     voice: sanitizeVoice(m.voice),
+    gaze: sanitizeGaze(m.gaze),
   };
 }
 
@@ -2677,6 +2697,10 @@ const EyeSync = {
   status: null,          // the latest status on the current link; null = not talking to EyeSync
   seen: false,           // EyeSync answered on this visit: keep its panels on screen
   calibratedNow: false,  // a calibration finished on this visit (we suggest one every time)
+  // Both calibrations start at step "starting" and end at "done", so remember which one runs:
+  // what this page asked for, then the steps themselves ("gaze1"... are the eyes').
+  calKind: '',           // 'head' | 'gaze' | '' (not known yet): the running or last calibration
+  calAsked: null,        // { kind, at }: this page just asked for one
   linkOpenedAt: -1,
   get connected() { return !!this.status && (Link.state === 'open' || Link.state === 'stale'); },
   // Right after the socket opens: ask for the status. From then on EyeSync pushes every change.
@@ -2686,6 +2710,7 @@ const EyeSync = {
     Link.send({ action: 'status' });
   },
   closed() {
+    this.calAsked = null;
     if (!this.status) return;
     this.status = null;
     Camera.off(false);
@@ -2707,12 +2732,29 @@ const EyeSync = {
       toast(`Connected to EyeSync${s.version ? ` ${s.version}` : ''}.${this.calibratedNow ? '' : ' We suggest calibrating it now.'}`, 'ok');
       Release.load().then(renderUpdate);
     }
+    if (s.calibrating && !prev?.calibrating) {
+      this.calKind = this.calAsked && performance.now() - this.calAsked.at < 10000 ? this.calAsked.kind : '';
+      this.calAsked = null;
+    }
+    if (GAZE_STEPS.includes(s.step)) this.calKind = 'gaze';
+    else if (s.calibrating && CAL_STEPS.includes(s.step) && s.step !== 'starting') this.calKind = 'head';
     if (prev?.calibrating && !s.calibrating) {     // step "done" = finished (text: the result); "" = cancelled
-      if (s.step === 'done') { this.calibratedNow = true; toast(s.stepText || 'EyeSync is calibrated.', 'ok'); }
+      if (this.calKind === 'gaze') {
+        // A failed eye calibration also ends at "done"; it keeps the previous one
+        const saved = s.gaze && prev.gaze && (s.gaze.calibrated !== prev.gaze.calibrated || s.gaze.errorPx !== prev.gaze.errorPx);
+        if (s.step === 'done') toast(s.stepText || 'Your eyes are calibrated.', saved ? 'ok' : 'info');
+        else toast('Eye calibration cancelled. EyeSync keeps your previous eye calibration.');
+      } else if (s.step === 'done') { this.calibratedNow = true; toast(s.stepText || 'EyeSync is calibrated.', 'ok'); }
       else toast('Calibration cancelled. EyeSync keeps its previous settings.');
     }
     renderEyeSync();
     renderLink();
+  },
+  // A start button was pressed: the next calibration to start is that kind
+  calibrate(kind) {
+    if (!this.send('calibrate', kind === 'gaze' ? 'gaze' : undefined)) return false;
+    this.calAsked = { kind, at: performance.now() };
+    return true;
   },
   send(action, value) {
     const msg = value === undefined ? { action } : { action, value };
@@ -3048,6 +3090,11 @@ function renderEyeSync() {
   const voiceHint = v && (v.hint || (v.state === 'error' ? 'Voice typing ran into a problem. Look at the EyeSync window on your PC.' : ''));
   $('#es-voice-hint').hidden = !voiceHint;
   $('#es-voice-hint').textContent = voiceHint || '';
+  const g = on ? s.gaze : null;
+  $('#es-gaze-wrap').hidden = $('#es-gaze-dt').hidden = $('#es-gaze').hidden = $('#es-gaze-help').hidden = !g;
+  $('#es-gaze').textContent = g ? gazeState(g) : '—';
+  $('#es-gaze-on').checked = !!g?.on;
+  $('#es-gaze-tip').hidden = !(g?.on && !g.calibrated);
   if (!on) disarmQuit();
   Camera.paint();
   renderEscal();
@@ -3055,12 +3102,20 @@ function renderEyeSync() {
   renderUpdate();
 }
 // "Calibrate EyeSync" blocks (Dashboard and Calibration page). Overall progress runs over the seven
-// measured steps; "starting" and "done" are the ends.
+// measured steps; "starting" and "done" are the ends. The eye calibration (1.3.0+) runs over 9 dots.
 function renderEscal() {
   const s = EyeSync.status, on = EyeSync.connected;
   const running = on && s.calibrating;
-  const at = running ? CAL_STEPS.indexOf(s.step) : -1;
-  const pct = !running ? 0 : at >= 8 ? 100 : at <= 0 ? 0 : Math.round(((at - 1 + s.progress) / 7) * 100);
+  const eyes = EyeSync.calKind === 'gaze';
+  const steps = eyes ? GAZE_STEPS : CAL_STEPS;
+  const at = running ? steps.indexOf(s.step) : -1;
+  const pct = !running ? 0
+    : eyes ? (at < 0 ? 0 : Math.round(((at + s.progress) / GAZE_STEPS.length) * 100))
+    : at >= 8 ? 100 : at <= 0 ? 0 : Math.round(((at - 1 + s.progress) / 7) * 100);
+  const g = on ? s.gaze : null;
+  const eyesState = !g ? ''
+    : g.calibrated ? `${gazeState(g)} on ${fmtDay(g.calibrated)}. Calibrate eyes again if gaze jump lands off target.`
+    : `${gazeState(g)}. Calibrate eyes (about 20 s, 9 dots on your PC screen) to use gaze jump.`;
   const state = !on ? 'Connect to EyeSync on the Dashboard to calibrate it.'
     : s.step === 'done' && s.stepText ? s.stepText          // the result, shown for a few seconds
     : EyeSync.calibratedNow ? 'Calibrated for this session. Calibrate again if you move the camera or your chair.'
@@ -3069,17 +3124,23 @@ function renderEscal() {
   $$('.escal').forEach((box) => {
     $('.js-escal-state', box).hidden = running;
     $('.js-escal-state', box).textContent = state;
+    $('.js-escal-eyes', box).hidden = running || !eyesState;
+    $('.js-escal-eyes', box).textContent = eyesState;
     $('.js-escal-run', box).hidden = !running;
     $('.js-escal-text', box).textContent = running ? (s.stepText || 'Starting…') : '';
+    $('.js-escal-bar', box).setAttribute('aria-label', eyes ? 'Eye calibration progress' : 'Calibration progress');
     $('.js-escal-bar', box).setAttribute('aria-valuenow', String(pct));
     $('.js-escal-fill', box).style.width = pct + '%';
-    $$('.js-escal-steps li', box).forEach((li) => {
-      const i = CAL_STEPS.indexOf(li.dataset.step);
+    $('.js-escal-steps', box).hidden = eyes || (running && !EyeSync.calKind);    // started on the PC: wait for its steps
+    $('.js-escal-dots', box).hidden = !eyes;
+    $$(eyes ? '.js-escal-dots li' : '.js-escal-steps li', box).forEach((li) => {
+      const i = steps.indexOf(li.dataset.step);
       li.dataset.state = i < at ? 'done' : i === at ? 'now' : '';
     });
     const start = $('.js-escal-start', box);
     start.hidden = running;
     start.disabled = !on;
+    $('.js-escal-eyes-start', box).hidden = running || !g;
     $('.js-escal-cancel', box).hidden = !running;
   });
 }
@@ -3980,6 +4041,7 @@ function bindForms() {
   // What's said is typed wherever the keyboard focus is. Let go of the switch, so a space typed
   // into the page can't flip it back; the user then clicks where the text should go.
   $('#es-voice-on').addEventListener('change', (e) => { if (EyeSync.send('voice', e.target.checked) && e.target.checked) e.target.blur(); });
+  $('#es-gaze-on').addEventListener('change', (e) => EyeSync.send('gaze', e.target.checked));
   $('#es-window').addEventListener('click', () => { if (EyeSync.send('show_window')) toast('The EyeSync window is now in front on your PC.'); });
   $('#es-quit').addEventListener('click', () => {
     if (!quitArmed) {
@@ -4002,7 +4064,8 @@ function bindForms() {
   $('#cam-toggle').addEventListener('change', (e) => { if (e.target.checked) Camera.start(); else Camera.off(); renderEyeSync(); });
   $('#es-show-camera').addEventListener('click', () => { Camera.start(); renderEyeSync(); $('#cam-panel').scrollIntoView({ block: 'nearest' }); });
   document.addEventListener('click', (e) => {    // the "Calibrate EyeSync" blocks are cloned from a template
-    if (e.target.closest('.js-escal-start')) { if (EyeSync.send('calibrate')) toast('Follow the dots on your PC screen. The guide moves on by itself.', 'ok'); }
+    if (e.target.closest('.js-escal-start')) { if (EyeSync.calibrate('head')) toast('Follow the dots on your PC screen. The guide moves on by itself.', 'ok'); }
+    else if (e.target.closest('.js-escal-eyes-start')) { if (EyeSync.calibrate('gaze')) toast('Look at each dot on your PC screen with your eyes, keeping your head natural. The guide moves on by itself.', 'ok'); }
     else if (e.target.closest('.js-escal-cancel')) EyeSync.send('calibrate', 'cancel');
   });
   $('#dl-retry').addEventListener('click', () => DownloadPage.render());

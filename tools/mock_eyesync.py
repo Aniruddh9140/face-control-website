@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Mock EyeSync 1.2 for testing the dashboard without a webcam or Windows.
+"""Mock EyeSync 1.3 for testing the dashboard without a webcam or Windows.
 
 It plays both programs that answer on EyeSync's ports (see EyeSync's WEBSITE.md):
 
@@ -9,6 +9,7 @@ It plays both programs that answer on EyeSync's ports (see EyeSync's WEBSITE.md)
 * EyeSync itself: ?probe=1 gets "running" with the status and 4003. Any other connection gets
   about 30 cursor updates a second and can send commands; status changes are pushed, and the
   camera view sends small JPEG pictures (needs Pillow). "quit" closes pages with 4000.
+  --version 1.2.0 plays an EyeSync without gaze jump, 1.1.4 one without voice typing too.
 
     pip install websockets pillow
     python tools/mock_eyesync.py                      # starts in standby, as after login
@@ -23,6 +24,9 @@ Type these while it runs to act "on the PC" (status changes reach the dashboard 
     eyes           close both eyes for 2 s: voice typing on or off
     say [TEXT]     talk while voice typing listens (the words are only printed here, never sent)
     mic off|on     lose or get back the microphone (voice typing shows an error)
+    calibrate      start the calibration, like F10 or a head tilt to the right
+    calibrate eyes start the eye calibration, like the window's Calibrate eyes button
+                   (with "face off" it fails at the end and keeps the previous one)
     quit           quit EyeSync, like the mouth gesture (it then needs Connect)
     idle           close EyeSync as if the dashboard had been closed (auto-connect may restart it)
 
@@ -49,7 +53,7 @@ try:
 except ImportError:          # the camera view is optional
     Image = None
 
-VERSION = "1.2.0"
+VERSION = "1.3.0"
 DEFAULT_ORIGINS = [
     "https://aniruddh9140.github.io",
     "http://localhost:8000",
@@ -59,6 +63,8 @@ STEPS = [("starting", "Get ready: sit as you normally do"), ("centre", "Look at 
          ("left", "Turn your head to the left dot"), ("right", "Turn your head to the right dot"),
          ("up", "Tilt your head up to the top dot"), ("down", "Tilt your head down to the bottom dot"),
          ("blink", "Blink twice, slowly"), ("smile", "Give a big smile")]
+GAZE_STEPS = [("starting", "Starting the camera..."),
+              ("gaze1", "Look at the dot in the middle - just look, keep your head natural")] +              [(f"gaze{i}", "Follow the dot with your eyes") for i in range(2, 10)]
 STEP_S = 1.6
 
 
@@ -83,7 +89,9 @@ class Mock:
         self.last_seen = time.monotonic()
         self.s = {"mouse_enabled": True, "paused": False, "face": True, "speed": 2, "click_mode": "blink",
                   "gestures": True, "calibrating": False, "calibrated": "", "step": "", "text": "",
-                  "progress": 0.0, "hint": "", "voice_on": False, "voice_state": "off", "voice_hint": ""}
+                  "progress": 0.0, "hint": "", "voice_on": False, "voice_state": "off", "voice_hint": "",
+                  "gaze_calibrated": "", "gaze_on": False, "gaze_error_px": 0}
+        self.cal_steps = STEPS    # the running (or last) calibration's: STEPS, or GAZE_STEPS for the eyes
         self.mic = True
         self.voice_until = 0.0     # when "hearing"/"working"/"error" ends
         self.cal_started = 0.0
@@ -99,14 +107,22 @@ class Mock:
                 "gestures": s["gestures"], "calibrating": s["calibrating"], "calibrated": s["calibrated"],
                 "calibration": {"step": s["step"], "text": s["text"], "progress": round(s["progress"], 2)},
                 "hint": s["hint"], "hardware_mouse": False,
+                **({"gaze": {"calibrated": s["gaze_calibrated"], "on": s["gaze_on"],
+                             "error_px": s["gaze_error_px"]}} if self.has_gaze() else {}),
                 **({"voice": {"on": s["voice_on"], "state": s["voice_state"], "hint": s["voice_hint"]}}
                    if self.has_voice() else {})}
 
-    def has_voice(self):          # voice typing came with 1.2.0; older versions send no "voice"
+    def at_least(self, *version):
         try:
-            return tuple(int(n) for n in self.args.version.split(".")[:2]) >= (1, 2)
+            return tuple(int(n) for n in self.args.version.split(".")[:2]) >= version
         except ValueError:
             return True
+
+    def has_voice(self):          # voice typing came with 1.2.0; older versions send no "voice"
+        return self.at_least(1, 2)
+
+    def has_gaze(self):           # gaze jump came with 1.3.0; older versions send no "gaze"
+        return self.at_least(1, 3)
 
     def voice(self, on):
         s = self.s
@@ -221,9 +237,10 @@ class Mock:
         elif action == "calibrate":
             if value == "cancel":
                 s.update(calibrating=False, step="", text="", progress=0.0)      # as EyeSync does
-            elif not s["calibrating"]:
-                s.update(calibrating=True, step="starting", text=STEPS[0][1], progress=0.0)
-                self.cal_started = time.monotonic()
+            else:
+                self.calibrate(eyes=value == "gaze" and self.has_gaze())
+        elif action == "gaze" and self.has_gaze() and isinstance(value, bool):
+            s["gaze_on"] = value
         elif action == "voice" and self.has_voice() and (isinstance(value, bool) or "value" not in msg):
             self.voice(value if isinstance(value, bool) else not s["voice_on"])
         elif action == "preview" and isinstance(value, bool):
@@ -235,6 +252,12 @@ class Mock:
         elif action != "status":
             return {"type": "error", "error": f"unknown command {msg!r}"[:200]}
         return self.status()
+
+    def calibrate(self, eyes):
+        if not self.s["calibrating"]:          # one at a time; both start at "starting"
+            self.cal_steps = GAZE_STEPS if eyes else STEPS
+            self.s.update(calibrating=True, step="starting", text=self.cal_steps[0][1], progress=0.0)
+            self.cal_started = time.monotonic()
 
     async def quit(self, by_user):
         print("EyeSync closes" + (" (quit by the user)" if by_user else " (no dashboard)"))
@@ -268,16 +291,32 @@ class Mock:
     def step_calibration(self, now):
         s = self.s
         if not s["calibrating"]:
-            if s["step"] == "done" and now - self.cal_started > len(STEPS) * STEP_S + 8:
+            if s["step"] == "done" and now - self.cal_started > len(self.cal_steps) * STEP_S + 6:
                 s.update(step="", text="", progress=0.0)      # the result is shown for a few seconds
             return
         t = now - self.cal_started
         i = int(t // STEP_S)
-        if i >= len(STEPS):
+        if i >= len(self.cal_steps) and self.cal_steps is GAZE_STEPS:
+            self.finish_eyes()
+            return
+        if i >= len(self.cal_steps):
             s.update(calibrating=False, step="done", text="Calibration saved. EyeSync now fits you.",
                      progress=1.0, calibrated=time.strftime("%Y-%m-%d"))
             return
-        s.update(step=STEPS[i][0], text=STEPS[i][1], progress=min(1.0, (t % STEP_S) / STEP_S))
+        step, text = self.cal_steps[i]
+        s.update(step=step, text=text, progress=min(1.0, (t % STEP_S) / STEP_S))
+
+    def finish_eyes(self):
+        """Like EyeSync: gaze jump goes on if the result is good enough; a failed one keeps the old one."""
+        s = self.s
+        if not s["face"]:
+            text = "Eye calibration didn't work: it couldn't see your eyes at the middle dot. Try again with your face well lit."
+        else:
+            err = random.randint(70, 160)
+            s.update(gaze_calibrated=time.strftime("%Y-%m-%d"), gaze_error_px=err, gaze_on=True)
+            text = (f"Eye calibration done! Your gaze is known to about {err} px. "
+                    "Gaze jump is on: look at a spot and nudge your head towards it.")
+        s.update(calibrating=False, step="done", text=text, progress=1.0)
 
     async def run(self):
         next_at = time.monotonic()
@@ -344,6 +383,8 @@ class Mock:
             else:
                 s["voice_state"], self.voice_until = "hearing", time.monotonic() + 1.5
                 print(f"(typed on the PC, not sent to the page: {text!r})")
+        elif cmd == "calibrate":
+            self.calibrate(eyes=rest[:1] == ["eyes"] and self.has_gaze())
         elif cmd == "mic" and rest:
             self.mic = rest[0] == "on"
             if not self.mic and s["voice_on"]:
@@ -355,7 +396,8 @@ class Mock:
             print("EyeSync only closes by itself once no page is connected: close the dashboard first")
             return
         else:
-            print("commands: smile | speed N | face on|off | hint [TEXT] | eyes | say [TEXT] | mic off|on | quit | idle")
+            print("commands: smile | speed N | face on|off | hint [TEXT] | eyes | say [TEXT] | mic off|on | "
+                  "calibrate [eyes] | quit | idle")
             return
         print(f"PC: {line.strip()}")
 
