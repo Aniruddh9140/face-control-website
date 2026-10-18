@@ -575,13 +575,13 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 .f-head { fill: var(--phosphor); }
 .f-eye, .f-mouth { fill: var(--crt); transform-box: fill-box; transform-origin: center; }
 .f-rest { opacity: 0; }
-.g-blink .f-eye, .g-wink .f-eye-r { transform: scaleY(0.25); }
+.g-blink .f-eye, .g-wink .f-eye-r, .g-shut .f-eye { transform: scaleY(0.25); }
 .g-hold { display: block; height: 8px; background: var(--bg); border: 2px solid var(--line-soft); }
 .g-hold > span { display: block; height: 100%; background: var(--ok); transform-origin: left; }
 .g-does { justify-self: start; padding: 5px 10px; background: var(--bg); border: 2px solid var(--line-soft); font: 700 0.8125rem/1.2 var(--font-mono); letter-spacing: 0.04em; text-transform: uppercase; }
 .gesture:nth-child(1) { --gd: 0s; } .gesture:nth-child(2) { --gd: -0.7s; } .gesture:nth-child(3) { --gd: -1.4s; }
 .gesture:nth-child(4) { --gd: -2.1s; } .gesture:nth-child(5) { --gd: -2.8s; } .gesture:nth-child(6) { --gd: -0.35s; }
-.gesture:nth-child(7) { --gd: -1.05s; }
+.gesture:nth-child(7) { --gd: -1.05s; } .gesture:nth-child(8) { --gd: -1.75s; }
 /* The tilt cards lean the whole face, as you'd see yourself in a mirror */
 .f-tilt { transform-box: view-box; transform-origin: 8px 9px; }
 .g-tilt-l .f-tilt { transform: rotate(-15deg); } .g-tilt-r .f-tilt { transform: rotate(15deg); }
@@ -680,10 +680,11 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
   .gesture .f-eye, .gesture .f-mouth, .gesture .g-hold > span, .gesture .g-does { animation: 3.4s linear var(--gd, 0s) infinite; }
   .g-blink .f-eye, .g-wink .f-eye-r { animation-name: fc-g-blink; }
   .g-blink .g-does, .g-wink .g-does { animation-name: fc-g-pill-short; }
+  .g-shut .f-eye { animation-name: fc-g-shut; }
   .gesture .f-rest { animation-name: fc-g-off; }
   .gesture .f-act { animation-name: fc-g-on; }
   .gesture .g-hold > span { animation-name: fc-g-hold; }
-  .g-smile .g-does, .g-side .g-does, .g-open .g-does, .g-tilt-l .g-does, .g-tilt-r .g-does { animation-name: fc-g-pill; }
+  .g-smile .g-does, .g-side .g-does, .g-open .g-does, .g-tilt-l .g-does, .g-tilt-r .g-does, .g-shut .g-does { animation-name: fc-g-pill; }
   .g-tilt-l .f-tilt, .g-tilt-r .f-tilt { animation: 3.4s ease-in-out var(--gd, 0s) infinite fc-g-tilt; }
   .g-tilt-r .f-tilt { --tilt: 15deg; }
   .feature-mark { transition: transform 320ms cubic-bezier(0.2, 0.7, 0.2, 1.5); }
@@ -749,6 +750,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 @keyframes fc-g-on { 0%, 42% { opacity: 0; } 45%, 88% { opacity: 1; } 91%, 100% { opacity: 0; } }
 @keyframes fc-g-off { 0%, 42% { opacity: 1; } 45%, 88% { opacity: 0; } 91%, 100% { opacity: 1; } }
 @keyframes fc-g-tilt { 0%, 38% { transform: none; } 45%, 88% { transform: rotate(var(--tilt, -15deg)); } 94%, 100% { transform: none; } }
+@keyframes fc-g-shut { 0%, 42% { transform: none; } 45%, 88% { transform: scaleY(0.15); } 91%, 100% { transform: none; } }
 @keyframes fc-g-hold { 0%, 45% { transform: scaleX(0); } 85%, 88% { transform: scaleX(1); } 91%, 100% { transform: scaleX(0); } }
 @keyframes fc-g-pill {
   0%, 84% { background: var(--bg); color: var(--ink); border-color: var(--line-soft); }
@@ -874,7 +876,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 
       <div class="ticker" aria-hidden="true">
         <div class="ticker-track">
-          <span>Blink to click</span><span>Wink right for a right click</span><span>Smile to pause</span><span>Tilt your head to recenter</span>
+          <span>Blink to click</span><span>Wink right for a right click</span><span>Smile to pause</span><span>Tilt your head to recenter</span><span>Close your eyes and talk to type</span>
           <span>Calibrated in 30 seconds</span><span>Your camera picture stays on your PC</span><span>Free for Windows 10 and 11</span>
         </div>
       </div>
@@ -888,7 +890,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
           <article class="feature">
             <span class="feature-mark" data-tone="danger" aria-hidden="true"></span>
             <h3>Steer with your head</h3>
-            <p>Small head movements move the real mouse across your whole screen. Blink to click, or wink your right eye for a right click.</p>
+            <p>Small head movements move the real mouse across your whole screen. Blink to click, or wink your right eye for a right click. To type, close your eyes for 2 s and just talk.</p>
           </article>
           <article class="feature">
             <span class="feature-mark" aria-hidden="true"></span>
@@ -911,7 +913,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
       <section class="stats" aria-label="EyeSync in numbers">
         <div class="stat"><span class="stat-n" data-count="30">30</span><span class="stat-l">cursor updates every second</span></div>
         <div class="stat"><span class="stat-n" data-count="30" data-suffix=" s">30 s</span><span class="stat-l">to tune it to you</span></div>
-        <div class="stat"><span class="stat-n" data-count="7">7</span><span class="stat-l">face gestures, no hands needed</span></div>
+        <div class="stat"><span class="stat-n" data-count="8">8</span><span class="stat-l">face gestures, no hands needed</span></div>
         <div class="stat"><span class="stat-n" data-count="0" data-from="100">0</span><span class="stat-l">camera pictures uploaded, ever</span></div>
       </section>
 
@@ -962,6 +964,13 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
             <p>Tilt your head to the right for 1.5 s.</p>
             <span class="g-does">Calibrate</span>
           </li>
+          <li class="gesture g-shut">
+            <div class="g-screen" aria-hidden="true"><svg class="face" viewBox="0 0 16 16"><path class="f-head" d="M5 2h6v1h1v1h1v8h-1v1h-1v1H5v-1H4v-1H3V4h1V3h1z"/><rect class="f-eye f-eye-r" x="5" y="6" width="2" height="2"/><rect class="f-eye f-eye-l" x="9" y="6" width="2" height="2"/><rect class="f-mouth" x="6" y="10" width="4" height="1"/></svg></div>
+            <span class="g-hold" aria-hidden="true"><span></span></span>
+            <h3>Close both eyes</h3>
+            <p>Keep both eyes closed for 2 s, then talk. Do it again, or say “stop listening”, to stop.</p>
+            <span class="g-does">Voice typing</span>
+          </li>
           <li class="gesture g-open">
             <div class="g-screen" aria-hidden="true"><svg class="face" viewBox="0 0 16 16"><path class="f-head" d="M5 2h6v1h1v1h1v8h-1v1h-1v1H5v-1H4v-1H3V4h1V3h1z"/><rect class="f-eye f-eye-r" x="5" y="6" width="2" height="2"/><rect class="f-eye f-eye-l" x="9" y="6" width="2" height="2"/><rect class="f-mouth f-rest" x="6" y="10" width="4" height="1"/><rect class="f-mouth f-act" x="6" y="9" width="4" height="3"/></svg></div>
             <span class="g-hold" aria-hidden="true"><span></span></span>
@@ -1007,6 +1016,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
             <li>The camera picture is processed on your PC. The optional camera view on the dashboard, and the live head demo on this page, run on your device and never upload or save a picture.</li>
             <li>Your password is sent only to Supabase over HTTPS and kept as a bcrypt hash. The password itself is never saved, and no one else can read your account's data.</li>
             <li>Cursor positions travel only from EyeSync to this page, and are never stored.</li>
+            <li>Voice typing runs on your PC, offline. What you say is typed there and never sent to this website.</li>
             <li>No cookies, no analytics, no third-party scripts. Even the fonts are bundled in.</li>
           </ul>
           <div class="row">
@@ -1234,6 +1244,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
               <dt>Cursor control</dt><dd id="es-control">—</dd>
               <dt>Calibration</dt><dd id="es-calibrated">—</dd>
               <dt>Hardware mouse</dt><dd id="es-hw">—</dd>
+              <dt id="es-voice-dt" hidden>Voice typing</dt><dd id="es-voice" hidden>—</dd>
               <dt>Version</dt><dd id="es-version">—</dd>
             </dl>
             <div class="row" id="es-face-help" hidden><button class="btn" type="button" id="es-show-camera">Show the camera to check your position</button></div>
@@ -1263,6 +1274,12 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
                 </div>
               </fieldset>
               <label class="check" for="es-gestures"><input type="checkbox" id="es-gestures"><span>Face gestures</span></label>
+              <div class="stack-sm" id="es-voice-wrap" hidden>
+                <label class="check" for="es-voice-on"><input type="checkbox" id="es-voice-on" aria-describedby="es-voice-note"><span>Voice typing</span></label>
+                <p class="hint" id="es-voice-note">Your voice is processed on this computer. What you say is typed on your PC and never sent to this website.</p>
+                <p class="notice" id="es-voice-tip" hidden>Click (blink) where the text should go, then speak. Say “stop listening” to stop.</p>
+                <p class="advice" id="es-voice-hint" role="status" hidden></p>
+              </div>
               <div class="row">
                 <button class="btn" type="button" id="es-window">Show EyeSync window</button>
                 <button class="btn" type="button" id="es-quit">Quit EyeSync</button>
@@ -1279,6 +1296,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
                 <li>Mouth pulled to one side for 1.5 s: next speed.</li>
                 <li>Head tilted to the left (ear towards your shoulder) for 1.5 s: recenter the cursor.</li>
                 <li>Head tilted to the right for 1.5 s: calibrate EyeSync.</li>
+                <li>Both eyes closed for 2 s: voice typing on or off (or say “stop listening”).</li>
                 <li>Mouth wide open for 3 s: quit EyeSync.</li>
               </ul>
               <p class="hint">“Start with Windows” and the API key are only in the EyeSync window on your PC.</p>
@@ -1478,7 +1496,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
             <code class="cmd" id="dl-hashcmd">Get-FileHash .\EyeSync.exe</code>
           </div>
           <dl class="kv">
-            <dt>Needs</dt><dd>Windows 10 or 11 and a webcam</dd>
+            <dt>Needs</dt><dd>Windows 10 or 11 and a webcam. A microphone for voice typing (optional)</dd>
             <dt>Rights</dt><dd>no administrator rights needed</dd>
             <dt>Setup</dt><dd>one file that installs itself; no Python or anything else</dd>
           </dl>
@@ -1506,7 +1524,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
         </section>
         <section class="panel" aria-labelledby="dl-privacy-title">
           <h2 id="dl-privacy-title">Privacy</h2>
-          <p>The camera picture is processed on your PC and never uploaded. EyeSync only talks to this website and to apps you give its API key.</p>
+          <p>The camera picture is processed on your PC and never uploaded. So is your voice: voice typing works offline and types on your PC. EyeSync only talks to this website and to apps you give its API key.</p>
         </section>
       </div>
     </section>
@@ -1575,7 +1593,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 
 <template id="tpl-cookies">
   <div class="policy">
-    <p class="meta">Version 1.4 · Last updated 17 October 2026</p>
+    <p class="meta">Version 1.5 · Last updated 18 October 2026</p>
     <p>EyeSync sets no HTTP cookies and loads nothing from other websites. It does use your browser's local storage and session storage, which privacy laws such as the EU ePrivacy Directive and UK PECR treat the same way as cookies. This policy lists every item it stores and why.</p>
     <h2>What is stored on your device</h2>
     <div class="table-wrap">
@@ -1592,9 +1610,10 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
     <p>Accounts are run by <a href="https://supabase.com/privacy" target="_blank" rel="noopener noreferrer">Supabase</a>. It stores your email address, a bcrypt hash of your password (never the password itself), the policy versions you agreed to and when, and your dashboard settings (theme, tracker address, cursor mapping and smoothing, dwell selection, and a summary of your last accuracy test), so they follow you to any computer. Supabase may log technical data such as your IP address when you sign in. Only you can read your account's data while signed in; it is never sold or used for advertising.</p>
     <h2>Essential and optional storage</h2>
     <p>Essential items are needed for sign-in and security, so they are stored whichever option you choose. Preference storage is optional. Until you choose “Accept”, preferences are held in memory only and are lost when you close the tab. If you later switch to “Essential only”, <span class="mono">fc.prefs</span> is deleted straight away.</p>
-    <h2>Cursor and camera data</h2>
+    <h2>Cursor, camera and voice data</h2>
     <p>Cursor positions travel from EyeSync (or other tracker software) on your own computer to this page over a local WebSocket (localhost or 127.0.0.1 only). They are processed in memory to draw the cursor and are never stored or sent anywhere else. Only a summary of your last accuracy test is saved: on this device with preference storage on, and in your account.</p>
     <p>If you turn on the camera view, EyeSync sends small camera pictures to this page the same way. They are shown on the page and are never stored, uploaded or logged. They stop when you turn the camera view off or leave the Dashboard.</p>
+    <p>Voice typing is done by EyeSync on your PC, offline. What you say is typed into the program you're using there and is never sent to this page; the page only learns whether voice typing is on, and whether EyeSync is listening or typing.</p>
     <p>The home page's live head demo uses your camera only after you press “Try it with your head” and your browser asks for permission. The face tracking runs in your browser, from files served by this site; camera pictures are never stored, uploaded or logged, and the camera turns off when you press Stop or leave the page.</p>
     <h2>Hosting</h2>
     <p>The page and the EyeSync download are served by GitHub Pages. GitHub may log technical data such as your IP address when it delivers them; see the <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener noreferrer">GitHub General Privacy Statement</a>. Accounts are kept by Supabase, as described above. EyeSync has no other server.</p>
@@ -1672,7 +1691,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 const APP = 'EyeSync';
 const CONSENT_VERSION = 1;
 const TERMS_VERSION = '1.3';
-const COOKIE_POLICY_VERSION = '1.4';
+const COOKIE_POLICY_VERSION = '1.5';
 const SESSION_IDLE_MS = 30 * 60 * 1000;          // sign-in for this tab only
 const REMEMBER_MS = 30 * 24 * 60 * 60 * 1000;    // "Keep me signed in": 30 days since last use
 const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1']);  // keep in sync with the CSP connect-src
@@ -2628,6 +2647,12 @@ const fmtDay = (day) => {
   const date = new Date(y, m - 1, d);
   return Number.isNaN(date.getTime()) ? day : date.toLocaleDateString(undefined, { dateStyle: 'medium' });
 };
+// Voice typing (EyeSync 1.2.0+; older versions send no "voice"). What the user says never reaches the page.
+const VOICE_STATES = ['off', 'starting', 'listening', 'hearing', 'working', 'error'];
+const VOICE_TEXT = { starting: 'Starting…', listening: 'Listening…', hearing: 'Hearing you…', working: 'Typing…', error: 'Problem' };
+const sanitizeVoice = (v) => (isObj(v)
+  ? { on: v.on === true, state: VOICE_STATES.includes(v.state) ? v.state : 'off', hint: shortText(v.hint) }
+  : null);
 function sanitizeStatus(m) {
   const cal = isObj(m.calibration) ? m.calibration : {};
   return {
@@ -2644,6 +2669,7 @@ function sanitizeStatus(m) {
     progress: typeof cal.progress === 'number' && Number.isFinite(cal.progress) ? clamp(cal.progress, 0, 1) : 0,
     hint: shortText(m.hint),
     hardwareMouse: m.hardware_mouse === true,
+    voice: sanitizeVoice(m.voice),
   };
 }
 
@@ -3011,6 +3037,14 @@ function renderEyeSync() {
   $$('input[name="es-speed"]').forEach((i) => { i.checked = Number(i.value) === s?.speed; });
   $$('input[name="es-click"]').forEach((i) => { i.checked = i.value === s?.clickMode; });
   $('#es-gestures').checked = !!s?.gestures;
+  const v = on ? s.voice : null;
+  $('#es-voice-wrap').hidden = $('#es-voice-dt').hidden = $('#es-voice').hidden = !v;
+  $('#es-voice').textContent = !v ? '—' : VOICE_TEXT[v.state] || (v.on ? 'On' : 'Off');
+  $('#es-voice-on').checked = !!v?.on;
+  $('#es-voice-tip').hidden = !v?.on;
+  const voiceHint = v && (v.hint || (v.state === 'error' ? 'Voice typing ran into a problem. Look at the EyeSync window on your PC.' : ''));
+  $('#es-voice-hint').hidden = !voiceHint;
+  $('#es-voice-hint').textContent = voiceHint || '';
   if (!on) disarmQuit();
   Camera.paint();
   renderEscal();
@@ -3738,6 +3772,7 @@ const Mascot = {
     'Blink to click. Wink your right eye for a right click.',
     'Hold a big smile for 1.5 seconds to pause EyeSync.',
     'Cursor drifted? Tilt your head to the left for 1.5 seconds to recenter it. Tilt right to calibrate.',
+    'Need to type? Click into a text box, close both eyes for 2 seconds, then just talk.',
     'Press “Try it with your head” and steer the little screen yourself.',
     'Your camera picture never leaves your PC. Promise.',
     'Grab a window by its title bar to move it. Double-click to put it back.',
@@ -3937,6 +3972,9 @@ function bindForms() {
   $$('input[name="es-speed"]').forEach((i) => i.addEventListener('change', () => EyeSync.send('speed', Number(i.value))));
   $$('input[name="es-click"]').forEach((i) => i.addEventListener('change', () => EyeSync.send('click_mode', i.value)));
   $('#es-gestures').addEventListener('change', (e) => EyeSync.send('gestures', e.target.checked));
+  // What's said is typed wherever the keyboard focus is. Let go of the switch, so a space typed
+  // into the page can't flip it back; the user then clicks where the text should go.
+  $('#es-voice-on').addEventListener('change', (e) => { if (EyeSync.send('voice', e.target.checked) && e.target.checked) e.target.blur(); });
   $('#es-window').addEventListener('click', () => { if (EyeSync.send('show_window')) toast('The EyeSync window is now in front on your PC.'); });
   $('#es-quit').addEventListener('click', () => {
     if (!quitArmed) {

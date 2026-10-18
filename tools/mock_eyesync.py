@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Mock EyeSync 1.1 for testing the dashboard without a webcam or Windows.
+"""Mock EyeSync 1.2 for testing the dashboard without a webcam or Windows.
 
 It plays both programs that answer on EyeSync's ports (see EyeSync's WEBSITE.md):
 
@@ -20,6 +20,9 @@ Type these while it runs to act "on the PC" (status changes reach the dashboard 
     speed N        set the speed (1-5), like the hotkey
     face off|on    lose or find the face (sets the advice text)
     hint [TEXT]    set or clear the advice text
+    eyes           close both eyes for 2 s: voice typing on or off
+    say [TEXT]     talk while voice typing listens (the words are only printed here, never sent)
+    mic off|on     lose or get back the microphone (voice typing shows an error)
     quit           quit EyeSync, like the mouth gesture (it then needs Connect)
     idle           close EyeSync as if the dashboard had been closed (auto-connect may restart it)
 
@@ -46,7 +49,7 @@ try:
 except ImportError:          # the camera view is optional
     Image = None
 
-VERSION = "1.1.1"
+VERSION = "1.2.0"
 DEFAULT_ORIGINS = [
     "https://aniruddh9140.github.io",
     "http://localhost:8000",
@@ -80,7 +83,9 @@ class Mock:
         self.last_seen = time.monotonic()
         self.s = {"mouse_enabled": True, "paused": False, "face": True, "speed": 2, "click_mode": "blink",
                   "gestures": True, "calibrating": False, "calibrated": "", "step": "", "text": "",
-                  "progress": 0.0, "hint": ""}
+                  "progress": 0.0, "hint": "", "voice_on": False, "voice_state": "off", "voice_hint": ""}
+        self.mic = True
+        self.voice_until = 0.0     # when "hearing"/"working"/"error" ends
         self.cal_started = 0.0
         self.target = None       # the website's accuracy-test target, in frame px
         self.x, self.y, self.t0 = 400.0, 300.0, time.monotonic()
@@ -93,7 +98,37 @@ class Mock:
                 "face": s["face"], "camera": True, "speed": s["speed"], "click_mode": s["click_mode"],
                 "gestures": s["gestures"], "calibrating": s["calibrating"], "calibrated": s["calibrated"],
                 "calibration": {"step": s["step"], "text": s["text"], "progress": round(s["progress"], 2)},
-                "hint": s["hint"], "hardware_mouse": False}
+                "hint": s["hint"], "hardware_mouse": False,
+                **({"voice": {"on": s["voice_on"], "state": s["voice_state"], "hint": s["voice_hint"]}}
+                   if self.has_voice() else {})}
+
+    def has_voice(self):          # voice typing came with 1.2.0; older versions send no "voice"
+        try:
+            return tuple(int(n) for n in self.args.version.split(".")[:2]) >= (1, 2)
+        except ValueError:
+            return True
+
+    def voice(self, on):
+        s = self.s
+        if on and not self.mic:
+            s.update(voice_on=False, voice_state="error", voice_hint="Can't use the microphone. Check that one is connected.")
+            self.voice_until = time.monotonic() + 5
+        elif on:
+            s.update(voice_on=True, voice_state="starting", voice_hint="")
+            self.voice_until = time.monotonic() + 1.0
+        else:
+            s.update(voice_on=False, voice_state="off", voice_hint="")
+
+    def step_voice(self, now):
+        s = self.s
+        if now < self.voice_until:
+            return
+        if s["voice_state"] == "hearing":
+            s["voice_state"], self.voice_until = "working", now + 1.0
+        elif s["voice_on"] and s["voice_state"] != "listening":
+            s["voice_state"] = "listening"
+        elif not s["voice_on"] and s["voice_state"] == "error":
+            s.update(voice_state="off", voice_hint="")
 
     def allowed(self, request):
         return request.headers.get("Origin", "") in self.origins
@@ -189,6 +224,8 @@ class Mock:
             elif not s["calibrating"]:
                 s.update(calibrating=True, step="starting", text=STEPS[0][1], progress=0.0)
                 self.cal_started = time.monotonic()
+        elif action == "voice" and self.has_voice() and (isinstance(value, bool) or "value" not in msg):
+            self.voice(value if isinstance(value, bool) else not s["voice_on"])
         elif action == "preview" and isinstance(value, bool):
             (self.previews.add if value else self.previews.discard)(ws)
         elif action == "show_window":
@@ -203,6 +240,7 @@ class Mock:
         print("EyeSync closes" + (" (quit by the user)" if by_user else " (no dashboard)"))
         self.mode, self.closed_by_user = "standby", by_user
         self.s.update(calibrating=False, paused=False)
+        self.voice(False)
         await asyncio.gather(*(ws.close(4000, "EyeSync was closed - press Connect to start it again")
                                for ws in list(self.clients)), return_exceptions=True)
 
@@ -256,6 +294,7 @@ class Mock:
             self.x += (tx - self.x) * 0.08
             self.y += (ty - self.y) * 0.08
             self.step_calibration(now)
+            self.step_voice(now)
             blink = self.s["click_mode"] == "blink" and self.target is None and (t % 4.5) < 0.2
             for ws in list(self.clients):
                 asyncio.ensure_future(self.safe_send(ws, self.payload(blink)))
@@ -296,6 +335,19 @@ class Mock:
             s["hint"] = "" if s["face"] else "Can't find your face. Move into the camera's view."
         elif cmd == "hint":
             s["hint"] = line.split(None, 1)[1] if rest else ""
+        elif cmd == "eyes" and self.has_voice():
+            self.voice(not s["voice_on"])
+        elif cmd == "say" and s["voice_on"]:
+            text = line.split(None, 1)[1].strip() if rest else ""
+            if text.lower().rstrip(".!") == "stop listening":
+                self.voice(False)
+            else:
+                s["voice_state"], self.voice_until = "hearing", time.monotonic() + 1.5
+                print(f"(typed on the PC, not sent to the page: {text!r})")
+        elif cmd == "mic" and rest:
+            self.mic = rest[0] == "on"
+            if not self.mic and s["voice_on"]:
+                self.voice(True)                 # the microphone went away while listening
         elif cmd == "quit" or (cmd == "idle" and not self.clients):
             asyncio.ensure_future(self.quit(by_user=cmd == "quit"))
             return
@@ -303,7 +355,7 @@ class Mock:
             print("EyeSync only closes by itself once no page is connected: close the dashboard first")
             return
         else:
-            print("commands: smile | speed N | face on|off | hint [TEXT] | quit | idle")
+            print("commands: smile | speed N | face on|off | hint [TEXT] | eyes | say [TEXT] | mic off|on | quit | idle")
             return
         print(f"PC: {line.strip()}")
 
