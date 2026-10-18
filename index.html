@@ -575,7 +575,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 .f-head { fill: var(--phosphor); }
 .f-eye, .f-mouth { fill: var(--crt); transform-box: fill-box; transform-origin: center; }
 .f-rest { opacity: 0; }
-.g-blink .f-eye, .g-wink .f-eye-r, .g-shut .f-eye { transform: scaleY(0.25); }
+.g-blink .f-eye, .g-shut .f-eye { transform: scaleY(0.25); }
 .g-hold { display: block; height: 8px; background: var(--bg); border: 2px solid var(--line-soft); }
 .g-hold > span { display: block; height: 100%; background: var(--ok); transform-origin: left; }
 .g-does { justify-self: start; padding: 5px 10px; background: var(--bg); border: 2px solid var(--line-soft); font: 700 0.8125rem/1.2 var(--font-mono); letter-spacing: 0.04em; text-transform: uppercase; }
@@ -678,8 +678,8 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
   /* Gesture faces act their gesture on a loop, each card out of step with the next; the
      result lights up when the gesture counts (hold gestures fill their bar first) */
   .gesture .f-eye, .gesture .f-mouth, .gesture .g-hold > span, .gesture .g-does { animation: 3.4s linear var(--gd, 0s) infinite; }
-  .g-blink .f-eye, .g-wink .f-eye-r { animation-name: fc-g-blink; }
-  .g-blink .g-does, .g-wink .g-does { animation-name: fc-g-pill-short; }
+  .g-blink .f-eye { animation-name: fc-g-blink; }
+  .g-blink .g-does { animation-name: fc-g-pill-short; }
   .g-shut .f-eye { animation-name: fc-g-shut; }
   .gesture .f-rest { animation-name: fc-g-off; }
   .gesture .f-act { animation-name: fc-g-on; }
@@ -876,7 +876,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 
       <div class="ticker" aria-hidden="true">
         <div class="ticker-track">
-          <span>Blink to click</span><span>Wink right for a right click</span><span>Smile to pause</span><span>Tilt your head to recenter</span><span>Close your eyes and talk to type</span><span>Look, nudge, and the cursor jumps there</span>
+          <span>Blink to click</span><span>Hold to the double tick for a right click</span><span>Smile to pause</span><span>Tilt your head to scroll</span><span>Close your eyes and talk to type</span><span>Look, nudge, and the cursor jumps there</span>
           <span>Calibrated in 30 seconds</span><span>Your camera picture stays on your PC</span><span>Free for Windows 10 and 11</span>
         </div>
       </div>
@@ -890,7 +890,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
           <article class="feature">
             <span class="feature-mark" data-tone="danger" aria-hidden="true"></span>
             <h3>Steer with your head</h3>
-            <p>Small head movements move the real mouse across your whole screen. Blink to click, or wink your right eye for a right click. Going far? Look at the spot, nudge your head, and the cursor jumps there. To type, close your eyes for 2 s and just talk.</p>
+            <p>Small head movements move the real mouse across your whole screen. Blink to click, or keep your eyes closed until the double tick for a right click. Tilt your head to scroll. Going far? Look at the spot, nudge your head, and the cursor jumps there. To type, close your eyes for 2 s and just talk.</p>
           </article>
           <article class="feature">
             <span class="feature-mark" aria-hidden="true"></span>
@@ -926,14 +926,15 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
         <ul class="gestures">
           <li class="gesture g-blink">
             <div class="g-screen" aria-hidden="true"><svg class="face" viewBox="0 0 16 16"><path class="f-head" d="M5 2h6v1h1v1h1v8h-1v1h-1v1H5v-1H4v-1H3V4h1V3h1z"/><rect class="f-eye f-eye-r" x="5" y="6" width="2" height="2"/><rect class="f-eye f-eye-l" x="9" y="6" width="2" height="2"/><rect class="f-mouth" x="6" y="10" width="4" height="1"/></svg></div>
-            <h3>Blink</h3>
-            <p>Blink both eyes, or wink your left eye for about ⅓ s.</p>
+            <h3>Blink to the tick</h3>
+            <p>Close both eyes and open them at the soft tick, after about ⅓ s. No tick, no click. Winking your left eye works too.</p>
             <span class="g-does">Left click</span>
           </li>
-          <li class="gesture g-wink">
+          <li class="gesture g-shut">
             <div class="g-screen" aria-hidden="true"><svg class="face" viewBox="0 0 16 16"><path class="f-head" d="M5 2h6v1h1v1h1v8h-1v1h-1v1H5v-1H4v-1H3V4h1V3h1z"/><rect class="f-eye f-eye-r" x="5" y="6" width="2" height="2"/><rect class="f-eye f-eye-l" x="9" y="6" width="2" height="2"/><rect class="f-mouth" x="6" y="10" width="4" height="1"/></svg></div>
-            <h3>Wink right</h3>
-            <p>A short wink of your right eye.</p>
+            <span class="g-hold" aria-hidden="true"><span></span></span>
+            <h3>Hold to the double tick</h3>
+            <p>Keep both eyes closed until the double tick, about 0.8 s. Winking your right eye works too.</p>
             <span class="g-does">Right click</span>
           </li>
           <li class="gesture g-smile">
@@ -954,15 +955,15 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
             <div class="g-screen" aria-hidden="true"><svg class="face" viewBox="0 0 16 16"><g class="f-tilt"><path class="f-head" d="M5 2h6v1h1v1h1v8h-1v1h-1v1H5v-1H4v-1H3V4h1V3h1z"/><rect class="f-eye f-eye-r" x="5" y="6" width="2" height="2"/><rect class="f-eye f-eye-l" x="9" y="6" width="2" height="2"/><rect class="f-mouth" x="6" y="10" width="4" height="1"/></g></svg></div>
             <span class="g-hold" aria-hidden="true"><span></span></span>
             <h3>Tilt left</h3>
-            <p>Tilt your head to the left, ear towards your shoulder, for 1.5 s.</p>
-            <span class="g-does">Recenter</span>
+            <p>Tilt your head to the left, ear towards your shoulder, and hold it. The further you tilt, the faster it scrolls. Straighten up to stop.</p>
+            <span class="g-does">Scroll up</span>
           </li>
           <li class="gesture g-tilt-r">
             <div class="g-screen" aria-hidden="true"><svg class="face" viewBox="0 0 16 16"><g class="f-tilt"><path class="f-head" d="M5 2h6v1h1v1h1v8h-1v1h-1v1H5v-1H4v-1H3V4h1V3h1z"/><rect class="f-eye f-eye-r" x="5" y="6" width="2" height="2"/><rect class="f-eye f-eye-l" x="9" y="6" width="2" height="2"/><rect class="f-mouth" x="6" y="10" width="4" height="1"/></g></svg></div>
             <span class="g-hold" aria-hidden="true"><span></span></span>
             <h3>Tilt right</h3>
-            <p>Tilt your head to the right for 1.5 s.</p>
-            <span class="g-does">Calibrate</span>
+            <p>Tilt your head to the right and hold it. Straighten up to stop.</p>
+            <span class="g-does">Scroll down</span>
           </li>
           <li class="gesture g-shut">
             <div class="g-screen" aria-hidden="true"><svg class="face" viewBox="0 0 16 16"><path class="f-head" d="M5 2h6v1h1v1h1v8h-1v1h-1v1H5v-1H4v-1H3V4h1V3h1z"/><rect class="f-eye f-eye-r" x="5" y="6" width="2" height="2"/><rect class="f-eye f-eye-l" x="9" y="6" width="2" height="2"/><rect class="f-mouth" x="6" y="10" width="4" height="1"/></svg></div>
@@ -1297,12 +1298,11 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
             <div class="stack-sm">
               <span class="label">Gestures</span>
               <ul class="es-help">
-                <li>Blink both eyes, or wink your left eye for about ⅓ s: left click.</li>
-                <li>Wink your right eye: right click.</li>
+                <li>Close both eyes and open them at the soft tick (about ⅓ s): left click. No tick, no click.</li>
+                <li>Keep both eyes closed until the double tick (about 0.8 s): right click. Winking your left or right eye works too.</li>
                 <li>Big smile for 1.5 s: pause or resume.</li>
                 <li>Mouth pulled to one side for 1.5 s: next speed.</li>
-                <li>Head tilted to the left (ear towards your shoulder) for 1.5 s: recenter the cursor.</li>
-                <li>Head tilted to the right for 1.5 s: calibrate EyeSync.</li>
+                <li>Head tilted to the left (ear towards your shoulder) and held: scroll up. Tilted to the right: scroll down. The further you tilt, the faster; straighten up to stop.</li>
                 <li>Both eyes closed for 2 s: voice typing on or off (or say “stop listening”).</li>
                 <li>Mouth wide open for 3 s: quit EyeSync.</li>
                 <li id="es-gaze-help" hidden>Gaze jump: look at a spot, then nudge your head towards it. The cursor jumps there.</li>
@@ -3837,10 +3837,10 @@ const Mascot = {
   el: $('#mascot'), eyes: $('.ms-eyes'), bubble: $('#mascot-say'),
   tips: [
     'Hi, I\'m Sync! I follow your pointer, the way EyeSync follows your head.',
-    'Blink to click. Wink your right eye for a right click.',
+    'Close your eyes and open them at the tick to click. Keep them closed until the double tick for a right click.',
     'Hold a big smile for 1.5 seconds to pause EyeSync.',
     'Calibrate every time you start EyeSync. It takes 30 seconds and keeps the cursor on target.',
-    'Cursor drifted? Tilt your head to the left for 1.5 seconds to recenter it. Tilt right to calibrate.',
+    'Need to scroll? Tilt your head towards a shoulder and hold it. Straighten up to stop.',
     'Need to type? Click into a text box, close both eyes for 2 seconds, then just talk.',
     'Long way to go? Turn on gaze jump, look at the spot and nudge your head towards it.',
     'Press “Try it with your head” and steer the little screen yourself.',
