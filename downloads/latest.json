@@ -1,8 +1,8 @@
 {
-  "version": "1.4.0",
+  "version": "1.5.0",
   "file": "EyeSync.exe",
-  "size": 202428538,
-  "sha256": "c383db3b22b5807dce0543fd84409f91da248ad1c30901ef728e304d1b3b1cdf",
-  "date": "2026-10-18",
-  "zip": "EyeSync-1.4.0.zip"
+  "size": 202433730,
+  "sha256": "39898daa7ad902d2a5230bb9cd1e5ea49e95dbfadfbc0e6b26b70590fe1301b3",
+  "date": "2026-10-19",
+  "zip": "EyeSync-1.5.0.zip"
 }
