@@ -581,7 +581,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 .g-does { justify-self: start; padding: 5px 10px; background: var(--bg); border: 2px solid var(--line-soft); font: 700 0.8125rem/1.2 var(--font-mono); letter-spacing: 0.04em; text-transform: uppercase; }
 .gesture:nth-child(1) { --gd: 0s; } .gesture:nth-child(2) { --gd: -0.7s; } .gesture:nth-child(3) { --gd: -1.4s; }
 .gesture:nth-child(4) { --gd: -2.1s; } .gesture:nth-child(5) { --gd: -2.8s; } .gesture:nth-child(6) { --gd: -0.35s; }
-.gesture:nth-child(7) { --gd: -1.05s; } .gesture:nth-child(8) { --gd: -1.75s; }
+.gesture:nth-child(7) { --gd: -1.05s; } .gesture:nth-child(8) { --gd: -1.75s; } .gesture:nth-child(9) { --gd: -2.45s; }
 /* The tilt cards lean the whole face, as you'd see yourself in a mirror */
 .f-tilt { transform-box: view-box; transform-origin: 8px 9px; }
 .g-tilt-l .f-tilt { transform: rotate(-15deg); } .g-tilt-r .f-tilt { transform: rotate(15deg); }
@@ -913,7 +913,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
       <section class="stats" aria-label="EyeSync in numbers">
         <div class="stat"><span class="stat-n" data-count="30">30</span><span class="stat-l">cursor updates every second</span></div>
         <div class="stat"><span class="stat-n" data-count="30" data-suffix=" s">30 s</span><span class="stat-l">to tune it to you</span></div>
-        <div class="stat"><span class="stat-n" data-count="8">8</span><span class="stat-l">face gestures, no hands needed</span></div>
+        <div class="stat"><span class="stat-n" data-count="9">9</span><span class="stat-l">face gestures, no hands needed</span></div>
         <div class="stat"><span class="stat-n" data-count="0" data-from="100">0</span><span class="stat-l">camera pictures uploaded, ever</span></div>
       </section>
 
@@ -945,11 +945,18 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
             <span class="g-does">Pause or resume</span>
           </li>
           <li class="gesture g-side">
+            <div class="g-screen" aria-hidden="true"><svg class="face" viewBox="0 0 16 16"><path class="f-head" d="M5 2h6v1h1v1h1v8h-1v1h-1v1H5v-1H4v-1H3V4h1V3h1z"/><rect class="f-eye f-eye-r" x="5" y="6" width="2" height="2"/><rect class="f-eye f-eye-l" x="9" y="6" width="2" height="2"/><rect class="f-mouth f-rest" x="6" y="10" width="4" height="1"/><path class="f-mouth f-act" d="M8 10H5V9H4v2h4z"/></svg></div>
+            <span class="g-hold" aria-hidden="true"><span></span></span>
+            <h3>Mouth to your left</h3>
+            <p>Pull your mouth to your left for 1.5 s. The cursor goes to the middle of the screen.</p>
+            <span class="g-does">Recenter</span>
+          </li>
+          <li class="gesture g-side">
             <div class="g-screen" aria-hidden="true"><svg class="face" viewBox="0 0 16 16"><path class="f-head" d="M5 2h6v1h1v1h1v8h-1v1h-1v1H5v-1H4v-1H3V4h1V3h1z"/><rect class="f-eye f-eye-r" x="5" y="6" width="2" height="2"/><rect class="f-eye f-eye-l" x="9" y="6" width="2" height="2"/><rect class="f-mouth f-rest" x="6" y="10" width="4" height="1"/><path class="f-mouth f-act" d="M8 10h3V9h1v2H8z"/></svg></div>
             <span class="g-hold" aria-hidden="true"><span></span></span>
-            <h3>Mouth to one side</h3>
-            <p>Pull your mouth to one side for 1.5 s.</p>
-            <span class="g-does">Next speed</span>
+            <h3>Mouth to your right</h3>
+            <p>Pull your mouth to your right for 3 s. A beep sounds after half a second, then a countdown shows on the camera view; relax your mouth to cancel.</p>
+            <span class="g-does">Calibrate</span>
           </li>
           <li class="gesture g-tilt-l">
             <div class="g-screen" aria-hidden="true"><svg class="face" viewBox="0 0 16 16"><g class="f-tilt"><path class="f-head" d="M5 2h6v1h1v1h1v8h-1v1h-1v1H5v-1H4v-1H3V4h1V3h1z"/><rect class="f-eye f-eye-r" x="5" y="6" width="2" height="2"/><rect class="f-eye f-eye-l" x="9" y="6" width="2" height="2"/><rect class="f-mouth" x="6" y="10" width="4" height="1"/></g></svg></div>
@@ -1301,7 +1308,8 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
                 <li>Close both eyes and open them at the soft tick (about ⅓ s): left click. No tick, no click.</li>
                 <li>Keep both eyes closed until the double tick (about 0.8 s): right click. Winking your left or right eye works too.</li>
                 <li>Big smile for 1.5 s: pause or resume.</li>
-                <li>Mouth pulled to one side for 1.5 s: next speed.</li>
+                <li>Mouth pulled to your left for 1.5 s: recenter the cursor.</li>
+                <li>Mouth pulled to your right for 3 s: calibrate EyeSync. A beep sounds after half a second, then a countdown shows on the camera view; relax your mouth to cancel.</li>
                 <li>Head tilted to the left (ear towards your shoulder) and held: scroll up. Tilted to the right: scroll down. The further you tilt, the faster; straighten up to stop.</li>
                 <li>Both eyes closed for 2 s: voice typing on or off (or say “stop listening”).</li>
                 <li>Mouth wide open for 3 s: quit EyeSync.</li>
@@ -3841,6 +3849,7 @@ const Mascot = {
     'Hold a big smile for 1.5 seconds to pause EyeSync.',
     'Calibrate every time you start EyeSync. It takes 30 seconds and keeps the cursor on target.',
     'Need to scroll? Tilt your head towards a shoulder and hold it. Straighten up to stop.',
+    'Cursor drifted? Pull your mouth to your left for 1.5 seconds to recenter it.',
     'Need to type? Click into a text box, close both eyes for 2 seconds, then just talk.',
     'Long way to go? Turn on gaze jump, look at the spot and nudge your head towards it.',
     'Press “Try it with your head” and steer the little screen yourself.',
