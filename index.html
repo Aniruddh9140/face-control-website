@@ -890,7 +890,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
           <article class="feature">
             <span class="feature-mark" data-tone="danger" aria-hidden="true"></span>
             <h3>Steer with your head</h3>
-            <p>Small head movements move the real mouse across your whole screen. Blink to click, or keep your eyes closed until the double tick for a right click. Tilt your head to scroll. Going far? Look at the spot, nudge your head, and the cursor jumps there. To type, close your eyes for 2 s and just talk.</p>
+            <p>Small head movements move the real mouse across your whole screen. Blink to click, or keep your eyes closed until the double tick for a right click. Tilt your head to scroll. Going far? Look at the spot, nudge your head, and the cursor jumps there. To type, close your eyes for 2.5 s and just talk.</p>
           </article>
           <article class="feature">
             <span class="feature-mark" aria-hidden="true"></span>
@@ -927,14 +927,14 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
           <li class="gesture g-blink">
             <div class="g-screen" aria-hidden="true"><svg class="face" viewBox="0 0 16 16"><path class="f-head" d="M5 2h6v1h1v1h1v8h-1v1h-1v1H5v-1H4v-1H3V4h1V3h1z"/><rect class="f-eye f-eye-r" x="5" y="6" width="2" height="2"/><rect class="f-eye f-eye-l" x="9" y="6" width="2" height="2"/><rect class="f-mouth" x="6" y="10" width="4" height="1"/></svg></div>
             <h3>Blink to the tick</h3>
-            <p>Close both eyes and open them at the soft tick, after about ⅓ s. No tick, no click. Winking your left eye works too.</p>
+            <p>Close both eyes and open them after the soft tick (about ⅓ s), before the double tick. No tick, no click. Winking your left eye works too.</p>
             <span class="g-does">Left click</span>
           </li>
           <li class="gesture g-shut">
             <div class="g-screen" aria-hidden="true"><svg class="face" viewBox="0 0 16 16"><path class="f-head" d="M5 2h6v1h1v1h1v8h-1v1h-1v1H5v-1H4v-1H3V4h1V3h1z"/><rect class="f-eye f-eye-r" x="5" y="6" width="2" height="2"/><rect class="f-eye f-eye-l" x="9" y="6" width="2" height="2"/><rect class="f-mouth" x="6" y="10" width="4" height="1"/></svg></div>
             <span class="g-hold" aria-hidden="true"><span></span></span>
             <h3>Hold to the double tick</h3>
-            <p>Keep both eyes closed until the double tick, about 0.8 s. Winking your right eye works too.</p>
+            <p>Keep both eyes closed until the double tick, about 1.2 s, then open them within about a second. Winking your right eye works too.</p>
             <span class="g-does">Right click</span>
           </li>
           <li class="gesture g-smile">
@@ -976,7 +976,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
             <div class="g-screen" aria-hidden="true"><svg class="face" viewBox="0 0 16 16"><path class="f-head" d="M5 2h6v1h1v1h1v8h-1v1h-1v1H5v-1H4v-1H3V4h1V3h1z"/><rect class="f-eye f-eye-r" x="5" y="6" width="2" height="2"/><rect class="f-eye f-eye-l" x="9" y="6" width="2" height="2"/><rect class="f-mouth" x="6" y="10" width="4" height="1"/></svg></div>
             <span class="g-hold" aria-hidden="true"><span></span></span>
             <h3>Close both eyes</h3>
-            <p>Keep both eyes closed for 2 s, then talk. Do it again, or say “stop listening”, to stop.</p>
+            <p>Keep both eyes closed for 2.5 s, then talk. Do it again, or say “stop listening”, to stop.</p>
             <span class="g-does">Voice typing</span>
           </li>
           <li class="gesture g-open">
@@ -1305,13 +1305,13 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
             <div class="stack-sm">
               <span class="label">Gestures</span>
               <ul class="es-help">
-                <li>Close both eyes and open them at the soft tick (about ⅓ s): left click. No tick, no click.</li>
-                <li>Keep both eyes closed until the double tick (about 0.8 s): right click. Winking your left or right eye works too.</li>
+                <li>Close both eyes and open them after the soft tick (about ⅓ s), before the double tick: left click. No tick, no click.</li>
+                <li>Keep both eyes closed until the double tick (about 1.2 s), then open them within about a second: right click. Winking your left or right eye works too.</li>
                 <li>Big smile for 1.5 s: pause or resume.</li>
                 <li>Mouth pulled to your left for 1.5 s: recenter the cursor.</li>
                 <li>Mouth pulled to your right for 3 s: calibrate EyeSync. A beep sounds after half a second, then a countdown shows on the camera view; relax your mouth to cancel.</li>
                 <li>Head tilted to the left (ear towards your shoulder) and held: scroll up. Tilted to the right: scroll down. The further you tilt, the faster; straighten up to stop.</li>
-                <li>Both eyes closed for 2 s: voice typing on or off (or say “stop listening”).</li>
+                <li>Both eyes closed for 2.5 s: voice typing on or off (or say “stop listening”).</li>
                 <li>Mouth wide open for 3 s: quit EyeSync.</li>
                 <li id="es-gaze-help" hidden>Gaze jump: look at a spot, then nudge your head towards it. The cursor jumps there.</li>
               </ul>
@@ -3845,12 +3845,12 @@ const Mascot = {
   el: $('#mascot'), eyes: $('.ms-eyes'), bubble: $('#mascot-say'),
   tips: [
     'Hi, I\'m Sync! I follow your pointer, the way EyeSync follows your head.',
-    'Close your eyes and open them at the tick to click. Keep them closed until the double tick for a right click.',
+    'Close your eyes and open them after the tick to click. Keep them closed until the double tick for a right click.',
     'Hold a big smile for 1.5 seconds to pause EyeSync.',
     'Calibrate every time you start EyeSync. It takes 30 seconds and keeps the cursor on target.',
     'Need to scroll? Tilt your head towards a shoulder and hold it. Straighten up to stop.',
     'Cursor drifted? Pull your mouth to your left for 1.5 seconds to recenter it.',
-    'Need to type? Click into a text box, close both eyes for 2 seconds, then just talk.',
+    'Need to type? Click into a text box, close both eyes for 2.5 seconds, then just talk.',
     'Long way to go? Turn on gaze jump, look at the spot and nudge your head towards it.',
     'Press “Try it with your head” and steer the little screen yourself.',
     'Your camera picture never leaves your PC. Promise.',
