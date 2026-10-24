@@ -50,7 +50,7 @@ jobs:
       - name: Install native MediaPipe runtime libraries
         run: |
           sudo apt-get update
-          sudo apt-get install -y libegl1 libgl1 libglib2.0-0 libgomp1
+          sudo apt-get install -y libegl1 libgles2 libgl1 libopengl0 libglib2.0-0 libgomp1
 
       - name: Install the headless vision stack
         run: |
@@ -62,6 +62,13 @@ jobs:
 
       - name: Restore and verify the unchanged face model
         run: python scripts/eyesync_ci.py prepare-models
+
+      - name: Preflight the native face landmarker before downloading videos
+        run: |
+          set -o pipefail
+          PYTHONPATH=EyeSync python -c \
+            "import face_engine as fe; mesh=fe.FaceMeshBackend(); print(mesh.kind); mesh.close()" \
+            2>&1 | tee grid-preflight.log
 
       - name: Test the dataset tools and existing blink/low-light logic
         run: |
@@ -82,7 +89,10 @@ jobs:
         if: failure()
         run: |
           mkdir -p experiments/grid
-          cp grid-run.log experiments/grid/s${SPEAKER}-failure.log
+          log_file=grid-run.log
+          if [ ! -f "$log_file" ]; then log_file=grid-preflight.log; fi
+          if [ ! -f "$log_file" ]; then echo "A setup step failed before diagnostics were written." > "$log_file"; fi
+          cp "$log_file" experiments/grid/s${SPEAKER}-failure.log
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add experiments/grid/*failure.log
