@@ -16,6 +16,7 @@ sys.path.insert(0, str(PROJECT))
 sys.path.insert(0, str(PROJECT / "tools"))
 
 import dataset_report
+import event_crops
 import face_engine as fe
 import grid_dataset
 import video_features
@@ -102,6 +103,25 @@ class DatasetReportTests(unittest.TestCase):
             result = dataset_report.report(path, include_events=True)
         self.assertEqual(result["clicks"], 0)
         self.assertTrue(result["events"][0]["cancelled"])
+
+
+class EventReviewTests(unittest.TestCase):
+    def test_selection_is_balanced_and_row_mapping_skips_gaps(self):
+        events = []
+        for i in range(30):
+            events.append({"click": "left", "cancelled": False, "duration": 0.5})
+            events.append({"click": "", "cancelled": False, "duration": 0.2})
+        selected = event_crops.choose(events, 12)
+        self.assertLessEqual(len(selected), 16)
+        self.assertEqual(sum(group == "C" for group, _, _ in selected), 12)
+        self.assertEqual(sum(group == "N" for group, _, _ in selected), 4)
+        meta = {"gap_s": 0.35, "videos": [{"name": "a", "frames": 5},
+                                           {"name": "b", "frames": 5}]}
+        self.assertEqual(event_crops.locate(meta, 0), (meta["videos"][0], 0))
+        self.assertEqual(event_crops.locate(meta, 4), (meta["videos"][0], 4))
+        self.assertEqual(event_crops.locate(meta, 6), (meta["videos"][1], 0))
+        with self.assertRaises(IndexError):
+            event_crops.locate(meta, 5)
 
 
 class GridDownloadTests(unittest.TestCase):

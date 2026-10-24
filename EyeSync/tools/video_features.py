@@ -119,6 +119,7 @@ class FeatureExtractor:
         seconds = sum(v["seconds"] for v in self.videos)
         meta = {
             "format": 1,
+            "gap_s": self.gap_s,
             "eyesync_version": site_access.VERSION,
             "created_unix": time.time(),
             "seconds": seconds,
