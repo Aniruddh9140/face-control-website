@@ -1,0 +1,153 @@
+{
+  "dataset": "GRID",
+  "license": "CC BY 4.0",
+  "attribution": "Cooke, Barker, Cunningham & Shao (2006)",
+  "source": "https://zenodo.org/records/3625687",
+  "features": "s15.npz",
+  "labels": [
+    {
+      "tile": 0,
+      "group": "C",
+      "event_id": 4,
+      "video": "0252_bbaq8p.mpg",
+      "frame": 53,
+      "duration": 0.9200000762939453,
+      "click": "left"
+    },
+    {
+      "tile": 1,
+      "group": "C",
+      "event_id": 24,
+      "video": "0268_bgas6p.mpg",
+      "frame": 52,
+      "duration": 0.9200019836425781,
+      "click": "left"
+    },
+    {
+      "tile": 2,
+      "group": "C",
+      "event_id": 32,
+      "video": "0271_bgbs8n.mpg",
+      "frame": 55,
+      "duration": 0.8000030517578125,
+      "click": "left"
+    },
+    {
+      "tile": 3,
+      "group": "C",
+      "event_id": 101,
+      "video": "0312_lbai6n.mpg",
+      "frame": 59,
+      "duration": 0.4799957275390625,
+      "click": "left"
+    },
+    {
+      "tile": 4,
+      "group": "C",
+      "event_id": 134,
+      "video": "0331_lgbe4n.mpg",
+      "frame": 48,
+      "duration": 1.0,
+      "click": "left"
+    },
+    {
+      "tile": 5,
+      "group": "C",
+      "event_id": 161,
+      "video": "0345_lrap6n.mpg",
+      "frame": 62,
+      "duration": 0.52001953125,
+      "click": "left"
+    },
+    {
+      "tile": 6,
+      "group": "C",
+      "event_id": 182,
+      "video": "0359_lwad4n.mpg",
+      "frame": 64,
+      "duration": 0.399993896484375,
+      "click": "left"
+    },
+    {
+      "tile": 7,
+      "group": "C",
+      "event_id": 240,
+      "video": "0393_pgap2n.mpg",
+      "frame": 47,
+      "duration": 0.959991455078125,
+      "click": "left"
+    },
+    {
+      "tile": 8,
+      "group": "C",
+      "event_id": 279,
+      "video": "0418_priu2p.mpg",
+      "frame": 57,
+      "duration": 0.5999755859375,
+      "click": "left"
+    },
+    {
+      "tile": 9,
+      "group": "C",
+      "event_id": 324,
+      "video": "0447_sbil5s.mpg",
+      "frame": 55,
+      "duration": 0.67999267578125,
+      "click": "left"
+    },
+    {
+      "tile": 10,
+      "group": "C",
+      "event_id": 393,
+      "video": "0490_swbn5s.mpg",
+      "frame": 54,
+      "duration": 0.6400146484375,
+      "click": "left"
+    },
+    {
+      "tile": 11,
+      "group": "C",
+      "event_id": 409,
+      "video": "0499_swwu5a.mpg",
+      "frame": 58,
+      "duration": 0.91998291015625,
+      "click": "left"
+    },
+    {
+      "tile": 12,
+      "group": "N",
+      "event_id": 1,
+      "video": "0251_bbak4p.mpg",
+      "frame": 44,
+      "duration": 0.23999977111816406,
+      "click": ""
+    },
+    {
+      "tile": 13,
+      "group": "N",
+      "event_id": 146,
+      "video": "0337_lgiq4n.mpg",
+      "frame": 20,
+      "duration": 0.20001220703125,
+      "click": ""
+    },
+    {
+      "tile": 14,
+      "group": "N",
+      "event_id": 286,
+      "video": "0422_prwv3s.mpg",
+      "frame": 24,
+      "duration": 0.20001220703125,
+      "click": ""
+    },
+    {
+      "tile": 15,
+      "group": "N",
+      "event_id": 408,
+      "video": "0499_swwu5a.mpg",
+      "frame": 8,
+      "duration": 0.1600341796875,
+      "click": ""
+    }
+  ]
+}

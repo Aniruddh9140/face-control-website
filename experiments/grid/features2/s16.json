@@ -1,0 +1,17 @@
+{
+  "format": 1,
+  "gap_s": 0.35,
+  "eyesync_version": "1.5.8",
+  "created_unix": 1792822123.5096772,
+  "seconds": 750.0,
+  "frames": 18750,
+  "faces": 18749,
+  "contains_images": false,
+  "dataset": "GRID",
+  "speaker": 16,
+  "source": "https://zenodo.org/records/3625687",
+  "attribution": "Cooke, Barker, Cunningham & Shao (2006), The Grid Audio-Visual Speech Corpus",
+  "license": "CC BY 4.0",
+  "archive_md5": "ee409c3897d3a7fc0c51d17b396403e3",
+  "npz_sha256": "ae5e9b176081d88aa7080e2bb23d836514d135c972dcf7f1897fc2e2fbf502cf"
+}

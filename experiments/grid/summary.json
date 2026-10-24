@@ -6,13 +6,21 @@
     1,
     2,
     3,
-    4
-  ],
-  "held_out_speakers": [
+    4,
     5,
     6,
     7,
     8
+  ],
+  "held_out_speakers": [
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16
   ],
   "speakers": [
     {
@@ -30,6 +38,120 @@
       "closures": 491,
       "eyesync_version": "1.5.8",
       "clicks_per_minute": 8.721395618206106
+    },
+    {
+      "name": "s10",
+      "minutes": 12.499999720603228,
+      "frames": 19000,
+      "tracked": 18744,
+      "tracked_pct": 99.968,
+      "clicks": 15,
+      "left": 15,
+      "right": 0,
+      "gestures": {},
+      "notches": 0,
+      "mouth_open_s": 0.0,
+      "closures": 236,
+      "eyesync_version": "1.5.8",
+      "clicks_per_minute": 1.2000000268220907
+    },
+    {
+      "name": "s11",
+      "minutes": 12.499999720603228,
+      "frames": 19000,
+      "tracked": 18750,
+      "tracked_pct": 100.0,
+      "clicks": 23,
+      "left": 23,
+      "right": 0,
+      "gestures": {
+        "smile": 1
+      },
+      "notches": 0,
+      "mouth_open_s": 0.0,
+      "closures": 503,
+      "eyesync_version": "1.5.8",
+      "clicks_per_minute": 1.8400000411272057
+    },
+    {
+      "name": "s12",
+      "minutes": 12.499999720603228,
+      "frames": 19000,
+      "tracked": 18750,
+      "tracked_pct": 100.0,
+      "clicks": 16,
+      "left": 16,
+      "right": 0,
+      "gestures": {},
+      "notches": 0,
+      "mouth_open_s": 0.03997802734375,
+      "closures": 283,
+      "eyesync_version": "1.5.8",
+      "clicks_per_minute": 1.2800000286102302
+    },
+    {
+      "name": "s13",
+      "minutes": 12.499999720603228,
+      "frames": 19000,
+      "tracked": 18750,
+      "tracked_pct": 100.0,
+      "clicks": 3,
+      "left": 3,
+      "right": 0,
+      "gestures": {},
+      "notches": 0,
+      "mouth_open_s": 0.0,
+      "closures": 227,
+      "eyesync_version": "1.5.8",
+      "clicks_per_minute": 0.24000000536441815
+    },
+    {
+      "name": "s14",
+      "minutes": 12.499999720603228,
+      "frames": 19000,
+      "tracked": 18749,
+      "tracked_pct": 99.99466666666666,
+      "clicks": 48,
+      "left": 48,
+      "right": 0,
+      "gestures": {},
+      "notches": 0,
+      "mouth_open_s": 0.0,
+      "closures": 394,
+      "eyesync_version": "1.5.8",
+      "clicks_per_minute": 3.8400000858306904
+    },
+    {
+      "name": "s15",
+      "minutes": 12.499999720603228,
+      "frames": 19000,
+      "tracked": 18524,
+      "tracked_pct": 98.79466666666667,
+      "clicks": 30,
+      "left": 30,
+      "right": 0,
+      "gestures": {},
+      "notches": 0,
+      "mouth_open_s": 0.0,
+      "closures": 410,
+      "eyesync_version": "1.5.8",
+      "clicks_per_minute": 2.4000000536441815
+    },
+    {
+      "name": "s16",
+      "minutes": 12.499999720603228,
+      "frames": 19000,
+      "tracked": 18749,
+      "tracked_pct": 99.99466666666666,
+      "clicks": 11,
+      "left": 11,
+      "right": 0,
+      "gestures": {},
+      "notches": 0,
+      "mouth_open_s": 0.0,
+      "closures": 385,
+      "eyesync_version": "1.5.8",
+      "clicks_per_minute": 0.8800000196695332
     },
     {
       "name": "s2",
@@ -142,12 +264,30 @@
       "closures": 76,
       "eyesync_version": "1.5.8",
       "clicks_per_minute": 0.0
+    },
+    {
+      "name": "s9",
+      "minutes": 12.498666387299696,
+      "frames": 18998,
+      "tracked": 18747,
+      "tracked_pct": 99.99466609771709,
+      "clicks": 1,
+      "left": 1,
+      "right": 0,
+      "gestures": {},
+      "notches": 0,
+      "mouth_open_s": 0.0,
+      "closures": 282,
+      "eyesync_version": "1.5.8",
+      "clicks_per_minute": 0.0800085360319828
     }
   ],
-  "minutes": 98.81399779133498,
-  "clicks": 150,
+  "minutes": 198.81266222285728,
+  "clicks": 297,
   "right": 0,
-  "gestures": {},
+  "gestures": {
+    "smile": 1
+  },
   "notches": 0,
-  "clicks_per_minute": 1.5180035556981941
+  "clicks_per_minute": 1.4938686333121
 }
