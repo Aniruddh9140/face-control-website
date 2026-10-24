@@ -22,7 +22,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        speaker: [1, 2, 3, 4, 5, 6, 7, 8]
+        speaker: [9, 10, 11, 12, 13, 14, 15, 16]
     env:
       SPEAKER: ${{ matrix.speaker }}
     steps:
@@ -113,7 +113,8 @@ jobs:
           summary = {
               'dataset': 'GRID', 'license': 'CC BY 4.0',
               'source': 'https://zenodo.org/records/3625687',
-              'development_speakers': [1, 2, 3, 4], 'held_out_speakers': [5, 6, 7, 8],
+              'development_speakers': [1, 2, 3, 4, 5, 6, 7, 8],
+              'held_out_speakers': [9, 10, 11, 12, 13, 14, 15, 16],
               'speakers': speakers,
               'minutes': sum(r['minutes'] for r in reports),
               'clicks': sum(r['clicks'] for r in reports),
