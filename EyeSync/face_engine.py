@@ -66,6 +66,27 @@ FACE_LANDMARKER_PATH = app_paths.APP_DIR / "models" / "face_landmarker.task"
 LEFT_EYE_EAR_IDX = (362, 385, 387, 263, 373, 380)
 RIGHT_EYE_EAR_IDX = (33, 160, 158, 133, 153, 144)
 
+# Eyelid polylines and iris rings used by the dataset/closure diagnostics.
+# The order follows the upper/lower lid from one corner to the other. Iris
+# points are predictions too, so these measurements are features for a
+# conservative classifier, never proof by themselves that an eye is open.
+EYE_IRIS_IDX = {
+    "left": {
+        "corners": (362, 263),
+        "upper": (362, 398, 384, 385, 386, 387, 388, 466, 263),
+        "lower": (362, 382, 381, 380, 374, 373, 390, 249, 263),
+        "centre": 473,
+        "ring": (474, 475, 476, 477),
+    },
+    "right": {
+        "corners": (33, 133),
+        "upper": (33, 246, 161, 160, 159, 158, 157, 173, 133),
+        "lower": (33, 7, 163, 144, 145, 153, 154, 155, 133),
+        "centre": 468,
+        "ring": (469, 470, 471, 472),
+    },
+}
+
 # Inner-lip and mouth-corner landmarks, for the mouth aspect ratio (MAR) used
 # by the close gesture.
 UPPER_LIP, LOWER_LIP = 13, 14
@@ -201,16 +222,23 @@ class LowLight:
         lut = np.clip(((np.arange(256) / 255.0) ** g) * 255, 0, 255).astype(np.uint8)
         return cv2.LUT(out, lut)
 
-    def process(self, mesh: "FaceMeshBackend", frame: np.ndarray) -> np.ndarray | None:
-        """Face landmarks for ``frame`` (see the class docstring), or None."""
+    def process(self, mesh: "FaceMeshBackend", frame: np.ndarray,
+                ts_ms: int | None = None) -> np.ndarray | None:
+        """Face landmarks for ``frame`` (see the class docstring), or None.
+
+        ``ts_ms`` is used for recorded videos; live capture keeps the default.
+        """
         self.mean = float(cv2.resize(frame, (80, 60), interpolation=cv2.INTER_AREA).mean())
         if self.active and self.mean > self.BRIGHT_MEAN:
             self.active = False
-        landmarks = mesh.process(self.enhance(frame) if self.active else frame)
+        def run(image):
+            return mesh.process(image) if ts_ms is None else mesh.process(image, ts_ms)
+
+        landmarks = run(self.enhance(frame) if self.active else frame)
         if landmarks is not None:
             self.other_wins = 0
         elif self.active or self.mean < self.DARK_MEAN:
-            landmarks = mesh.process(frame if self.active else self.enhance(frame))
+            landmarks = run(frame if self.active else self.enhance(frame))
             self.other_wins = self.other_wins + 1 if landmarks is not None else 0
             if self.other_wins >= self.SWITCH_FRAMES:
                 self.active, self.other_wins = not self.active, 0
@@ -532,6 +560,65 @@ def eye_aspect_ratios(landmarks: np.ndarray, frame_w: int, frame_h: int) -> tupl
     left = landmarks[list(LEFT_EYE_EAR_IDX)] * scale
     right = landmarks[list(RIGHT_EYE_EAR_IDX)] * scale
     return _single_eye_ear(left), _single_eye_ear(right)
+
+
+def iris_apertures(landmarks: np.ndarray, frame_w: int, frame_h: int,
+                   ) -> tuple[tuple[float, float, float, float], tuple[float, float, float, float]]:
+    """Return geometric iris/eyelid features for the (left, right) eyes.
+
+    Each tuple is ``(visible, down_offset, radius, opening)``. ``visible`` is
+    the fraction of the predicted iris's vertical diameter between the lids;
+    ``down_offset`` is its centre relative to the lid midpoint, positive down;
+    ``radius`` and ``opening`` are normalised by eye-corner distance.
+
+    MediaPipe still predicts iris points when an eye is shut. Consequently
+    these values describe geometry only and must be combined with EAR,
+    expression scores and time. They are recorded by the public-dataset tools
+    so a learned guard can be tested without changing live blink behaviour.
+    """
+    if len(landmarks) < 478:
+        empty = (float("nan"),) * 4
+        return empty, empty
+    scale = np.array([frame_w, frame_h], dtype=np.float64)
+    points = np.asarray(landmarks, dtype=np.float64) * scale
+    answers = []
+    for spec in EYE_IRIS_IDX.values():
+        a, b = points[list(spec["corners"])]
+        if b[0] < a[0]:                    # local +x always goes left-to-right
+            a, b = b, a
+        across = b - a
+        width = float(np.linalg.norm(across))
+        if width < 1e-6:
+            answers.append((float("nan"),) * 4)
+            continue
+        ex = across / width
+        ey = np.array([-ex[1], ex[0]])     # down relative to the eye corners
+        origin = a
+
+        def local(indices):
+            q = points[list(indices)] - origin
+            return np.column_stack((q @ ex, q @ ey))
+
+        upper, lower = local(spec["upper"]), local(spec["lower"])
+        centre = local((spec["centre"],))[0]
+        ring = local(spec["ring"])
+        radius_px = float(np.mean(np.linalg.norm(ring - centre, axis=1)))
+        # Interpolate the two lid polylines at the iris centre. np.interp also
+        # clamps a slightly outlying iris prediction to the nearest corner.
+        ux = np.argsort(upper[:, 0])
+        lx = np.argsort(lower[:, 0])
+        top = float(np.interp(centre[0], upper[ux, 0], upper[ux, 1]))
+        bottom = float(np.interp(centre[0], lower[lx, 0], lower[lx, 1]))
+        top, bottom = min(top, bottom), max(top, bottom)
+        cy = float(centre[1])
+        if radius_px > 1e-6:
+            visible = (min(bottom, cy + radius_px) - max(top, cy - radius_px)) / (2 * radius_px)
+            visible = float(np.clip(visible, 0.0, 1.0))
+        else:
+            visible = 0.0
+        answers.append((visible, (cy - (top + bottom) / 2) / width,
+                        radius_px / width, max(0.0, bottom - top) / width))
+    return answers[0], answers[1]
 
 
 def eyes_level_ratio(landmarks: np.ndarray, frame_w: int, frame_h: int) -> float:
