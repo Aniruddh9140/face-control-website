@@ -1,7 +1,8 @@
 {
   "format": 1,
+  "gap_s": 0.35,
   "eyesync_version": "1.5.8",
-  "created_unix": 1792820679.3611414,
+  "created_unix": 1792821160.0535684,
   "seconds": 749.88,
   "frames": 18747,
   "faces": 18723,
@@ -12,5 +13,5 @@
   "attribution": "Cooke, Barker, Cunningham & Shao (2006), The Grid Audio-Visual Speech Corpus",
   "license": "CC BY 4.0",
   "archive_md5": "cbd6556668f061b5c3681bc722659b39",
-  "npz_sha256": "f389ab89d9e2ee671cb1eaf02c1b75f3d202afedcc0fba4439823b9e890ad2d6"
+  "npz_sha256": "eda4c5736a2830478b4144a449e8a62444fc26bd0bf4d0d7063ca10345e8bb58"
 }
