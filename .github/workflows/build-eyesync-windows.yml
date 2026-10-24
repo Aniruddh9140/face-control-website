@@ -86,7 +86,7 @@ jobs:
         run: |
           set -euo pipefail
           version=$(python -c "import json; print(json.load(open('release/latest.json'))['version'])")
-          python scripts/eyesync_ci.py verify-upload "v${version}" release
+          python scripts/eyesync_ci.py verify-upload release "v${version}"
 
       - name: Publish verified download metadata to this branch
         shell: bash

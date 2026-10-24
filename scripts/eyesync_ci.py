@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 import subprocess
 import zipfile
@@ -84,26 +85,28 @@ def verify_upload(tag: str, release_dir: Path) -> None:
     expected_tag = f"v{info['version']}"
     if tag != expected_tag:
         raise RuntimeError(f"release tag {tag} does not match {expected_tag}")
+    repo = os.environ.get("GITHUB_REPOSITORY") or subprocess.run(
+        ["gh", "repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"],
+        cwd=ROOT, check=True, capture_output=True, text=True,
+    ).stdout.strip()
     raw = subprocess.run(
-        ["gh", "release", "view", tag, "--json", "tagName,assets"],
+        ["gh", "api", f"repos/{repo}/releases/tags/{tag}"],
         cwd=ROOT, check=True, capture_output=True, text=True,
     ).stdout
     release = json.loads(raw)
-    if release["tagName"] != tag:
+    if release["tag_name"] != tag:
         raise RuntimeError("GitHub returned the wrong release")
     assets = {asset["name"]: asset for asset in release["assets"]}
-    for name in (exe.name, info["zip"]):
+    package = release_dir / info["zip"]
+    for name, path in ((exe.name, exe), (info["zip"], package)):
         if name not in assets:
             raise RuntimeError(f"GitHub Release {tag} is missing {name}")
-    uploaded = assets[exe.name]
-    if uploaded.get("size") != exe.stat().st_size:
-        raise RuntimeError("the uploaded executable size differs from the tested executable")
-    digest = uploaded.get("digest") or ""
-    if digest and digest != f"sha256:{info['sha256']}":
-        raise RuntimeError("the uploaded executable digest differs from the tested executable")
-    package = release_dir / info["zip"]
-    if assets[info["zip"]].get("size") != package.stat().st_size:
-        raise RuntimeError("the uploaded source package size differs from the tested package")
+        uploaded = assets[name]
+        if uploaded.get("state") != "uploaded" or uploaded.get("size") != path.stat().st_size:
+            raise RuntimeError(f"the uploaded {name} size or state differs from the tested file")
+        digest = uploaded.get("digest") or ""
+        if digest and digest != f"sha256:{sha256(path)}":
+            raise RuntimeError(f"the uploaded {name} digest differs from the tested file")
     print(f"verified uploaded release {tag}: {', '.join(sorted(assets))}")
 
 
