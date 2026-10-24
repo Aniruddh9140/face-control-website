@@ -1,6 +1,11 @@
 name: Evaluate EyeSync on public videos
 
 on:
+  push:
+    branches:
+      - arena/c1ec5b3e-face-control-website
+    paths:
+      - .github/workflows/eyesync-public-datasets.yml
   workflow_dispatch:
     inputs:
       speaker:
@@ -21,8 +26,12 @@ permissions:
   contents: write
 
 concurrency:
-  group: eyesync-grid-${{ github.ref }}-${{ inputs.speaker }}
+  group: eyesync-grid-${{ github.ref }}-${{ inputs.speaker || '1' }}
   cancel-in-progress: false
+
+env:
+  SPEAKER: ${{ inputs.speaker || '1' }}
+  COUNT: ${{ inputs.count || '500' }}
 
 jobs:
   extract:
@@ -59,27 +68,27 @@ jobs:
       - name: Download, verify and featurise public GRID videos
         run: |
           python EyeSync/tools/grid_dataset.py \
-            --speaker "${{ inputs.speaker }}" \
-            --count "${{ inputs.count }}" \
-            --output "experiments/grid/features2/s${{ inputs.speaker }}.npz"
+            --speaker "$SPEAKER" \
+            --count "$COUNT" \
+            --output "experiments/grid/features2/s${SPEAKER}.npz"
 
       - name: Replay EyeSync on the extracted numbers
         run: |
           python EyeSync/tools/dataset_report.py \
-            "experiments/grid/features2/s${{ inputs.speaker }}.npz" \
-            --events --output "experiments/grid/s${{ inputs.speaker }}-report.json"
+            "experiments/grid/features2/s${SPEAKER}.npz" \
+            --events --output "experiments/grid/s${SPEAKER}-report.json"
 
       - name: Cache compact numbers for the next training/evaluation step
-        if: ${{ inputs.cache }}
+        if: ${{ inputs.cache || github.event_name == 'push' }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add experiments/grid
-          git commit -m "Cache GRID s${{ inputs.speaker }} numerical features [dataset]"
+          git commit -m "Cache GRID s${SPEAKER} numerical features [dataset]"
           git push origin "HEAD:${GITHUB_REF_NAME}"
 
       - name: Upload the numerical report
-        if: ${{ !inputs.cache }}
+        if: ${{ github.event_name == 'workflow_dispatch' && !inputs.cache }}
         uses: actions/upload-artifact@v4
         with:
           name: eyesync-grid-s${{ inputs.speaker }}
