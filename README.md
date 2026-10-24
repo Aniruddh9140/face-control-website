@@ -1,13 +1,13 @@
 # face-control-website
 
-**EyeSync**: the website for EyeSync, a Windows program that turns a webcam into a mouse you steer with your head and click with a blink. The site is where people download EyeSync and the dashboard they control it from. It is a single static page (`index.html`) with inline CSS and an inline JavaScript module, built to run on GitHub Pages with no build step and no server.
+**EyeSync**: the website for EyeSync, a Windows program that turns a webcam into a mouse you steer with your head and click with a blink. The site is where people download EyeSync and the dashboard they control it from. It is a static page (`index.html`) with inline CSS and JavaScript, plus a small lazy-loaded browser-tracking engine (`ai/head-demo-engine.mjs`), built to run on GitHub Pages with no build step and no server.
 
 The EyeSync program lives in its own folder (`E:\EyeSync`); its `WEBSITE.md` is the protocol reference this site follows.
 
 ## What it does
 
 - **Home page.** Visitors land on an introduction (`#home`) dressed as a little retro desktop: a menu bar with a clock, and sections as windows you can nudge by their title bars. It covers what EyeSync does, the face gestures, how to get started, and the privacy and accessibility approach.
-- **Live head demo.** "Try it with your head" under the home page's CRT lets a visitor steer that screen with their own head and blink to click, with no install. The face tracking is Google's MediaPipe face landmarker, served by this site from `vendor/mediapipe/` (see its README) and loaded only when the button is pressed. Camera pictures stay in the tab: nothing is stored or sent, and the camera turns off on Stop, when the tab is hidden, or when the visitor leaves the page. The library's own usage reporting is switched off.
+- **Live head demo.** "Try it with your head" under the home page's CRT lets a visitor steer that screen with their own head and deliberately blink to click, with no install. Google's MediaPipe face landmarker and the site's signal engine are served locally and loaded only when the button is pressed. The engine uses median-based centering, motion-adaptive One Euro smoothing and face-loss recovery. Ordinary blinks do not click: close both eyes until the tick (about 0.32 s, or 0.4 s while moving), then open them. Slow reopenings, long closures and smile squints are rejected; asymmetric two-eyed blinks still work. Camera pictures stay in the tab: nothing is stored or sent, and the camera turns off on Stop, when the tab is hidden, or when the visitor leaves the page. The library's own usage reporting is switched off.
 - **Sync, the mascot.** A small pixel computer in the corner of the home page watches the pointer, blinks when you click, and has tips when pressed.
 - **Download page.** `#download` reads `downloads/latest.json` and offers `EyeSync.exe` from the newest GitHub Release, for example "Download EyeSync 1.1.1 for Windows (124 MB)", with the release date, size and SHA-256, and the source zip for developers. EyeSync.exe is the whole program and installs itself. The page explains how to install, update and remove it. Guests can open it without an account.
 - **Accounts with Supabase.** People sign up and sign in with an email address and password, handled by Supabase Auth (see [Accounts](#accounts)), so an account works on any computer. Supabase keeps only a bcrypt hash of the password and rate-limits sign-in attempts. The dashboard settings and the last accuracy test are saved to the account a moment after each change and loaded after signing in.
@@ -36,6 +36,16 @@ python -m http.server 8000
 Then open http://localhost:8000. You can also open `index.html` directly from disk, but then the Download page can't read `latest.json`.
 
 EyeSync only trusts the GitHub Pages origin, so a local copy can't talk to the real EyeSync. Use the mock below, or EyeSync's API key as described in its `WEBSITE.md`.
+
+## Test the browser tracking engine
+
+The signal engine has no browser or MediaPipe dependency, so its timing and tracking tests run with Node.js and no install step:
+
+```bash
+node --test tests/head-demo-engine.test.mjs
+```
+
+The suite covers calibration outliers and timing, scale-invariant pose extraction, jitter and fast movement, natural and deliberate blinks at 30/60 fps, asymmetric blinks, slow reopenings, smile squints, cooldowns, face loss and recentering. `HEAD_DEMO_AI_VERSION` in the engine and `HEAD_AI_VERSION` in `index.html` must be bumped together when the engine changes, so returning visitors receive the new file rather than a cached copy.
 
 ## Test without hardware
 
