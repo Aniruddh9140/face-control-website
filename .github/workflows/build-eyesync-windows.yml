@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - arena/46de1b67-face-control-website
+      - arena/c1ec5b3e-face-control-website
     paths:
       - EyeSync/**
       - EyeSync-1.5.7.zip
