@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <!--
   Content Security Policy. Everything ships inline, so nothing is loaded from any other host.
-  Scripts may also come from this site itself (vendor/mediapipe, the face-tracking library behind the
-  home page's live head demo), which also needs WebAssembly ('wasm-unsafe-eval').
+  Scripts may also come from this site itself (the face-tracking library and the live demo's signal
+  engine); MediaPipe also needs WebAssembly ('wasm-unsafe-eval').
   fetch() may only read this site's own files (latest.json, the face model) and reach the site's
   Supabase project (accounts and their settings); WebSocket connections are limited to this computer
   (localhost / 127.0.0.1). Camera pictures from EyeSync arrive as data: URLs.
@@ -865,7 +865,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
                 <button class="btn btn-primary" type="button" id="try-head">Try it with your head</button>
                 <button class="btn" type="button" id="try-recenter" hidden>Recenter</button>
               </div>
-              <p class="hint" id="try-status" role="status">Steer this screen with your own head, right here. Your camera turns on only when you press the button, and the picture never leaves your browser.</p>
+              <p class="hint" id="try-status" role="status">Steer this screen with your own head. Close your eyes until the tick, then open them to click. Your camera turns on only when you press the button, and the picture never leaves your browser.</p>
             </div>
             <span class="pv-hint">Or move your mouse over the screen to steer, and click to blink.</span>
             <span class="label">What EyeSync sends this page, about 30 times a second</span>
@@ -3455,9 +3455,11 @@ const HeroPreview = {
     const hit = this.targets.find((el, i) => Math.hypot(this.spots[i].x - x, this.spots[i].y - y) < 0.09);
     if (hit) { hit.classList.add('is-hit'); setTimeout(() => hit.classList.remove('is-hit'), 420); }
   },
-  // The live head demo steers from here, once per camera frame.
+  // The live head demo steers from here. Its signal engine already smoothed the motion,
+  // so update the rendered position directly instead of adding a second laggy filter.
   drive(x, y, click) {
     this.pointer = { x, y };
+    this.x = x; this.y = y;
     if (click) this.click(x, y);
     if (!this.raf) this.place(x, y, click);
   },
@@ -3713,13 +3715,13 @@ const Effects = {
   },
 };
 
-/* ---------- Live head demo: steer the home page's CRT with your own head, in the browser ----------
-   Uses Google's MediaPipe face landmarker, served by this site (vendor/mediapipe) and loaded only when
-   the visitor presses the button. The camera picture goes from the camera to the tracker in this tab
-   and nowhere else; nothing is stored or sent. The head's turn and tilt are measured against where it
-   was when the demo started (or Recenter was pressed), and both eyes closing is a click. */
+/* ---------- Live head demo: adaptive, private head tracking in the browser ----------
+   MediaPipe and the signal engine are served by this site and loaded only when the visitor presses
+   the button. Camera frames stay in this tab. The engine robustly learns a center, adapts its
+   smoothing to movement, and clicks only when a deliberate blink opens after the tick. */
 const MP_BASE = new URL('vendor/mediapipe/', location.href);
-const MP_VERSION = '1.1.1-quiet';                 // bump when the files change, so browsers fetch the new copy
+const MP_VERSION = '1.1.1-quiet';                 // bump when the MediaPipe files change
+const HEAD_AI_VERSION = '2.0.0';                  // cache-bust ai/head-demo-engine.mjs on upgrades
 async function loadLandmarker() {
   const { FilesetResolver, FaceLandmarker } = await import(new URL(`vision_bundle.mjs?v=${MP_VERSION}`, MP_BASE).href);
   const files = await FilesetResolver.forVisionTasks(new URL('wasm', MP_BASE).href);
@@ -3730,15 +3732,52 @@ async function loadLandmarker() {
   try { return await FaceLandmarker.createFromOptions(files, options('GPU')); }
   catch { return FaceLandmarker.createFromOptions(files, options('CPU')); }
 }
+async function loadHeadAI() {
+  return import(new URL(`ai/head-demo-engine.mjs?v=${HEAD_AI_VERSION}`, location.href).href);
+}
+
+// A short, quiet cue makes the deliberate-blink timing usable without looking at the status text.
+// The context is created/resumed by the demo button's user gesture, never by a camera frame.
+const DemoCue = {
+  context: null,
+  unlock() {
+    try {
+      const Audio = window.AudioContext || window.webkitAudioContext;
+      if (!Audio) return;
+      this.context ??= new Audio();
+      if (this.context.state === 'suspended') this.context.resume().catch(() => {});
+    } catch { /* visual instructions remain available */ }
+  },
+  tick() {
+    const context = this.context;
+    if (!context || context.state !== 'running') return;
+    try {
+      const oscillator = context.createOscillator(), gain = context.createGain();
+      const at = context.currentTime;
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(880, at);
+      gain.gain.setValueAtTime(0.0001, at);
+      gain.gain.linearRampToValueAtTime(0.035, at + 0.008);
+      gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.07);
+      oscillator.connect(gain); gain.connect(context.destination);
+      oscillator.start(at); oscillator.stop(at + 0.075);
+      oscillator.addEventListener('ended', () => { oscillator.disconnect(); gain.disconnect(); }, { once: true });
+    } catch { /* audio is an enhancement, not a requirement */ }
+  },
+  suspend() { this.context?.suspend().catch(() => {}); },
+};
+
 const HeadDemo = {
   state: 'off',                                    // off | loading | on
-  tracker: null, stream: null, loop: 0, lastTime: -1, lastSeen: 0, lost: false,
-  center: null, warm: [], eyesShut: false, lastClick: 0,
+  tracker: null, ai: null, engine: null, stream: null,
+  loop: 0, lastTime: -1, lastInference: 0, lastSeen: 0, lost: false, errors: 0,
+  lastBlinkPhase: 'open',
   video: $('#pv-video'), btn: $('#try-head'), recenterBtn: $('#try-recenter'), status: $('#try-status'),
   init() {
     this.btn.addEventListener('click', () => (this.state === 'off' ? this.start() : this.stop('Stopped. Your camera is off.')));
     this.recenterBtn.addEventListener('click', () => this.recenter());
     document.addEventListener('visibilitychange', () => { if (document.hidden && this.state !== 'off') this.stop('Stopped while the tab was hidden. Your camera is off.'); });
+    window.addEventListener('pagehide', () => { if (this.state !== 'off') this.stop('Stopped when you left the page. Your camera is off.'); });
   },
   say(msg) { this.status.textContent = msg; },
   render() {
@@ -3750,91 +3789,138 @@ const HeadDemo = {
   },
   async start() {
     if (!navigator.mediaDevices?.getUserMedia || !window.isSecureContext) { this.say('This browser can\'t use a camera on this page.'); return; }
+    DemoCue.unlock();
     this.state = 'loading';
     this.render();
     this.say('Starting your camera. Your browser will ask first.');
     let stream;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }, audio: false });
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 30 } },
+        audio: false,
+      });
     } catch (err) {
       this.state = 'off';
+      DemoCue.suspend();
       this.render();
       this.say(err?.name === 'NotAllowedError' ? 'Camera access was blocked. Allow it from the camera icon in the address bar, then try again.'
         : err?.name === 'NotFoundError' ? 'No camera was found on this device.'
+        : err?.name === 'NotReadableError' ? 'Another app may be using the camera. Close it, then try again.'
         : 'The camera couldn\'t start. Close other apps that use it, then try again.');
       return;
     }
-    if (this.state !== 'loading') { stream.getTracks().forEach((t) => t.stop()); return; }   // stopped meanwhile
+    if (this.state !== 'loading') { stream.getTracks().forEach((track) => track.stop()); return; }
     this.stream = stream;
+    for (const track of stream.getVideoTracks()) {
+      track.addEventListener('ended', () => {
+        if (this.stream === stream && this.state !== 'off') this.stop('The camera disconnected. Reconnect it, then try again.');
+      }, { once: true });
+    }
     this.video.srcObject = stream;
     this.video.hidden = false;
     try { await this.video.play(); } catch { /* it plays once frames arrive */ }
-    if (!this.tracker) {
-      this.say('Loading face tracking. The first time, that\'s about 18 MB…');
-      try { this.tracker = await loadLandmarker(); }
-      catch { this.stop('Face tracking couldn\'t load. Check your connection and try again.'); return; }
+
+    if (!this.tracker || !this.ai) {
+      this.say('Loading adaptive face tracking. The first time, that\'s about 18 MB…');
+      try {
+        const [tracker, ai] = await Promise.all([
+          this.tracker ? Promise.resolve(this.tracker) : loadLandmarker(),
+          this.ai ? Promise.resolve(this.ai) : loadHeadAI(),
+        ]);
+        this.tracker = tracker;
+        this.ai = ai;
+      } catch {
+        this.stop('Face tracking couldn\'t load. Check your connection and try again.');
+        return;
+      }
     }
     if (this.state !== 'loading') return;
+    this.engine ??= new this.ai.HeadDemoEngine();
     this.state = 'on';
+    this.errors = 0;
+    this.lost = false;
+    this.lastTime = -1;
+    this.lastInference = 0;
     this.render();
     this.recenter();
     this.lastSeen = performance.now();
-    Mascot.speak('I can see you! Turn your head to steer, and blink to click.');
+    Mascot.speak('I can see you! Turn your head to steer. Close your eyes until the tick, then open them to click.');
     this.tick();
   },
   recenter() {
-    this.center = null;
-    this.warm = [];
+    this.engine?.recenter();
+    this.lastBlinkPhase = 'open';
     this.say('Look straight at the screen and hold still for a moment…');
   },
+  faceMissing(now) {
+    this.engine?.faceLost();
+    if (!this.lost && now - this.lastSeen > 1200) {
+      this.lost = true;
+      // A long disappearance often means a different seating position or face.
+      // Learn a fresh center instead of jumping back to the old one.
+      this.engine?.recenter();
+      this.say('I can\'t see your face. Move into the camera\'s view, with light in front of you.');
+    }
+  },
   tick() {
+    if (this.state !== 'on') return;
     this.loop = requestAnimationFrame(() => this.tick());
-    const v = this.video;
-    if (v.readyState < 2 || v.currentTime === this.lastTime) return;
-    this.lastTime = v.currentTime;
-    const now = performance.now();
+    const video = this.video, now = performance.now();
+    if (video.readyState < 2 || video.currentTime === this.lastTime || now - this.lastInference < 31) return;
+    this.lastTime = video.currentTime;
+    this.lastInference = now;
+
     let result;
-    try { result = this.tracker.detectForVideo(v, now); } catch { return; }
+    try { result = this.tracker.detectForVideo(video, now); }
+    catch {
+      // A single bad frame should not end a session; repeated failures should not
+      // fail silently or leave the camera running without working tracking.
+      if (++this.errors >= 5) this.stop('Face tracking stopped responding. Press Try it with your head to restart it.');
+      return;
+    }
+    this.errors = 0;
     const face = result.faceLandmarks?.[0];
-    if (!face) {
-      if (!this.lost && now - this.lastSeen > 1200) { this.lost = true; this.say('I can\'t see your face. Move into the camera\'s view, with light in front of you.'); }
-      return;
+    const pose = face ? this.ai.poseFromLandmarks(face) : null;
+    if (!pose) { this.faceMissing(now); return; }
+    if (this.lost) {
+      this.lost = false;
+      this.say('Got you again. Look straight at the screen while I recenter…');
     }
-    if (this.lost) { this.lost = false; this.say('Got you again. Turn your head to steer, and blink to click.'); }
     this.lastSeen = now;
-    // Turn and tilt: where the nose tip sits between the cheeks and between forehead and chin.
-    const nose = face[1], a = face[234], b = face[454], top = face[10], chin = face[152];
-    const yaw = (nose.x - (a.x + b.x) / 2) / Math.max(0.01, Math.abs(b.x - a.x));
-    const pitch = (nose.y - (top.y + chin.y) / 2) / Math.max(0.01, Math.abs(chin.y - top.y));
-    if (!this.center) {
-      this.warm.push([yaw, pitch]);
-      if (this.warm.length >= 12) {
-        this.center = [0, 1].map((k) => this.warm.reduce((s, w) => s + w[k], 0) / this.warm.length);
-        this.say('Ready! Turn your head to steer and blink to click a target. Press Recenter if it drifts.');
-      }
-      return;
+    const scores = this.ai.readBlendshapes(result.faceBlendshapes?.[0]?.categories);
+    const output = this.engine.update(pose, scores, now);
+
+    // Keep the original hold-still instruction while sampling. Repeating a live
+    // percentage several times in a third of a second would flood screen readers.
+    if (output.phase === 'calibrating') return;
+    if (output.justCalibrated) {
+      this.say('Ready! Turn your head to steer. Close your eyes until the tick, then open them to click.');
     }
-    // The camera sees you unmirrored: turning to your right moves your nose left in its picture.
-    const x = clamp(0.5 - (yaw - this.center[0]) * 3.2, 0.03, 0.97);
-    const y = clamp(0.5 + (pitch - this.center[1]) * 4.5, 0.03, 0.97);
-    const shapes = result.faceBlendshapes?.[0]?.categories || [];
-    const score = (name) => shapes.find((c) => c.categoryName === name)?.score || 0;
-    const shut = score('eyeBlinkLeft') > 0.5 && score('eyeBlinkRight') > 0.5;
-    const click = shut && !this.eyesShut && now - this.lastClick > 600;
-    if (click) this.lastClick = now;
-    this.eyesShut = shut;
-    HeroPreview.drive(x, y, click);
-    Mascot.follow(x, y, click);
+    if (output.tick) {
+      DemoCue.tick();
+      this.say('Tick — open your eyes to click.');
+    } else if (output.click) {
+      this.say('Clicked! Turn your head to steer, or hold another blink to the tick.');
+    } else if (output.blinkPhase === 'expired' && this.lastBlinkPhase !== 'expired') {
+      this.say('That blink was held too long to click. Open your eyes, then try again to the tick.');
+    }
+    this.lastBlinkPhase = output.blinkPhase || 'open';
+    HeroPreview.drive(output.x, output.y, output.click);
+    Mascot.follow(output.x, output.y, output.click);
   },
   stop(msg) {
     cancelAnimationFrame(this.loop);
     this.loop = 0;
-    this.stream?.getTracks().forEach((t) => t.stop());
+    this.stream?.getTracks().forEach((track) => track.stop());
     this.stream = null;
     this.video.srcObject = null;
     this.video.hidden = true;
     this.state = 'off';
+    this.lost = false;
+    this.engine?.recenter();
+    this.lastBlinkPhase = 'open';
     HeroPreview.pointer = null;
+    DemoCue.suspend();
     this.render();
     if (msg) this.say(msg);
   },
