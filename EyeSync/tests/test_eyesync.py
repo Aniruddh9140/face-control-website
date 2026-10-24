@@ -943,11 +943,24 @@ class CalibrationTests(unittest.TestCase):
         self.assertEqual(res["turn_deg"], 30)
         self.assertAlmostEqual(res["blink_close_ratio"], 0.06 / 0.28 + 0.4 * (1 - 0.06 / 0.28), delta=0.02)
         self.assertEqual(res["blink_score_delta"], 0.4)      # deep, clear blinks: harder to fake
+        self.assertGreaterEqual(res["blink_min_s"], li.BLINK_MIN_S)
+        self.assertLess(res["blink_min_s"], 0.4)             # below the demonstrated 0.4 s holds
         self.assertAlmostEqual(res["smile_min"], 0.6, delta=0.01)
         self.assertEqual(cal.skipped, [])
         # Every head direction taught the blink detector how open eyes look there.
         self.assertEqual({tuple(f.pose) for f in cal.learned},
                          {(0.0, 0.0), (15, 0.0), (-15, 0.0), (0.0, 8), (0.0, -8)})
+
+    def test_slow_blinks_fit_an_accessible_longer_tick(self):
+        closed = dict(eyes=((0.06, 0.06), (0.9, 0.9)))
+        slow = [(0.6, {}), (0.7, closed)] * 3 + [(0.6, {})]
+        cal = self.run_cal(self.head_script() + slow + self.SMILE)
+        res = cal.results()
+        holds = [b[2] for b in cal.blinks]
+        self.assertEqual(len(holds), 3)
+        self.assertAlmostEqual(res["blink_min_s"], 0.9 * float(np.median(holds)), delta=0.002)
+        self.assertGreaterEqual(res["blink_min_s"], 0.55)
+        self.assertLessEqual(res["blink_min_s"], 0.65)
 
     def test_glasses_blinks_fit_the_blink_score(self):
         """Eyelid points barely move behind glasses; the score rises only ~0.3."""
@@ -998,6 +1011,16 @@ class CalibrationTests(unittest.TestCase):
         li.apply_calibration(None, hp, blink, gestures)              # back to the defaults
         self.assertIsNone(hp.calib)
         self.assertEqual(gestures.threshold("smile"), li.GESTURES["smile"][1])
+
+    def test_explicit_blink_timing_overrides_calibration(self):
+        hp = li.HeadPointer(1920, 1080)
+        blink = li.BlinkDetector(None, 0.55, 0.70, 0.2, 1.5, 0.6)
+        gestures = li.FaceGestures()
+        cal = {"blink_min_s": 0.6}
+        li.apply_calibration(cal, hp, blink, gestures, timing=False)
+        self.assertEqual(blink.min_s, 0.2)
+        li.apply_calibration(cal, hp, blink, gestures)
+        self.assertEqual(blink.min_s, 0.6)
 
     def test_a_lopsided_calibration_only_fine_tunes(self):
         """A real user's calibration: up-down 0.69 face widths, 2.2x the default (one

@@ -14,4 +14,4 @@ python scripts/eyesync_ci.py prepare-models
 ```
 
 The Windows release workflow runs this command automatically. The model bytes
-are unchanged between EyeSync 1.5.7 and 1.5.8.
+are unchanged between EyeSync 1.5.7 and 1.5.9.
