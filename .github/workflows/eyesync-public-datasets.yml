@@ -67,10 +67,22 @@ jobs:
 
       - name: Download, verify and featurise public GRID videos
         run: |
+          set -o pipefail
           python EyeSync/tools/grid_dataset.py \
             --speaker "$SPEAKER" \
             --count "$COUNT" \
-            --output "experiments/grid/features2/s${SPEAKER}.npz"
+            --output "experiments/grid/features2/s${SPEAKER}.npz" 2>&1 | tee grid-run.log
+
+      - name: Preserve a small failure diagnostic
+        if: failure()
+        run: |
+          mkdir -p experiments/grid
+          cp grid-run.log experiments/grid/s${SPEAKER}-failure.log
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add experiments/grid/*failure.log
+          git commit -m "Preserve GRID s${SPEAKER} failure diagnostic [dataset]"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
 
       - name: Replay EyeSync on the extracted numbers
         run: |
