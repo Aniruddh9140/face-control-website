@@ -45,10 +45,14 @@ def _value(row, columns, name, default=0.0):
     return value if math.isfinite(value) else default
 
 
-def report(path: Path, include_events: bool = False) -> dict:
+def report(path: Path, include_events: bool = False,
+           blink_min_s: float | None = None) -> dict:
     path = Path(path)
     data, columns, meta = load(path)
-    blink = li.BlinkDetector(None, 0.55, 0.70, li.BLINK_MIN_S, li.BLINK_MAX_S,
+    minimum = li.BLINK_MIN_S if blink_min_s is None else float(blink_min_s)
+    if not 0.05 <= minimum <= 2.0:
+        raise ValueError("blink_min_s must be between 0.05 and 2 seconds")
+    blink = li.BlinkDetector(None, 0.55, 0.70, minimum, li.BLINK_MAX_S,
                              0.6, li.BLINK_RIGHT_S)
     gestures = li.FaceGestures()
     scroll = li.TiltScroll()
@@ -169,6 +173,8 @@ def report(path: Path, include_events: bool = False) -> dict:
         "closures": len(events),
         "eyesync_version": meta.get("eyesync_version", "unknown"),
     }
+    if blink_min_s is not None:
+        answer["blink_min_s"] = minimum
     if include_events:
         answer["events"] = events
     return answer
@@ -179,8 +185,9 @@ def main() -> int:
     parser.add_argument("features", nargs="+", type=Path)
     parser.add_argument("-o", "--output", type=Path)
     parser.add_argument("--events", action="store_true", help="include closure event indices")
+    parser.add_argument("--blink-min", type=float, help="development-only tick-time override")
     args = parser.parse_args()
-    reports = [report(path, args.events) for path in args.features]
+    reports = [report(path, args.events, args.blink_min) for path in args.features]
     for item in reports:
         print(f"{item['name']}: {item['minutes']:.2f} min, {item['clicks']} false clicks "
               f"({item['right']} right), {item['closures']} closures, "

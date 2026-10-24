@@ -201,18 +201,19 @@ again").
    you.
 3. **Click**, in one of two ways (Settings → **Click by**):
    - **Blink** (the default): close both eyes and listen. A short high **tick**
-     (about ⅓ second) means "open now and it clicks"; open your eyes and it
-     left-clicks. No tick, no click, so ordinary quick blinks are ignored -
-     and while your head is moving (reading, looking around) the tick comes a
-     little later (about 0.4 s), so blinks while you read don't click.
+     (about ⅓ second by default, or your calibrated time) means "open now and
+     it clicks"; open your eyes and it left-clicks. No tick, no click, so
+     ordinary quick blinks are ignored - and while your head is moving
+     (reading, looking around) the tick comes a little later (at least about
+     0.4 s), so blinks while you read don't click.
      You hear a click sound every time a click registers. Works with
      glasses.
      **Right click:** keep your eyes closed past the tick until the
      **double tick** (about 1.3 seconds), then open them (two short beeps
      confirm it). Most people can't wink one eye cleanly, but everyone can
      blink a little longer.
-     **No need to hurry:** after each tick you have about a second to open
-     your eyes - after the tick it's still a click until the double tick,
+     **No need to hurry:** after each tick you have time to open your eyes -
+     after the tick it's still a click until the double tick,
      and after the double tick still a right click until about 2.4 seconds.
      Longer is resting: no click. 2.5 seconds is voice typing (see below).
      (Until 1.5.1 the double tick came at 0.8 s and resting at 1.5 s; until
@@ -224,8 +225,8 @@ again").
      other, your blinks are still blinks, with both ticks and voice typing.
      After a smile gesture, blinks count again once your face has relaxed.
      **You can blink while moving or tilting your head.** A deliberate
-     blink (eyes fully shut for about ⅓ second) clicks where the cursor
-     was when you closed your eyes. Quick natural blinks while you turn
+     blink (eyes fully shut until the tick) clicks where the cursor was
+     when you closed your eyes. Quick natural blinks while you turn
      don't click and don't stop the cursor.
      **Moving your head alone never clicks.** Looking at the bottom of the
      screen makes your eyes look half closed to the camera. EyeSync learns
@@ -309,7 +310,8 @@ shows you what to do, and moves on by itself; you never need to click:
 1. Look at the dot in the middle and keep still.
 2. Turn your head (not just your eyes) towards the dots on the left, right,
    top and bottom edges, holding still at each.
-3. Blink slowly 3 times.
+3. Blink slowly 3 times, keeping your eyes closed for about 0.7 seconds each
+   time if you comfortably can. Shorter demonstrations still fit your own ability.
 4. Give a big smile.
 
 What it changes:
@@ -320,9 +322,11 @@ What it changes:
   doesn't fly off. It fine-tunes the speed by up to 30% either way, so one
   rushed step can't make the cursor much too slow or too fast. EyeSync
   switches to speed 1 afterwards; the higher speeds are still faster.
-- **Blink clicks:** fitted to how far your eyes close (with or without
-  glasses). EyeSync also learns how your open eyes look at each screen edge,
-  so looking there is never taken as a blink.
+- **Blink clicks:** fitted to how far and how long your eyes close (with or
+  without glasses). The click tick is set just below your demonstrated slow
+  closure, never forced to 0.6 seconds if you blink more quickly. EyeSync also
+  learns how your open eyes look at each screen edge, so looking there is never
+  taken as a blink. Recalibrate after updating to 1.5.9 to enable this timing fit.
 - **Smile gesture:** set just below your big smile, so a light smile stays
   well under it.
 
@@ -476,7 +480,7 @@ Instead, have each user paste their own key into the page.
 | The website can't find EyeSync after you restart the PC | EyeSync may be switched off in Windows (Settings > Apps > Startup, or Task Manager > Startup apps). Tick **Start with Windows** in the EyeSync window to switch it back on, or open the EyeSync shortcut once. |
 | Website shows "not connected" | Open the **EyeSync** shortcut, or close and reopen the dashboard. If it still doesn't connect, press **Open log** in the window and look for errors about ports 8080 or 8765. |
 | Another site or app can't connect | It needs the API key (see above). The log shows `Refused a connection ... API key required` or `invalid API key`. |
-| A click when you only moved your head, or a blink that didn't click | Close your eyes fully for about ⅓ second. The log says `Head moved while the eyes only looked half closed ... not a blink` when it ignored a closure. If it still happens, send `eyesync.log`. |
+| A click when you only moved your head, or a blink that didn't click | Close your eyes fully until the tick (about ⅓ second by default, or your calibrated time). The log says `Head moved while the eyes only looked half closed ... not a blink` when it ignored a closure. If it still happens, send `eyesync.log`. |
 | "It's too dark for the camera" | Turn on a light, or turn up your screen brightness (the screen lights your face). |
 | You plugged in a monitor, pressed Win+P, or changed the resolution | Nothing to do: within 2 seconds EyeSync follows the new size of your main screen (the log says `Display changed`). The cursor moves on the main screen only; make the screen you want to use the main one in Windows Settings > System > Display. |
 | "Can't open the camera" | Another app (Zoom, Teams, a browser tab) is using the webcam, or camera access is off in Windows Settings > Privacy > Camera. Fix that; EyeSync retries every 2 seconds and also tries a second or third camera. |

@@ -19,6 +19,7 @@ import dataset_report
 import event_crops
 import face_engine as fe
 import grid_dataset
+import timing_study
 import video_features
 
 
@@ -95,6 +96,16 @@ class DatasetReportTests(unittest.TestCase):
         self.assertEqual(result["gestures"], {})
         self.assertEqual(result["notches"], 0)
         self.assertEqual([event["click"] for event in result["events"]], ["left", ""])
+
+    def test_timing_override_and_public_appearance_probe(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "synthetic.npz"
+            self.write(path, ((32, 47), (70, 75)))
+            delayed = dataset_report.report(path, blink_min_s=0.6)
+            probe = timing_study.recall(path, 0.6, hold_s=0.65)
+        self.assertEqual(delayed["clicks"], 0)       # the original closure was only 0.5 s
+        self.assertEqual(delayed["blink_min_s"], 0.6)
+        self.assertEqual((probe["passed"], probe["tested"]), (2, 2))
 
     def test_a_video_cut_cancels_a_closure(self):
         with tempfile.TemporaryDirectory() as tmp:
