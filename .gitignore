@@ -1,0 +1,21 @@
+__pycache__/
+*.py[cod]
+.venv/
+
+# Windows build output and local runtime state
+EyeSync/build/
+EyeSync/dist/
+EyeSync/eyesync_settings.json
+EyeSync/eyesync_api_key.txt
+EyeSync/*.log
+EyeSync/*.log.*
+EyeSync/recordings/
+EyeSync/tests/data/*.npz
+EyeSync/tests/data/*.joblib
+EyeSync-Release/
+release/
+
+# Large model binaries remain in the uploaded source archive. CI restores
+# these generated copies before testing/building instead of committing them twice.
+EyeSync/models/*
+!EyeSync/models/README.md
