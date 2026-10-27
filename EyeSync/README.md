@@ -138,13 +138,15 @@ then says what EyeSync would have done. Nobody in a dataset is using
 EyeSync, so every click, gesture or scroll is a false one. Since 1.5.7
 EyeSync is checked this way on the **GRID audiovisual corpus** (Cooke,
 Barker, Cunningham & Shao, 2006; CC BY 4.0;
-https://zenodo.org/records/3625687): four people reading sentences aloud,
-100 minutes. Talking set off no gesture, scroll or quit. Blinks that reopen
-slowly clicked about 4 times a minute, so the tick now comes only while the
-eyes are shut: 3 a minute, with no false right clicks. Most of the rest
-come from one reader whose eyes look far down at the text, which to a
-camera looks like shut eyes. Put the numbers in
-`..\EyeSync-datasets\grid\features2` and the tests check this too.
+https://zenodo.org/records/3625687): ten people reading sentences aloud,
+250 minutes. Talking set off no scroll, quit, recenter or calibrate; one
+reader's real smiles paused EyeSync 3 times in 25 minutes. Blinks that
+reopen slowly clicked about 4 times a minute on the first four readers, so
+the tick now comes only while the eyes are shut: 3 a minute on them, 1.2 on
+six readers EyeSync had never seen, with no false right clicks. Most of
+the rest come from one reader's long closures. A calibrated tick (see
+Calibrate) of 0.45 s brings all ten down to 0.7 a minute. Put the numbers
+in `..\EyeSync-datasets\grid\features2` and the tests check this too.
 
 ## Daily use
 
@@ -201,16 +203,17 @@ again").
    you.
 3. **Click**, in one of two ways (Settings → **Click by**):
    - **Blink** (the default): close both eyes and listen. A short high **tick**
-     (about ⅓ second by default, or your calibrated time) means "open now and
-     it clicks"; open your eyes and it left-clicks. No tick, no click, so
+     (about ⅓ second by default; after calibrating, fitted to your slow
+     blinks, at most about half a second) means "open now and it clicks";
+     open your eyes and it left-clicks. No tick, no click, so
      ordinary quick blinks are ignored - and while your head is moving
      (reading, looking around) the tick comes a little later (at least about
      0.4 s), so blinks while you read don't click.
      You hear a click sound every time a click registers. Works with
      glasses.
      **Right click:** keep your eyes closed past the tick until the
-     **double tick** (about 1.3 seconds), then open them (two short beeps
-     confirm it). Most people can't wink one eye cleanly, but everyone can
+     **double tick** (a second after the tick: about 1.3 seconds), then open
+     them (two short beeps confirm it). Most people can't wink one eye cleanly, but everyone can
      blink a little longer.
      **No need to hurry:** after each tick you have time to open your eyes -
      after the tick it's still a click until the double tick,
@@ -310,8 +313,8 @@ shows you what to do, and moves on by itself; you never need to click:
 1. Look at the dot in the middle and keep still.
 2. Turn your head (not just your eyes) towards the dots on the left, right,
    top and bottom edges, holding still at each.
-3. Blink slowly 3 times, keeping your eyes closed for about 0.7 seconds each
-   time if you comfortably can. Shorter demonstrations still fit your own ability.
+3. Blink slowly 3 times, keeping your eyes closed for about half a second
+   each time - the way you would close them to click.
 4. Give a big smile.
 
 What it changes:
@@ -323,10 +326,14 @@ What it changes:
   rushed step can't make the cursor much too slow or too fast. EyeSync
   switches to speed 1 afterwards; the higher speeds are still faster.
 - **Blink clicks:** fitted to how far and how long your eyes close (with or
-  without glasses). The click tick is set just below your demonstrated slow
-  closure, never forced to 0.6 seconds if you blink more quickly. EyeSync also
-  learns how your open eyes look at each screen edge, so looking there is never
-  taken as a blink. Recalibrate after updating to 1.5.9 to enable this timing fit.
+  without glasses). The tick comes at 90% of the time your slow blinks
+  stayed shut - so the very blinks you showed click - between ⅓ and about
+  half a second; the double tick always a second after it. EyeSync also
+  learns how your open eyes look at each screen edge, so looking there is
+  never taken as a blink. (1.5.9 timed the whole blink, opening included,
+  and allowed up to 0.65 s: its tick could come after your eyes had begun
+  to open. Calibrate again after updating to 1.5.10 to fit the tick; until
+  then it stays at ⅓ second.)
 - **Smile gesture:** set just below your big smile, so a light smile stays
   well under it.
 
@@ -480,7 +487,7 @@ Instead, have each user paste their own key into the page.
 | The website can't find EyeSync after you restart the PC | EyeSync may be switched off in Windows (Settings > Apps > Startup, or Task Manager > Startup apps). Tick **Start with Windows** in the EyeSync window to switch it back on, or open the EyeSync shortcut once. |
 | Website shows "not connected" | Open the **EyeSync** shortcut, or close and reopen the dashboard. If it still doesn't connect, press **Open log** in the window and look for errors about ports 8080 or 8765. |
 | Another site or app can't connect | It needs the API key (see above). The log shows `Refused a connection ... API key required` or `invalid API key`. |
-| A click when you only moved your head, or a blink that didn't click | Close your eyes fully until the tick (about ⅓ second by default, or your calibrated time). The log says `Head moved while the eyes only looked half closed ... not a blink` when it ignored a closure. If it still happens, send `eyesync.log`. |
+| A click when you only moved your head, or a blink that didn't click | Close your eyes fully until the tick (about ⅓ second by default, or your calibrated time). The log says `Head moved while the eyes only looked half closed ... not a blink` when it ignored a closure, with how far the eyelids closed and how far the head moved. If it still happens, send `eyesync.log`. |
 | "It's too dark for the camera" | Turn on a light, or turn up your screen brightness (the screen lights your face). |
 | You plugged in a monitor, pressed Win+P, or changed the resolution | Nothing to do: within 2 seconds EyeSync follows the new size of your main screen (the log says `Display changed`). The cursor moves on the main screen only; make the screen you want to use the main one in Windows Settings > System > Display. |
 | "Can't open the camera" | Another app (Zoom, Teams, a browser tab) is using the webcam, or camera access is off in Windows Settings > Privacy > Camera. Fix that; EyeSync retries every 2 seconds and also tries a second or third camera. |

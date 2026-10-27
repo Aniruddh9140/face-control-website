@@ -1164,6 +1164,13 @@ BLINK_DEEP = 1.25
 # second after the tick, whenever that came.
 BLINK_MIN_S = 0.3           # the tick
 BLINK_MOVING_MIN_S = 0.4    # ... for a closure that began with the head moving
+# 1.5.9: calibration moves the tick to 90% of how long this user's slow blinks
+# stay shut. 1.5.10 caps it here (1.5.9: 0.65): on the 10 GRID readers 0.45 s
+# still gives 61% fewer false clicks than 0.3 s (1.89 -> 0.73 a minute), while
+# the real user's recorded quick clicks already fail from 0.40 s and a 0.6 s
+# tick costs the shortest of their real clicks (467-664 ms closures) - and
+# makes every click slower.
+BLINK_CALIBRATED_MAX_S = 0.45
 BLINK_RIGHT_S = 1.3         # the double tick: both eyes closed this long = a right click
 BLINK_MAX_S = 2.4           # longer is resting (then voice typing, VOICE_EYES_CLOSED_S)
 CLICK_REWIND_S = 0.13       # a click lands where the cursor was this long before the eyes closed
@@ -1404,8 +1411,11 @@ class BlinkDetector:
                     started = self.wink_since if self.wink_eye is not None else self.closed_since
                     # Shorter than a click could be: a glance down, not a missed blink.
                     note = log.info if now - started >= self.min_s else log.debug
+                    # The depth and movement say which limit stopped it: three of
+                    # the user's 0.47-0.83 s closures on 2026-10-24 ended here.
                     note(f"[blink] Head moved while the eyes only looked half closed "
-                         f"({(now - started) * 1000:.0f} ms) - not a blink, no click")
+                         f"({(now - started) * 1000:.0f} ms; eyelids {self.deep:.2f} of "
+                         f"{BLINK_DEEP:g}, head moved {self.moved:.2f} face widths) - not a blink, no click")
                 self.closed_since, self.wink_eye, self.deferred = None, None, False
                 self.head_moved = True
                 return False, "", False
@@ -1477,8 +1487,13 @@ class BlinkDetector:
             log.info(f"[blink] eyes closed {duration:.1f}s - treated as resting, no click")
         elif 0.15 <= duration and self.cued == 0 and now - self.last_hint > 20:
             self.last_hint = now
-            log.info(f"[blink] {duration * 1000:.0f} ms closure - too short for a click "
-                     f"(keep your eyes closed until the tick, about {self.min_s:.1f} s)")
+            # Long enough but no tick: the eyes were already opening when it was due
+            # (TICK_WHEN_SHUT) - the user's 425 ms closure of 2026-10-23 said "too short".
+            first = self._first_tick()
+            why = ("the eyes were opening before the tick" if duration >= first
+                   else "too short for a click")
+            log.info(f"[blink] {duration * 1000:.0f} ms closure - {why} "
+                     f"(keep your eyes shut until the tick, about {first:.1f} s)")
         return False, click, False
 
     def _depth(self, el: float, er: float) -> float:
@@ -1525,7 +1540,7 @@ class BlinkDetector:
                 and now - self.last_click >= self.cooldown_s):
             self.cued, self.cue = 1, "tick"
         elif (self.cued == 1 and not wink and self.right_s is not None
-                and self.right_s + (first - self.min_s) <= held <= self.max_s):
+                and self._double_tick(first) <= held <= self.max_s):
             self.cued, self.cue = 2, "double"
 
     def _first_tick(self, after_rest: bool = False) -> float:
@@ -1534,6 +1549,13 @@ class BlinkDetector:
         return max(self.min_s,
                    self.AFTER_REST_MAX_BLINK_S if after_rest else 0.0,
                    self.MOVING_MIN_S if self.moving_start else 0.0)
+
+    def _double_tick(self, first: float) -> float:
+        """When the double tick comes: as long after the first tick as the
+        defaults leave (1.0 s), also when a calibrated tick came later - 1.5.9
+        kept it at 1.3 s, so a 0.6 s tick left 0.7 s, and the user opens
+        0.55-0.9 s after the tick they wait for: left clicks became right ones."""
+        return self.right_s + first - min(self.min_s, BLINK_MIN_S)
 
     def _still_closed(self, now: float) -> tuple[bool, str, bool]:
         """
@@ -1656,7 +1678,7 @@ class Calibration:
         "right": "Turn your HEAD (not just your eyes) towards the dot on the RIGHT edge, then hold still",
         "up": "Tilt your HEAD up towards the dot at the TOP, then hold still",
         "down": "Tilt your HEAD down towards the dot at the BOTTOM, then hold still",
-        "blink": "Look at the middle dot and blink slowly 3 times - eyes closed for about 0.7 seconds",
+        "blink": "Look at the middle dot and blink slowly 3 times - eyes closed for about half a second",
         "smile": "Now give a big smile and hold it",
     }
     DIRECTION = {"left": (0, -1), "right": (0, 1), "up": (1, -1), "down": (1, 1)}
@@ -1688,6 +1710,7 @@ class Calibration:
         self.edges: dict[str, tuple[float, Pose | None]] = {}
         # (lowest EAR ratio, highest score rise, detected closed seconds)
         self.blinks: list[tuple[float, float | None, float]] = []
+        self.blink_frames: list[list[tuple[float, float, float | None]]] = []   # (t, ratio, rise)
         self.closure: dict | None = None
         self.smile_since: float | None = None
         self.smile_peak: float | None = None
@@ -1813,9 +1836,10 @@ class Calibration:
         opened = ratio > 0.85 and (rise is None or rise < 0.08)
         if self.closure is None:
             if closed:
-                self.closure = {"since": now, "ratio": ratio, "rise": rise}
+                self.closure = {"since": now, "ratio": ratio, "rise": rise, "frames": [(now, ratio, rise)]}
             return
         c = self.closure
+        c["frames"].append((now, ratio, rise))
         c["ratio"] = min(c["ratio"], ratio)
         if rise is not None:
             c["rise"] = rise if c["rise"] is None else max(c["rise"], rise)
@@ -1825,6 +1849,7 @@ class Calibration:
         duration = now - c["since"]
         if self.BLINK_MIN_S <= duration <= self.BLINK_MAX_S:
             self.blinks.append((c["ratio"], c["rise"], duration))
+            self.blink_frames.append(c["frames"])
             log.info(f"[calibrate] Blink {len(self.blinks)}: eyelids down to {c['ratio']:.0%} "
                      f"of open for {duration:.2f} s"
                      + ("" if c["rise"] is None else f", blink score +{c['rise']:.2f}"))
@@ -1845,6 +1870,14 @@ class Calibration:
         if now - self.smile_since >= self.SMILE_HOLD_S:
             log.info(f"[calibrate] Big smile: {self.smile_peak:.2f} (resting {self.rest_smile:.2f})")
             self._next(now)
+
+    @staticmethod
+    def _shut_s(frames: list[tuple[float, float, float | None]], close: float, delta: float) -> float:
+        """How long a calibration blink was shut the way BlinkDetector sees it:
+        eyelids at the close ratio (closedness 1.0) or the score risen by delta."""
+        shut = [t for t, ratio, rise in frames
+                if ratio <= close or (rise is not None and rise >= delta)]
+        return shut[-1] - shut[0] if shut else 0.0
 
     def results(self) -> dict:
         """What to save (see apply_calibration); only the steps completed."""
@@ -1875,13 +1908,17 @@ class Calibration:
             rises = [b[1] for b in self.blinks if b[1] is not None]
             if rises and float(np.median(rises)) > 0.05:
                 res["blink_score_delta"] = round(float(np.clip(0.5 * np.median(rises), 0.12, 0.4)), 3)
-        if len(self.blinks) >= self.BLINKS:
-            # GRID development speakers 1-8: a 0.60 s tick reduced ordinary
-            # false clicks by 89%; 482/482 real blink appearances still clicked
-            # when held for 0.65 s. Fit below this user's demonstrated hold,
-            # never forcing a 0.60 s tick on someone with shorter blinks.
-            hold = float(np.median([b[2] for b in self.blinks]))
-            res["blink_min_s"] = round(float(np.clip(0.9 * hold, BLINK_MIN_S, 0.65)), 3)
+        if len(self.blink_frames) >= self.BLINKS:
+            # The tick: 90% of how long these blinks stayed SHUT by the
+            # thresholds just fitted - the tick comes only while the eyes are
+            # shut (TICK_WHEN_SHUT). 1.5.9 took 90% of the whole closure, from
+            # the lids a quarter down until fully open again, which is up to
+            # ~0.2 s longer: the tick could fall after the demonstrated blink
+            # had begun to open, and that very blink didn't click.
+            close = res.get("blink_close_ratio", 0.55)
+            delta = res.get("blink_score_delta", BLINK_SCORE_DELTA)
+            shut = float(np.median([self._shut_s(f, close, delta) for f in self.blink_frames]))
+            res["blink_tick_s"] = round(float(np.clip(0.9 * shut, BLINK_MIN_S, BLINK_CALIBRATED_MAX_S)), 3)
         if self.smile_peak is not None:
             res["smile_min"] = round(float(np.clip(0.75 * self.smile_peak, 0.45, 0.85)), 3)
         return res
@@ -1917,8 +1954,11 @@ def apply_calibration(cal: dict | None, head: "HeadPointer", blink: BlinkDetecto
         blink.score_delta = float(cal["blink_score_delta"])
     # An explicit --min-blink is an accessibility override, not replaced by
     # calibration. Otherwise use the tick this user demonstrated they can reach.
-    if timing and "blink_min_s" in cal:
-        blink.min_s = float(np.clip(cal["blink_min_s"], BLINK_MIN_S, 0.65))
+    # 1.5.9's "blink_min_s" isn't used: it was measured over the whole closure
+    # and may come after the eyes begin to open (see Calibration.results) -
+    # those users keep the default tick until they calibrate again.
+    if timing and "blink_tick_s" in cal:
+        blink.min_s = float(np.clip(cal["blink_tick_s"], BLINK_MIN_S, BLINK_CALIBRATED_MAX_S))
     gestures.minimum["smile"] = float(cal.get("smile_min", GESTURES["smile"][1]))
 
 
@@ -1928,8 +1968,9 @@ def calibration_summary(cal: dict, skipped: list[str]) -> str:
     if "head_x" in cal:
         turn = f" (about {cal['turn_deg']} degrees across)" if "turn_deg" in cal else ""
         parts.append(f"Speed 1 now fits your natural head movement{turn}.")
-    if "blink_close_ratio" in cal or "blink_score_delta" in cal:
-        parts.append("Blink clicks are fitted to your blinks.")
+    if "blink_close_ratio" in cal or "blink_score_delta" in cal or "blink_tick_s" in cal:
+        tick = f": the tick comes at {cal['blink_tick_s']:.2f} s" if "blink_tick_s" in cal else ""
+        parts.append(f"Blink clicks are fitted to your blinks{tick}.")
     if "smile_min" in cal:
         parts.append("The smile gesture is fitted to your smile.")
     if skipped:
@@ -2728,18 +2769,22 @@ class VisionWorker(threading.Thread):
             cv2.rectangle(view, (vw - 130, vh - 40), (vw - 130 + int(120 * frac), vh - 28),
                           color, -1)
         elif snap.eyes_closed and snap.click_mode == "blink":
-            # Teaches the timing of a deliberate blink (the ticks say the same).
-            right_s = self.blink.right_s
-            if held < self.blink.min_s:
-                text, color, frac = "keep closed...", orange, held / self.blink.min_s
-            elif right_s is not None and held < right_s:
-                text, color = "open: CLICK  (keep closed: right click)", green
-                frac = (held - self.blink.min_s) / max(right_s - self.blink.min_s, 1e-3)
-            elif held <= self.blink.max_s:
-                text, color, frac = ("open: RIGHT CLICK" if right_s is not None else "open eyes to CLICK",
-                                     green, 1.0)
-            else:
+            # Teaches the timing of a deliberate blink: what the ticks said so
+            # far (BlinkDetector.cued), so a calibrated or a moving-head tick
+            # and the double tick after it show when they sound.
+            b = self.blink
+            first = b._first_tick()
+            if held > b.max_s:
                 text, color, frac = "too long - no click", grey, 1.0
+            elif b.cued == 0:
+                text, color, frac = "keep closed...", orange, min(1.0, held / first)
+            elif b.cued == 1 and b.right_s is not None:
+                double = b._double_tick(first)
+                text, color = "open: CLICK  (keep closed: right click)", green
+                frac = float(np.clip((held - first) / max(double - first, 1e-3), 0.0, 1.0))
+            else:
+                text, color, frac = ("open: RIGHT CLICK" if b.right_s is not None else "open eyes to CLICK",
+                                     green, 1.0)
             banner(text, color, vh - 30)
             cv2.rectangle(view, (vw - 130, vh - 40), (vw - 130 + int(120 * frac), vh - 28),
                           color, -1)

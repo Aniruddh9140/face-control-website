@@ -134,6 +134,10 @@ def pyinstaller_args(ver: str) -> list[str]:
         "--specpath", str(BUILD),
         "--runtime-tmpdir", app_paths.RUNTIME_TMPDIR_OPTION,
         "--version-file", str(version_file(ver)),
+        # The window's Blink test button runs EyeSync.exe --blink-test, which
+        # imports tools/record_blinks.py (1.5.8 and 1.5.9 were built without it).
+        "--paths", str(HERE / "tools"),
+        "--hidden-import", "record_blinks",
         # Native/runtime data used by the vision, audio and local speech stack.
         "--collect-all", "mediapipe",
         "--collect-all", "pywhispercpp",

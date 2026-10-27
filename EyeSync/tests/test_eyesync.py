@@ -195,6 +195,31 @@ class BlinkTests(unittest.TestCase):
         self.assertEqual([k for _, k in self.ticked(pad + [(O, C)] * 30 + pad)[1]], ["tick"])
         self.assertEqual(self.ticked(pad + [(O, C)] * 30 + pad)[0], ["right"])
 
+    def test_the_double_tick_keeps_its_second_after_a_calibrated_tick(self):
+        """1.5.9's calibrated tick (up to 0.65 s) kept the double tick at 1.3 s:
+        0.65 s to react, and the user opens 0.55-0.9 s after the tick - a left
+        click came out as a right click."""
+        O, C = self.O, self.C
+        for min_s in (li.BLINK_MIN_S, li.BLINK_CALIBRATED_MAX_S):
+            with self.subTest(min_s):
+                def run(frames):
+                    b = li.BlinkDetector(None, 0.55, 0.70, min_s, li.BLINK_MAX_S, 0.6)
+                    b.baseline = O
+                    t, clicks, ticks = 0.0, [], []
+                    for left, right in [(O, O)] * 30 + [(C, C)] * frames + [(O, O)] * 30:
+                        t += 1 / FPS
+                        click = b.update(left, right, t, None, True)[1]
+                        if b.cue:
+                            ticks.append(t)
+                        if click:
+                            clicks.append(click)
+                    return clicks, ticks
+                _, ticks = run(60)
+                self.assertAlmostEqual(ticks[1] - ticks[0], 1.0, delta=1.5 / FPS)
+                # Opened 0.85 s after the tick: still the left click it was meant as.
+                react = int(round((min_s + 0.85) * FPS))
+                self.assertEqual(run(react)[0], ["left"])
+
     def ear(self, closedness: float) -> float:
         """The EAR at this closedness (1.0 = the close threshold; see BlinkDetector.closedness)."""
         return self.O * (1 - closedness * (1 - 0.55))
@@ -943,24 +968,58 @@ class CalibrationTests(unittest.TestCase):
         self.assertEqual(res["turn_deg"], 30)
         self.assertAlmostEqual(res["blink_close_ratio"], 0.06 / 0.28 + 0.4 * (1 - 0.06 / 0.28), delta=0.02)
         self.assertEqual(res["blink_score_delta"], 0.4)      # deep, clear blinks: harder to fake
-        self.assertGreaterEqual(res["blink_min_s"], li.BLINK_MIN_S)
-        self.assertLess(res["blink_min_s"], 0.4)             # below the demonstrated 0.4 s holds
+        self.assertGreaterEqual(res["blink_tick_s"], li.BLINK_MIN_S)
+        self.assertLess(res["blink_tick_s"], 0.4)            # below the demonstrated 0.4 s holds
         self.assertAlmostEqual(res["smile_min"], 0.6, delta=0.01)
         self.assertEqual(cal.skipped, [])
         # Every head direction taught the blink detector how open eyes look there.
         self.assertEqual({tuple(f.pose) for f in cal.learned},
                          {(0.0, 0.0), (15, 0.0), (-15, 0.0), (0.0, 8), (0.0, -8)})
 
-    def test_slow_blinks_fit_an_accessible_longer_tick(self):
+    def test_slow_blinks_fit_a_longer_tick_up_to_the_cap(self):
         closed = dict(eyes=((0.06, 0.06), (0.9, 0.9)))
-        slow = [(0.6, {}), (0.7, closed)] * 3 + [(0.6, {})]
-        cal = self.run_cal(self.head_script() + slow + self.SMILE)
+        for secs, want in ((0.45, 0.9 * 0.45), (0.7, li.BLINK_CALIBRATED_MAX_S)):
+            with self.subTest(secs):
+                slow = [(0.6, {}), (secs, closed)] * 3 + [(0.6, {})]
+                cal = self.run_cal(self.head_script() + slow + self.SMILE)
+                self.assertEqual(len(cal.blinks), 3)
+                self.assertAlmostEqual(cal.results()["blink_tick_s"], want, delta=0.035)
+
+    # A real blink: the lids pass "a quarter down" (ratio 0.7) on the way, stay
+    # shut, then reopen slowly through ratio 0.8 - all part of the closure.
+    RAMP_DOWN = dict(eyes=((0.196, 0.196), (0.3, 0.3)))
+    SHUT = dict(eyes=((0.06, 0.06), (0.9, 0.9)))
+    RAMP_UP = dict(eyes=((0.224, 0.224), (0.3, 0.3)))
+
+    def test_the_tick_comes_while_the_demonstrated_blink_is_shut(self):
+        """1.5.9 set the tick to 90% of the whole closure (lids a quarter down until
+        fully open), up to ~0.2 s longer than the eyes are shut - and the tick
+        comes only while they are (TICK_WHEN_SHUT): the very blink shown didn't
+        click. Now 90% of the time shut, so it does."""
+        blink = [(0.6, {}), (0.1, self.RAMP_DOWN), (0.5, self.SHUT), (0.167, self.RAMP_UP)]
+        cal = self.run_cal(self.head_script() + blink * 3 + [(0.6, {})] + self.SMILE)
         res = cal.results()
-        holds = [b[2] for b in cal.blinks]
-        self.assertEqual(len(holds), 3)
-        self.assertAlmostEqual(res["blink_min_s"], 0.9 * float(np.median(holds)), delta=0.002)
-        self.assertGreaterEqual(res["blink_min_s"], 0.55)
-        self.assertLessEqual(res["blink_min_s"], 0.65)
+        self.assertAlmostEqual(res["blink_tick_s"], 0.9 * 14 / FPS, delta=0.01)
+        old = float(np.clip(0.9 * np.median([b[2] for b in cal.blinks]), li.BLINK_MIN_S, 0.65))
+        self.assertGreater(old, 0.6)                          # what 1.5.9 saved
+
+        def clicks(min_s):
+            b = li.BlinkDetector(None, 0.55, 0.70, li.BLINK_MIN_S, li.BLINK_MAX_S, 0.6)
+            li.apply_calibration(res, li.HeadPointer(1920, 1080), b, li.FaceGestures())
+            if min_s is not None:
+                b.min_s = min_s
+            b.baseline = 0.28
+            seq = ([0.28] * 30 + [0.196] * 3 + [0.06] * 15 + [0.224] * 5 + [0.28] * 30)
+            out, t = [], 0.0
+            for ear in seq:
+                t += 1 / FPS
+                click = b.update(ear, ear, t, None, True)[1]
+                if click:
+                    out.append(click)
+            return out
+
+        self.assertEqual(clicks(None), ["left"])
+        self.assertEqual(clicks(old), [])                     # 1.5.9: no tick, no click
 
     def test_glasses_blinks_fit_the_blink_score(self):
         """Eyelid points barely move behind glasses; the score rises only ~0.3."""
@@ -1016,11 +1075,17 @@ class CalibrationTests(unittest.TestCase):
         hp = li.HeadPointer(1920, 1080)
         blink = li.BlinkDetector(None, 0.55, 0.70, 0.2, 1.5, 0.6)
         gestures = li.FaceGestures()
-        cal = {"blink_min_s": 0.6}
+        cal = {"blink_tick_s": 0.4}
         li.apply_calibration(cal, hp, blink, gestures, timing=False)
         self.assertEqual(blink.min_s, 0.2)
         li.apply_calibration(cal, hp, blink, gestures)
-        self.assertEqual(blink.min_s, 0.6)
+        self.assertEqual(blink.min_s, 0.4)
+        li.apply_calibration({"blink_tick_s": 0.6}, hp, blink, gestures)
+        self.assertEqual(blink.min_s, li.BLINK_CALIBRATED_MAX_S)
+        # 1.5.9's value (measured over the whole closure) isn't used.
+        blink.min_s = li.BLINK_MIN_S
+        li.apply_calibration({"blink_min_s": 0.6}, hp, blink, gestures)
+        self.assertEqual(blink.min_s, li.BLINK_MIN_S)
 
     def test_a_lopsided_calibration_only_fine_tunes(self):
         """A real user's calibration: up-down 0.69 face widths, 2.2x the default (one
@@ -1044,6 +1109,8 @@ class CalibrationTests(unittest.TestCase):
         text = li.calibration_summary({"head_x": 0.5, "turn_deg": 28, "smile_min": 0.6}, ["blink"])
         self.assertIn("28 degrees", text)
         self.assertIn("Skipped: blink", text)
+        self.assertIn("the tick comes at 0.42 s",
+                      li.calibration_summary({"blink_close_ratio": 0.5, "blink_tick_s": 0.42}, []))
 
 
 # --------------------------------------------------------------------------- #
@@ -1368,13 +1435,16 @@ class WebsiteTests(unittest.TestCase):
                                      always_active=False, ws_host="localhost", ws_ports=[8797],
                                      fps=30)
 
-        async def command(ws, msg, want=None):
+        async def command(ws, msg, want=None, until=lambda m: True):
             await ws.send(json.dumps(msg))
-            while True:                               # skip the 30/s data messages
+            deadline = time.monotonic() + 5
+            while time.monotonic() < deadline:        # skip the 30/s data messages
                 m = json.loads(await asyncio.wait_for(ws.recv(), 2))
-                # (a status pushed because something changed can arrive before an error reply)
-                if "type" in m and (want is None or m["type"] == want):
+                # (a status pushed because something changed can arrive before the
+                # reply: the 1.5.10 build's installed copy read one as calibrate's)
+                if "type" in m and (want is None or m["type"] == want) and until(m):
                     return m
+            self.fail(f"no reply to {msg}")
 
         async def scenario():
             server = asyncio.create_task(li.websocket_task(args, state, screen, None, actions))
@@ -1398,9 +1468,10 @@ class WebsiteTests(unittest.TestCase):
                 out["enabled"] = (r["mouse_enabled"], r["active"])
                 await command(ws, {"action": "recenter"})
                 out["recenter"] = state.recenter_request.is_set()
-                r = await command(ws, {"action": "calibrate"})
+                r = await command(ws, {"action": "calibrate"}, until=lambda m: m.get("calibrating"))
                 out["calibrate"] = (r["calibrating"], state.calibrate_request.is_set())
-                r = await command(ws, {"action": "calibrate", "value": "cancel"})
+                r = await command(ws, {"action": "calibrate", "value": "cancel"},
+                                  until=lambda m: not m.get("calibrating"))
                 out["calibrate_cancel"] = (r["calibrating"], state.calibrate_cancel.is_set())
                 out["speed"] = (await command(ws, {"action": "speed", "value": 3}))["speed"]
                 out["click"] = (await command(ws, {"action": "click_mode", "value": "dwell"}))["click_mode"]
@@ -3192,16 +3263,27 @@ class DatasetTests(unittest.TestCase):
         if not self.reports:
             self.skipTest(f"no dataset numbers in {self.FOLDER}")
 
-    def test_talking_fires_no_gesture_scroll_or_quit(self):
+    def test_talking_fires_no_scroll_quit_or_mouth_side_gesture(self):
         for r in self.reports:
             with self.subTest(r["name"]):
-                self.assertEqual((r["gestures"], r["notches"]), ({}, 0))
+                self.assertEqual(r["notches"], 0)
                 self.assertLess(r["mouth_open_s"], 1.0)               # the quit gesture needs 3 s
+                self.assertLessEqual(set(r["gestures"]), {"smile"})   # never recenter / calibrate
+
+    def test_real_smiles_pause_rarely(self):
+        """A big smile held 1.5 s is the pause gesture, whoever smiles: s11
+        smiled for real while reading (score 0.7-0.9 held 1.5 s and more, the
+        mouth nearly shut) and paused 3 times in 25 minutes; nine never did."""
+        for r in self.reports:
+            with self.subTest(r["name"]):
+                self.assertLessEqual(r["gestures"].get("smile", 0) / r["minutes"], 0.2)
 
     def test_natural_blinks_click_rarely(self):
-        """4.2 false clicks a minute with the tick at any closure state (1.5.6),
-        3.0 with it only while the eyes are shut; the rest is mostly one
-        reader's eyes looking far down at the text - they look shut."""
+        """On s1-s4, where the tick rule was tuned: 4.2 false clicks a minute
+        with the tick at any closure state (1.5.6), 3.0 with it only while the
+        eyes are shut (1.5.7). Held out (s5, s6, s7, s11, s15, s16): 1.16; all
+        ten 1.89. Most are one reader's long closures (s1: 9.4 a minute, median
+        520 ms) and two readers whose heads move while reading (s11, s15)."""
         minutes = clicks = rights = 0
         for r in self.reports:
             minutes, clicks, rights = minutes + r["minutes"], clicks + r["clicks"], rights + r["right"]
