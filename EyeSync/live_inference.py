@@ -931,6 +931,8 @@ class FaceGestures:
         self.relaxed = True                     # False from a gesture firing until the face rests
         self.fired_at = -1e9
         self.rest_shift: float | None = None    # where the mouth rests (fe.mouth_shift)
+        self.side_seen = (0.0, 0.0, 0.0, 0.0, 0.0)  # off its rest, smile L/R, mouthLeft/Right
+        self.detail = ""                        # those numbers when the gesture began (for the log)
 
     def hold_s(self, name: str | None = None) -> float:
         return GESTURE_HOLD_S.get(name or self.active, self.HOLD_S)
@@ -957,6 +959,7 @@ class FaceGestures:
                 and (sl + sr) / 2 < 0.3):
             self.rest_shift += 0.02 * (here - self.rest_shift)
         off = here - self.rest_shift
+        self.side_seen = (off, sl, sr, ml, mr)
         if not steady or abs(off) < MOUTH_SHIFT_MIN_FW:
             return 0
         way = 1 if off > 0 else -1
@@ -1032,8 +1035,21 @@ class FaceGestures:
             self.released = True
             return None
         if self.released:
-            self.active = max(above, key=lambda n: margin[n])
+            name = max(above, key=lambda n: margin[n])
+            # The calibrate gesture (the one that beeps, GESTURE_CONFIRM_S)
+            # starts only with a mouthLeft / mouthRight score showing a pull (which
+            # name depends on the face), not on a lopsided smile alone (1.5.14):
+            # 1.5.11 beeped 3 times on 2026-10-28, 2-4 s before a smile pause or a
+            # tilt, never calibrating. Every right pull in the user's recording
+            # reached it; the hold then goes on as before.
+            if (name == "mouth_right"
+                    and max(bs.get("mouthLeft", 0.0), bs.get("mouthRight", 0.0)) < MOUTH_PULL_SCORE):
+                return None
+            self.active = name
             self.since, self.low_since = now, None
+            off, sl, sr, ml, mr = self.side_seen
+            self.detail = (f"mouth {abs(off):.3f} face widths to your {'left' if off > 0 else 'right'}, "
+                           f"mouthLeft {ml:.2f} / mouthRight {mr:.2f}, smile {sl:.2f} / {sr:.2f}")
         return None
 
 
@@ -2503,7 +2519,7 @@ class VisionWorker(threading.Thread):
             self.gesture_warned = True
             desktop.play_warning_sound()
             log.info(f"[gesture] {GESTURE_LABELS[holding]} - hold {self.gestures.hold_s():.0f}s "
-                     "(relax to cancel)")
+                     f"(relax to cancel; {self.gestures.detail})")
         if holding is None:
             self.gesture_warned = False
         if fired:

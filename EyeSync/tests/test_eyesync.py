@@ -707,6 +707,27 @@ class FaceGestureTests(unittest.TestCase):
         self.assertEqual(self.run_seq([(3, {}), (3.3, {"mouthRight": 0.6, "mouthShift": -0.05,
                                                        "jawOpen": 0.3})]), [])
 
+    def test_a_lopsided_smile_never_starts_calibrate(self):
+        """1.5.11's log (2026-10-28): "Mouth to your right: calibrate" beeped 3 times,
+        2-4 s before a smile pause or a tilt, never meant. A smile rising more on
+        one side, the mouth drifting with it, is no pull without a pull score."""
+        lopsided = {"mouthSmileLeft": 0.15, "mouthSmileRight": 0.45, "mouthShift": -0.03}
+        g, t, seen = li.FaceGestures(), 0.0, set()
+        for secs, over in ((3, {}), (3.3, lopsided), (1, {})):
+            for _ in range(int(round(secs * FPS))):
+                t += 1 / FPS
+                self.assertIsNone(g.update({**self.REST, **over}, t))
+                seen.add(g.active)
+        self.assertNotIn("mouth_right", seen)
+        even = {"mouthSmileLeft": 0.8, "mouthSmileRight": 0.75}
+        self.assertEqual(self.run_seq([(3, {}), (1.0, lopsided), (1.7, even), (1, {})]), ["smile"])
+        # A real pull still starts it, and the log says what was seen.
+        g = li.FaceGestures()
+        for k in range(int(4 * FPS)):
+            g.update({**self.REST, **(self.TO_RIGHT if k >= 3 * FPS else {})}, (k + 1) / FPS)
+        self.assertEqual(g.active, "mouth_right")
+        self.assertIn("to your right, mouthLeft 0.60", g.detail)
+
     def test_the_face_eases_out_of_a_gesture_before_blinks_count(self):
         """1.5.2's log: a "left wink" click the moment a smile resumed EyeSync."""
         g, t = li.FaceGestures(), 0.0

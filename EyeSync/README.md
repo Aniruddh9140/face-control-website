@@ -405,7 +405,10 @@ lifts that corner of your mouth counts too; it isn't taken for a smile. Keep
 your lips closed: with your mouth open (talking) nothing fires. Calibrating takes about 30 seconds
 and can't be stopped hands-free once it starts, so that gesture needs
 3 seconds: half a second in, a beep sounds and the camera view counts down
-("Calibrating in 2.1s"); relax your mouth to cancel. Changing the speed
+("Calibrating in 2.1s"); relax your mouth to cancel. Since 1.5.14 it starts
+only when the face tracker sees the mouth itself move to the side: a smile
+that rises more on one side no longer beeps (1.5.11 did, now and then, just
+before a smile pause). Changing the speed
 is no longer a gesture (until 1.5.0 the mouth to one side did that): use
 the window, F7 / F8 or the website.
 
