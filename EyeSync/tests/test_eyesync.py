@@ -286,6 +286,39 @@ class BlinkTests(unittest.TestCase):
         self.assertEqual(clicks, ["left"])
         self.assertEqual([kind for _, kind in ticks], ["tick"])
 
+    def drifting(self, drift_from: float, frames: int = 36) -> list[str]:
+        """A closure the eyelids show only partly (0.9 - MediaPipe's blink score
+        says shut) while the head drifts 0.18 face widths sideways from
+        ``drift_from`` s on, then opens: the clicks."""
+        b = li.BlinkDetector(None, 0.55, 0.70, li.BLINK_MIN_S, li.BLINK_MAX_S, 0.6)
+        b.baseline = self.O
+        half = self.ear(0.9)
+        seq = ([(self.O, (0.03, 0.03))] * 30 + [(half, (0.9, 0.9))] * frames
+               + [(self.O, (0.03, 0.03))] * 30)
+        t, out = 0.0, []
+        for k, (ear, sc) in enumerate(seq):
+            t += 1 / FPS
+            held = (k - 30) / FPS
+            x = 0.18 * float(np.clip((held - drift_from) / 0.4, 0, 1)) if k >= 30 else 0.0
+            click = b.update(ear, ear, t, sc, True, None, np.array([x, 0.0]))[1]
+            if click:
+                out.append(click)
+        return out
+
+    def test_a_ticked_click_survives_the_head_drifting(self):
+        """1.5.10's log (2026-10-27/28): 1131 and 1173 ms closures, eyelids 0.86 and
+        1.10 of 1.25, cancelled as "half closed" when the head had drifted 0.17-0.18
+        face widths - long after their tick. The tick promised a click."""
+        self.assertEqual(self.drifting(0.6), ["left"])
+        li.BlinkDetector.KEEP_TICKED = False
+        try:
+            self.assertEqual(self.drifting(0.6), [])          # 1.5.10
+        finally:
+            li.BlinkDetector.KEEP_TICKED = True
+        # The head getting there before the tick: eyes that only look closed
+        # where it went (the screen bottom) - still no click.
+        self.assertEqual(self.drifting(-0.2), [])
+
     def test_ticks_come_when_opening_would_click(self):
         O, C = self.O, self.C
         pad = [(O, O)] * 30

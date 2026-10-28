@@ -1261,6 +1261,14 @@ class BlinkDetector:
     # a minute, up to 11 for one person. A meant click keeps them shut.
     TICK_WHEN_SHUT = True
     SHUT = 1.0
+    # Once the tick has sounded, the head moving no longer cancels the closure
+    # as "eyes that only look closed where the head went": the tick promised
+    # a click. The user (1.5.10's log, 2026-10-27/28: "sometimes when I am
+    # rotating my head the click is not registering"): 1131 and 1173 ms
+    # closures cancelled there, the head having drifted 0.17-0.18 face widths
+    # (limit 0.15) - long after their tick. Eyes that only look closed are
+    # still caught before the tick, when the head is getting there.
+    KEEP_TICKED = True
     HEAD_FRAMES = 12        # head positions kept (~0.4 s): speed and the closure's reference
 
     def __init__(self, fixed_threshold: float | None, close_ratio: float, open_ratio: float,
@@ -1285,6 +1293,7 @@ class BlinkDetector:
         self.closed_pose: Pose | None = None   # head direction when the closure began
         self.closed_head: np.ndarray | None = None  # head position just before it
         self.moved = 0.0                       # how far the head moved since (face widths)
+        self.moved_by = np.zeros(2)            # ... sideways and up-down (for the log)
         self.head_moved = False                # closure cancelled: the head moved (see above)
         self.deep = 0.0                        # how far the eyelids closed (BLINK_DEEP)
         self.moving_start = False              # the closure began while the head moved
@@ -1403,19 +1412,23 @@ class BlinkDetector:
         if closing:
             self.deep = max(self.deep, self._depth(el, er))
             if head is not None and self.closed_head is not None:
-                self.moved = max(self.moved, float(np.linalg.norm(head - self.closed_head)))
-            if self.moved > BLINK_MAX_MOVE_FW and self.deep < BLINK_DEEP:
+                by = head - self.closed_head
+                if float(np.linalg.norm(by)) > self.moved:
+                    self.moved, self.moved_by = float(np.linalg.norm(by)), by
+            if (self.moved > BLINK_MAX_MOVE_FW and self.deep < BLINK_DEEP
+                    and not (self.KEEP_TICKED and self.cued)):
                 # The head moved and the eyelids never really closed: the eyes
                 # only look closed where the head went (e.g. the screen bottom).
-                if not self.deferred:
-                    started = self.wink_since if self.wink_eye is not None else self.closed_since
-                    # Shorter than a click could be: a glance down, not a missed blink.
-                    note = log.info if now - started >= self.min_s else log.debug
-                    # The depth and movement say which limit stopped it: three of
-                    # the user's 0.47-0.83 s closures on 2026-10-24 ended here.
-                    note(f"[blink] Head moved while the eyes only looked half closed "
-                         f"({(now - started) * 1000:.0f} ms; eyelids {self.deep:.2f} of "
-                         f"{BLINK_DEEP:g}, head moved {self.moved:.2f} face widths) - not a blink, no click")
+                started = self.wink_since if self.wink_eye is not None else self.closed_since
+                # Shorter than a click could be: a glance down or a blink mid-turn,
+                # not a missed click. (Closures that began with the head moving
+                # were never logged before 1.5.11.)
+                note = log.info if now - started >= self.min_s else log.debug
+                # The depth and movement say which limit stopped it: three of
+                # the user's 0.47-0.83 s closures on 2026-10-24 ended here.
+                note(f"[blink] Head moved while the eyes only looked half closed "
+                     f"({(now - started) * 1000:.0f} ms{', began while turning' if self.deferred else ''}; "
+                     f"eyelids {self.deep:.2f} of {BLINK_DEEP:g}, {self._moved_text()}) - not a blink, no click")
                 self.closed_since, self.wink_eye, self.deferred = None, None, False
                 self.head_moved = True
                 return False, "", False
@@ -1518,7 +1531,7 @@ class BlinkDetector:
         # From just before the eyelids started to drop (~0.1 s).
         earlier = [h for t, h in self.heads if t <= now - 0.1]
         self.closed_head = earlier[-1] if earlier else head
-        self.moved, self.deep = 0.0, depth
+        self.moved, self.moved_by, self.deep = 0.0, np.zeros(2), depth
         self.moving_start = self.deferred = moving
         self.started_at = now
         self.cued = 0
@@ -1573,10 +1586,20 @@ class BlinkDetector:
             return True, "", True
         if now - self.started_at > BLINK_PASSING_MAX_S:
             # Never deep, this long: the eyes only look closed where the head
-            # went - learn how open eyes look here (head_moved).
+            # went - learn how open eyes look here (head_moved). Logged since
+            # 1.5.11 (it used to be silent), to tell a missed click from this.
+            log.info(f"[blink] Eyes closed while the head moved, but the eyelids never shut fully "
+                     f"({(now - self.started_at) * 1000:.0f} ms; eyelids {self.deep:.2f} of "
+                     f"{BLINK_DEEP:g}, {self._moved_text()}) - no click")
             self.closed_since, self.wink_eye, self.deferred = None, None, False
             self.head_moved = True
         return False, "", False
+
+    def _moved_text(self) -> str:
+        """How the head moved during this closure, for the log: sideways
+        (turning) or up-down (e.g. looking at the screen bottom)."""
+        x, y = (abs(float(v)) for v in self.moved_by)
+        return f"head moved {self.moved:.2f} face widths ({x:.2f} sideways, {y:.2f} up-down)"
 
     @staticmethod
     def _head(head, pose: Pose | None) -> np.ndarray | None:

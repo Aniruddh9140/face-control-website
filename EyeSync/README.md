@@ -229,8 +229,10 @@ again").
      After a smile gesture, blinks count again once your face has relaxed.
      **You can blink while moving or tilting your head.** A deliberate
      blink (eyes fully shut until the tick) clicks where the cursor was
-     when you closed your eyes. Quick natural blinks while you turn
-     don't click and don't stop the cursor.
+     when you closed your eyes. Once you hear the tick, turning your head
+     no longer cancels the click (until 1.5.10 a head drifting during a
+     long closure could). Quick natural blinks while you turn don't click
+     and don't stop the cursor.
      **Moving your head alone never clicks.** Looking at the bottom of the
      screen makes your eyes look half closed to the camera. EyeSync learns
      how your open eyes look in every head position, and with the head
@@ -487,7 +489,7 @@ Instead, have each user paste their own key into the page.
 | The website can't find EyeSync after you restart the PC | EyeSync may be switched off in Windows (Settings > Apps > Startup, or Task Manager > Startup apps). Tick **Start with Windows** in the EyeSync window to switch it back on, or open the EyeSync shortcut once. |
 | Website shows "not connected" | Open the **EyeSync** shortcut, or close and reopen the dashboard. If it still doesn't connect, press **Open log** in the window and look for errors about ports 8080 or 8765. |
 | Another site or app can't connect | It needs the API key (see above). The log shows `Refused a connection ... API key required` or `invalid API key`. |
-| A click when you only moved your head, or a blink that didn't click | Close your eyes fully until the tick (about ⅓ second by default, or your calibrated time). The log says `Head moved while the eyes only looked half closed ... not a blink` when it ignored a closure, with how far the eyelids closed and how far the head moved. If it still happens, send `eyesync.log`. |
+| A click when you only moved your head, or a blink that didn't click | Close your eyes fully until the tick (about ⅓ second by default, or your calibrated time). The log says `Head moved while the eyes only looked half closed ... not a blink` when it ignored a closure, with how far the eyelids closed and how far the head moved (sideways or up-down); `Eyes closed while the head moved, but the eyelids never shut fully` is the same for a closure that began while you were turning. If it still happens, send `eyesync.log`. |
 | "It's too dark for the camera" | Turn on a light, or turn up your screen brightness (the screen lights your face). |
 | You plugged in a monitor, pressed Win+P, or changed the resolution | Nothing to do: within 2 seconds EyeSync follows the new size of your main screen (the log says `Display changed`). The cursor moves on the main screen only; make the screen you want to use the main one in Windows Settings > System > Display. |
 | "Can't open the camera" | Another app (Zoom, Teams, a browser tab) is using the webcam, or camera access is off in Windows Settings > Privacy > Camera. Fix that; EyeSync retries every 2 seconds and also tries a second or third camera. |
