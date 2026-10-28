@@ -229,6 +229,10 @@ main:focus { outline: none; }
 .ticks li::before { content: ""; width: 16px; height: 16px; margin-top: 5px; background: var(--ok); }
 .cta-band { display: flex; flex-wrap: wrap; gap: 20px 32px; align-items: center; justify-content: space-between; padding: 28px; background: var(--surface); border: 6px solid var(--accent); }
 .cta-band > div:first-child { display: grid; gap: 8px; min-width: 0; }
+/* Why we made it */
+.view-why .panel { display: grid; gap: 14px; align-content: start; }
+.why-block { display: grid; gap: 24px; }
+.why-fact { padding: 14px 16px; background: var(--bg); border-left: 6px solid var(--accent); }
 
 /* Forms */
 .field { display: grid; gap: 8px; min-width: 0; }
@@ -796,6 +800,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
       <a class="btn btn-quiet js-member" href="#dashboard" data-nav="dashboard" hidden>Dashboard</a>
       <a class="btn btn-quiet js-member" href="#calibration" data-nav="calibration" hidden>Calibration</a>
       <a class="btn btn-quiet" href="#download" data-nav="download">Download</a>
+      <a class="btn btn-quiet" href="#why" data-nav="why">Why EyeSync</a>
     </nav>
     <nav class="nav js-guest" aria-label="Account">
       <a class="btn btn-quiet" href="#login" data-nav="login">Sign in</a>
@@ -819,6 +824,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
         <span class="mb-logo"><svg class="mb-mark" viewBox="0 0 16 16" aria-hidden="true"><rect class="bm-fill" width="16" height="16"></rect><path class="bm-cut" d="M5 5h6v1h2v1h1v2h-1v1h-2v1H5v-1H3V9H2V7h1V6h2z"></path><rect class="bm-fill" x="6" y="6" width="4" height="4"></rect><rect class="bm-hi" x="7" y="7" width="1" height="1"></rect></svg>EyeSync OS</span>
         <nav class="mb-menu" aria-label="Jump to a window">
           <a href="#download">Download</a>
+          <a href="#why">Why</a>
           <button type="button" data-win-go="gestures.exe">Gestures</button>
           <button type="button" data-win-go="setup.bas">Setup</button>
           <button type="button" data-win-go="privacy.sys">Privacy</button>
@@ -880,6 +886,15 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
           <span>Calibrated in 30 seconds</span><span>Your camera picture stays on your PC</span><span>Free for Windows 10 and 11</span>
         </div>
       </div>
+
+      <section class="home-section win" data-win="mission.txt" aria-labelledby="mission-title">
+        <div class="section-head">
+          <p class="eyebrow">Why we made it</p>
+          <h2 id="mission-title">Made for people who can't use a mouse</h2>
+          <p class="lede">EyeSync is for people living with paralysis, or with a disability or injury that makes a mouse and keyboard hard or impossible to use. A webcam, a little head movement and a blink are all it takes to use a computer again.</p>
+        </div>
+        <div class="row"><a class="btn btn-primary" href="#why">Read why we made EyeSync</a></div>
+      </section>
 
       <section class="home-section win" data-win="features.app" aria-labelledby="features-title">
         <div class="section-head">
@@ -1546,6 +1561,92 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
       </div>
     </section>
 
+    <!-- Why we made it -->
+    <section class="view view-why" data-view="why" hidden aria-labelledby="why-title">
+      <div class="view-head">
+        <div>
+          <p class="eyebrow">Why we made it</p>
+          <h1 id="why-title" tabindex="-1">Everyone deserves to use a computer.</h1>
+          <p class="lede">We made EyeSync for people who can't use a mouse or keyboard: people living with paralysis, or with a disability or injury that makes moving their arms and hands hard or impossible. Using a computer shouldn't depend on your hands.</p>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <section class="panel panel-strong" aria-labelledby="why-problem-title">
+          <h2 id="why-problem-title">The problem</h2>
+          <p>A computer is how we learn, work, talk to the people we love, find information and get everyday things done. Almost all of it is built around two hands on a mouse and a keyboard.</p>
+          <p>For someone who can't move their arms or hands, or can only move them a little, that can shut the door on all of it. Tools that help do exist, but special hardware can be expensive and hard to get.</p>
+          <p class="why-fact">About <strong>1 in 6 people</strong> worldwide lives with a significant disability, according to the <a href="https://www.who.int/news-room/fact-sheets/detail/disability-and-health" target="_blank" rel="noopener noreferrer">World Health Organization</a>.</p>
+        </section>
+        <section class="panel" aria-labelledby="why-answer-title">
+          <h2 id="why-answer-title">Our answer</h2>
+          <p>EyeSync turns an ordinary webcam into a mouse. Small head movements steer the cursor, a blink clicks, and simple face gestures, your eyes and your voice do the rest: right click, scroll, jump across the screen, type and pause, all without touching anything.</p>
+          <p>It's free, it needs nothing but a webcam, and the camera picture never leaves your PC. We wanted something anyone could start using today, with what they already have.</p>
+          <div class="row"><a class="btn btn-primary" href="#download">Download EyeSync</a></div>
+        </section>
+      </div>
+
+      <section class="why-block" aria-labelledby="why-who-title">
+        <div class="section-head">
+          <p class="eyebrow">Who it's for</p>
+          <h2 id="why-who-title">For anyone a mouse leaves out</h2>
+        </div>
+        <div class="features">
+          <article class="feature">
+            <span class="feature-mark" data-tone="danger" aria-hidden="true"></span>
+            <h3>Living with paralysis</h3>
+            <p>People who can move their head but not their arms or hands, for example after a spinal cord injury.</p>
+          </article>
+          <article class="feature">
+            <span class="feature-mark" aria-hidden="true"></span>
+            <h3>Conditions that affect movement</h3>
+            <p>People with conditions such as ALS (motor neurone disease), multiple sclerosis, muscular dystrophy or cerebral palsy, or after a stroke, for whom a mouse is hard or impossible to use.</p>
+          </article>
+          <article class="feature">
+            <span class="feature-mark" data-tone="warn" aria-hidden="true"></span>
+            <h3>Injury, pain and tremor</h3>
+            <p>A broken arm, repetitive strain, arthritis or a tremor. For a few weeks, or for good.</p>
+          </article>
+          <article class="feature">
+            <span class="feature-mark" data-tone="ok" aria-hidden="true"></span>
+            <h3>Families and carers</h3>
+            <p>Help set it up once, and the person you care for can use the computer on their own.</p>
+          </article>
+        </div>
+      </section>
+
+      <div class="grid-2">
+        <section class="panel panel-strong" aria-labelledby="why-promise-title">
+          <h2 id="why-promise-title">What we promise</h2>
+          <ul class="ticks">
+            <li><span><strong>Free.</strong> No price, no subscription, no ads.</span></li>
+            <li><span><strong>No special hardware.</strong> The webcam you already have is enough.</span></li>
+            <li><span><strong>Hands-free from start to finish.</strong> Click, scroll, type with your voice, pause and quit without touching anything.</span></li>
+            <li><span><strong>Private.</strong> Your camera picture, where you look and what you say stay on your PC.</span></li>
+            <li><span><strong>Fitted to you.</strong> A 30-second calibration learns how you move, blink and smile.</span></li>
+            <li><span><strong>Easy to reach.</strong> Big buttons, strong contrast and calm screens on this website, made for a head pointer.</span></li>
+          </ul>
+        </section>
+        <section class="panel" aria-labelledby="why-fit-title">
+          <h2 id="why-fit-title">Is EyeSync right for you?</h2>
+          <p>EyeSync works best if you can move your head a little, even slightly, and blink or hold still to click. You'll need a Windows 10 or 11 computer with a webcam. Someone may need to help with the first install.</p>
+          <p>EyeSync is not a medical device. If it doesn't suit you, an occupational therapist or an assistive technology specialist can help you find what does.</p>
+          <p>We're Aniruddh and Rudra, and we're building EyeSync in the open. If it helps you, or something gets in your way, please <a href="https://github.com/Aniruddh9140/face-control-website/issues" target="_blank" rel="noopener noreferrer">tell us on GitHub</a>. Every bit of feedback makes it better for the next person.</p>
+        </section>
+      </div>
+
+      <section class="cta-band" aria-labelledby="why-cta-title">
+        <div>
+          <h2 id="why-cta-title">Know someone who could use it?</h2>
+          <p class="hint">Share this page with them, or with the people who care for them. EyeSync is free for everyone.</p>
+        </div>
+        <div class="hero-actions">
+          <a class="btn btn-primary btn-lg btn-dl" href="#download">Download EyeSync</a>
+          <button class="btn btn-lg" type="button" id="why-share">Copy link to this page</button>
+        </div>
+      </section>
+    </section>
+
     <!-- Policies -->
     <section class="view" data-view="cookies" hidden aria-labelledby="cookies-title">
       <div class="view-head"><div><p class="eyebrow">Legal</p><h1 id="cookies-title" tabindex="-1">Cookie Policy</h1></div></div>
@@ -1567,6 +1668,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
   <div class="wrap footer-inner">
     <div class="credits">
       <p class="made">Made with <svg class="heart" viewBox="0 0 7 6" role="img" aria-label="love"><path d="M1 0h2v1h1V0h2v1h1v2H6v1H5v1H4v1H3V5H2V4H1V3H0V1h1z"></path></svg> by Aniruddh and Rudra</p>
+      <p class="hint">Made for people who can't use a mouse or keyboard. <a href="#why">Why we made EyeSync</a></p>
       <p class="hint">EyeSync v1.1 · runs in your browser · no ads, no trackers</p>
     </div>
     <nav aria-label="Legal">
@@ -2116,6 +2218,7 @@ const ROUTES = {
   dashboard: { title: 'Dashboard', auth: true },
   calibration: { title: 'Calibration', auth: true },
   download: { title: 'Download for Windows' },
+  why: { title: 'Why we made it' },
   cookies: { title: 'Cookie Policy' },
   terms: { title: 'Terms and Conditions' },
 };
@@ -2159,7 +2262,7 @@ const Router = {
     if (name === 'calibration') Calibration.renderIdle();
     if (name === 'download') DownloadPage.render();
     if (name === 'home') HeroPreview.start(); else HeroPreview.stop();
-    if (name === 'home' || name === 'download') Reveal.setup(name);
+    if (name === 'home' || name === 'download' || name === 'why') Reveal.setup(name);
     if (name === 'home') { Effects.home(); Mascot.queue(); }
     window.scrollTo(0, 0);
     $(`[data-view="${name}"] h1`)?.focus({ preventScroll: true });
@@ -3526,7 +3629,8 @@ const Reveal = {
     setTimeout(() => el.classList.remove('reveal', 'is-in'), 1300 + (parseInt(el.style.getPropertyValue('--delay'), 10) || 0));
   },
   groups: {
-    home: ['.ticker', '.home-section .section-head', '.features > .feature', '.stats > .stat', '.gestures > .gesture', '.steps > .step', '.view-home > .grid-2 > section', '.cta-band'],
+    home: ['.ticker', '.home-section .section-head', '.home-section .section-head + .row', '.features > .feature', '.stats > .stat', '.gestures > .gesture', '.steps > .step', '.view-home > .grid-2 > section', '.cta-band'],
+    why: ['.view-why > .view-head', '.view-why > .grid-2 > section', '.view-why .section-head', '.view-why .features > .feature', '.view-why > .cta-band'],
     download: ['.view[data-view="download"] > .view-head', '.view[data-view="download"] .grid-2 > section', '.view[data-view="download"] .grid-3 > section'],
   },
   setup(view) {
@@ -4168,6 +4272,12 @@ function bindForms() {
     else if (e.target.closest('.js-escal-cancel')) EyeSync.send('calibrate', 'cancel');
   });
   $('#dl-retry').addEventListener('click', () => DownloadPage.render());
+  // Why we made it: copy a link to the page, to send to someone who could use EyeSync
+  $('#why-share').addEventListener('click', async () => {
+    const url = `${location.origin}${location.pathname}#why`;
+    try { await navigator.clipboard.writeText(url); toast('Link copied. Paste it into a message to share it.', 'ok'); }
+    catch { toast(`Copy this link to share it: ${url}`); }
+  });
 
   $('#cal-start').addEventListener('click', () => Calibration.start());
   $('#cal-stop').addEventListener('click', () => Calibration.stop('user'));
