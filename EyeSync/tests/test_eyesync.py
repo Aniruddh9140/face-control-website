@@ -200,7 +200,7 @@ class BlinkTests(unittest.TestCase):
         0.65 s to react, and the user opens 0.55-0.9 s after the tick - a left
         click came out as a right click."""
         O, C = self.O, self.C
-        for min_s in (li.BLINK_MIN_S, li.BLINK_CALIBRATED_MAX_S):
+        for min_s in (li.BLINK_MIN_S, 0.45):                # 0.45: 1.5.10's cap, or --min-blink
             with self.subTest(min_s):
                 def run(frames):
                     b = li.BlinkDetector(None, 0.55, 0.70, min_s, li.BLINK_MAX_S, 0.6)
@@ -267,6 +267,15 @@ class BlinkTests(unittest.TestCase):
             self.assertEqual(self.ticked(slow)[0], ["left"])
         finally:
             li.BlinkDetector.TICK_WHEN_SHUT = True
+
+    def test_every_missed_click_is_logged(self):
+        """One hint per 20 s hid how many meant clicks went missing (2026-10-28)."""
+        O, C = self.O, self.C
+        half = (self.ear(0.8), self.ear(0.8))
+        missed = [(C, C)] * 6 + [half] * 8 + [(O, O)] * 30      # ~0.47 s, shut only ~0.17 s
+        with self.assertLogs("eyesync", "INFO") as logs:
+            self.assertEqual(self.ticked([(O, O)] * 30 + missed * 2), ([], []))
+        self.assertEqual(sum("opening before the tick" in m for m in logs.output), 2)
 
     def test_tick_requires_both_eyes_to_stay_closed(self):
         """One eye reopening must not let the other eye's high score arm a click.
@@ -1009,14 +1018,17 @@ class CalibrationTests(unittest.TestCase):
         self.assertEqual({tuple(f.pose) for f in cal.learned},
                          {(0.0, 0.0), (15, 0.0), (-15, 0.0), (0.0, 8), (0.0, -8)})
 
-    def test_slow_blinks_fit_a_longer_tick_up_to_the_cap(self):
+    def test_slow_calibration_blinks_never_delay_the_tick(self):
+        """The guide asks for slow, half-second blinks; the user's own clicks are
+        quicker (2026-10-28: 366 and 396 ms closures opened before a 0.36-0.45 s
+        calibrated tick). Since 1.5.13 the tick stays at the default."""
         closed = dict(eyes=((0.06, 0.06), (0.9, 0.9)))
-        for secs, want in ((0.4, 0.9 * 0.4), (0.7, li.BLINK_CALIBRATED_MAX_S)):
+        for secs in (0.4, 0.7):
             with self.subTest(secs):
                 slow = [(0.6, {}), (secs, closed)] * 3 + [(0.6, {})]
                 cal = self.run_cal(self.head_script() + slow + self.SMILE)
                 self.assertEqual(len(cal.blinks), 3)
-                self.assertAlmostEqual(cal.results()["blink_tick_s"], want, delta=0.035)
+                self.assertEqual(cal.results()["blink_tick_s"], li.BLINK_MIN_S)
 
     # A real blink: the lids pass "a quarter down" (ratio 0.7) on the way, stay
     # shut, then reopen slowly through ratio 0.8 - all part of the closure.
@@ -1108,11 +1120,11 @@ class CalibrationTests(unittest.TestCase):
         hp = li.HeadPointer(1920, 1080)
         blink = li.BlinkDetector(None, 0.55, 0.70, 0.2, 1.5, 0.6)
         gestures = li.FaceGestures()
-        cal = {"blink_tick_s": 0.33}
+        cal = {"blink_tick_s": 0.361}                    # the user's saved 1.5.11 calibration
         li.apply_calibration(cal, hp, blink, gestures, timing=False)
         self.assertEqual(blink.min_s, 0.2)
         li.apply_calibration(cal, hp, blink, gestures)
-        self.assertEqual(blink.min_s, 0.33)
+        self.assertEqual(blink.min_s, li.BLINK_MIN_S)    # used as it is: no new calibration needed
         li.apply_calibration({"blink_tick_s": 0.6}, hp, blink, gestures)
         self.assertEqual(blink.min_s, li.BLINK_CALIBRATED_MAX_S)
         # 1.5.9's value (measured over the whole closure) isn't used.

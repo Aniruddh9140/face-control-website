@@ -1179,10 +1179,16 @@ BLINK_MOVING_MIN_S = 0.4    # ... for a closure that began with the head moving
 # 1.5.9: calibration moves the tick to 90% of how long this user's slow blinks
 # stay shut. 1.5.10 capped it at 0.45 s (1.5.9: 0.65); 1.5.12 at 0.35 s - the
 # user found clicking slow ("fast fast fast") and chose quicker clicks over
-# fewer false ones. On the 10 GRID readers, false clicks a minute: 1.89 at
-# 0.3 s, 1.48 at 0.35, 0.73 at 0.45; the user's recorded quick clicks: 11/20,
-# 2/20, 0/20.
-BLINK_CALIBRATED_MAX_S = 0.35
+# fewer false ones. 1.5.13: never later than the default. The guide's slow,
+# half-second blinks put this user's tick at 0.36-0.45 s, while their own
+# clicks are quicker: on 2026-10-28 (1.5.11) 366 and 396 ms closures - shut
+# ~0.30 and ~0.33 s - opened before the tick, the only meant clicks lost.
+# On the 10 GRID readers, false clicks a minute: 1.89 at 0.3 s, 1.48 at
+# 0.35, 0.73 at 0.45; the user's recorded quick clicks: 11/20, 2/20, 0/20,
+# and their own natural blinks clicked no more at 0.3 s. (A grace for eyes
+# opening just as the tick is due costs GRID as much as an earlier tick:
+# 1.82 a minute for 1/25 s at 0.35.)
+BLINK_CALIBRATED_MAX_S = BLINK_MIN_S
 BLINK_RIGHT_S = 1.3         # the double tick: both eyes closed this long = a right click
 BLINK_MAX_S = 2.4           # longer is resting (then voice typing, VOICE_EYES_CLOSED_S)
 CLICK_REWIND_S = 0.13       # a click lands where the cursor was this long before the eyes closed
@@ -1510,7 +1516,10 @@ class BlinkDetector:
         elif duration > self.max_s:
             self.rested_at = now
             log.info(f"[blink] eyes closed {duration:.1f}s - treated as resting, no click")
-        elif 0.15 <= duration and self.cued == 0 and now - self.last_hint > 20:
+        elif (0.15 <= duration and self.cued == 0
+              and (duration >= BLINK_MIN_S or now - self.last_hint > 20)):
+            # Every closure as long as the shortest tick is logged (1.5.13): one
+            # hint per 20 s hid how many meant clicks went missing.
             self.last_hint = now
             # Long enough but no tick: the eyes were already opening when it was due
             # (TICK_WHEN_SHUT) - the user's 425 ms closure of 2026-10-23 said "too short".
