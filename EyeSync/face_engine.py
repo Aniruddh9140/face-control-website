@@ -22,19 +22,47 @@ FaceLandmarker otherwise. Everything downstream is identical either way.
 
 from __future__ import annotations
 
+import importlib
 import logging
 import math
 import os
 import sys
 import threading
 import time
+import types
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 
+
+def _defer_matplotlib() -> None:
+    """
+    MediaPipe's package imports its drawing helpers, and they import
+    matplotlib.pyplot: ~0.6 s of every start, for plotting EyeSync never
+    does (it draws its own overlay). Stand-ins load the real matplotlib the
+    moment anything does use it. (1.5.12; EyeSync.exe leaves it out.)
+    """
+    if "matplotlib" in sys.modules:
+        return
+
+    class Deferred(types.ModuleType):
+        def __getattr__(self, attr):
+            if attr.startswith("__"):
+                raise AttributeError(attr)
+            for name in ("matplotlib.pyplot", "matplotlib"):
+                if isinstance(sys.modules.get(name), Deferred):
+                    del sys.modules[name]
+            return getattr(importlib.import_module(self.__name__), attr)
+
+    parent, pyplot = Deferred("matplotlib"), Deferred("matplotlib.pyplot")
+    parent.pyplot = pyplot                  # "import matplotlib.pyplot as plt" reads this
+    sys.modules["matplotlib"], sys.modules["matplotlib.pyplot"] = parent, pyplot
+
+
 os.environ.setdefault("OPENCV_VIDEOIO_MSMF_ENABLE_HW_TRANSFORMS", "0")  # see open_camera
 import cv2
 import numpy as np
+_defer_matplotlib()
 import mediapipe as mp
 
 import app_paths

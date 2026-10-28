@@ -33,7 +33,7 @@ import app_paths
 
 log = logging.getLogger("eyesync")
 
-VERSION = "1.5.11"        # shown in the log and to the website; names the release files
+VERSION = "1.5.12"        # shown in the log and to the website; names the release files
 PROJECT_DIR = app_paths.DATA_DIR    # the user's files (see app_paths)
 # The EyeSync website (GitHub Pages since 2026-10-14; it replaced the Wix site).
 DEFAULT_SITE_ORIGINS = ["https://aniruddh9140.github.io"]

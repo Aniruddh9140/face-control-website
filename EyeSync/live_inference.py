@@ -656,7 +656,19 @@ class CursorMotion:
 # HEAD_SPEED is from the user's recorded movements: holding still stays
 # below 0.25 face widths/s (90%), real moves peak above 1.15 (90%).
 HEAD_RANGE = {1: (2.2, 0.8), 2: (1.9, 0.68), 3: (1.6, 0.57), 4: (1.35, 0.48), 5: (1.1, 0.4)}
-NOSE_MEDIAN_FRAMES = 3    # median of the last nose positions drops glitches (5 added ~35 ms lag)
+# The nose the pointer follows: the average of the last NOSE_FRAMES positions
+# (nose_smooth). Until 1.5.11 the median of 3 (it drops one-frame glitches,
+# for a frame of lag; 5 added ~35 ms). 1.5.12, the user asking for a quicker
+# cursor ("fast fast fast"): the mean of 2 - half a frame of lag instead of
+# one, and a steady turn moves the cursor MORE evenly (CursorMotionTests:
+# speed spread 0.24 vs 0.24 slow, 0.11 vs 0.13 normal). The newest nose alone
+# (28 ms less lag) made slow turns uneven (0.33) - rejected.
+NOSE_FRAMES = 2
+
+
+def nose_smooth(noses) -> np.ndarray:
+    """The pointer's nose from the last NOSE_FRAMES nose positions."""
+    return np.mean(np.array(noses), axis=0)
 SCREEN_CHECK_S = 2.0      # how often the worker checks whether the display's resolution changed
 HEAD_SPEED = (0.3, 1.2)   # head speed (face widths/s) where "slow" ends and "normal" begins
 HEAD_Y_GAIN = 1.4     # people tilt their head less than they turn it
@@ -1165,12 +1177,12 @@ BLINK_DEEP = 1.25
 BLINK_MIN_S = 0.3           # the tick
 BLINK_MOVING_MIN_S = 0.4    # ... for a closure that began with the head moving
 # 1.5.9: calibration moves the tick to 90% of how long this user's slow blinks
-# stay shut. 1.5.10 caps it here (1.5.9: 0.65): on the 10 GRID readers 0.45 s
-# still gives 61% fewer false clicks than 0.3 s (1.89 -> 0.73 a minute), while
-# the real user's recorded quick clicks already fail from 0.40 s and a 0.6 s
-# tick costs the shortest of their real clicks (467-664 ms closures) - and
-# makes every click slower.
-BLINK_CALIBRATED_MAX_S = 0.45
+# stay shut. 1.5.10 capped it at 0.45 s (1.5.9: 0.65); 1.5.12 at 0.35 s - the
+# user found clicking slow ("fast fast fast") and chose quicker clicks over
+# fewer false ones. On the 10 GRID readers, false clicks a minute: 1.89 at
+# 0.3 s, 1.48 at 0.35, 0.73 at 0.45; the user's recorded quick clicks: 11/20,
+# 2/20, 0/20.
+BLINK_CALIBRATED_MAX_S = 0.35
 BLINK_RIGHT_S = 1.3         # the double tick: both eyes closed this long = a right click
 BLINK_MAX_S = 2.4           # longer is resting (then voice typing, VOICE_EYES_CLOSED_S)
 CLICK_REWIND_S = 0.13       # a click lands where the cursor was this long before the eyes closed
@@ -2014,17 +2026,32 @@ class MeshHolder:
     because its camera hung keeps its mesh, so two threads never share one.
     """
 
+    PRELOAD_WAIT_S = 15.0    # a worker waits this long for a preload under way
+
     def __init__(self):
         self._lock = threading.Lock()
         self._mesh: fe.FaceMeshBackend | None = None
+        self._preloaded = threading.Event()
+        self._preloaded.set()                  # no preload under way
+
+    def expect_preload(self) -> None:
+        """A preload is about to start (on another thread): take() waits for it."""
+        self._preloaded.clear()
 
     def preload(self) -> None:
+        self._preloaded.clear()
         try:
             self.give(fe.FaceMeshBackend())
         except Exception:
             log.exception("[mediapipe] Preloading the face mesh failed; it will load on demand")
+        finally:
+            self._preloaded.set()
 
     def take(self) -> fe.FaceMeshBackend:
+        # The camera opens in ~2 s, the first mesh takes ~3 s: wait for the
+        # preload rather than build a second mesh beside it (1.5.11 did, and
+        # the two loads slowed each other down at every Connect).
+        self._preloaded.wait(self.PRELOAD_WAIT_S)
         with self._lock:
             mesh, self._mesh = self._mesh, None
         return mesh if mesh is not None else fe.FaceMeshBackend()
@@ -2075,7 +2102,7 @@ class VisionWorker(threading.Thread):
         self.gesture_warned = False              # the long-hold gesture in progress has beeped
         self.scroll = TiltScroll()
         self.tilt_held = False                   # the cursor is held for a head tilt (scroll)
-        self.nose_history: deque[np.ndarray] = deque(maxlen=NOSE_MEDIAN_FRAMES)
+        self.nose_history: deque[np.ndarray] = deque(maxlen=NOSE_FRAMES)
         self.click_mode = state.read().click_mode
         # Recent cursor positions, to put a click where the cursor was just
         # before the eyes began to close (see CLICK_REWIND_S).
@@ -2533,7 +2560,7 @@ class VisionWorker(threading.Thread):
         self.was_active = active
         nose, face_px = fe.nose_pointer(landmarks, w, h)
         self.nose_history.append(nose)
-        nose = np.median(np.array(self.nose_history), axis=0)
+        nose = nose_smooth(self.nose_history)
         if self.state.recenter_request.is_set():
             self.state.recenter_request.clear()
             self._restart_motion(np.array([self.screen.width / 2, self.screen.height / 2]))
@@ -2856,6 +2883,7 @@ async def supervise_vision(args, screen, state) -> None:
     gone_since: float | None = None
     waiting_logged = False
     meshes = MeshHolder()
+    meshes.expect_preload()                    # a worker starting first waits for it
     preload = asyncio.create_task(asyncio.to_thread(meshes.preload), name="mesh-preload")
 
     def start() -> VisionWorker:

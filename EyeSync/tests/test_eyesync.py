@@ -597,13 +597,13 @@ class HeadPointerTests(unittest.TestCase):
                 hp = self.pointer()
                 mc, beta, start, stop, vmax = li.SENSITIVITY_LEVELS[level]
                 f, m = li.OneEuroFilter(mc, beta), li.CursorMotion(start, stop, vmax)
-                hist, pos = deque(maxlen=li.NOSE_MEDIAN_FRAMES), []
+                hist, pos = deque(maxlen=li.NOSE_FRAMES), []
                 for i in range(240):
                     t = i / FPS
                     u = min(max(t - 3.0, 0.0), 1.0)
                     nose = np.array([320.0 - 12 * (3 * u * u - 2 * u * u * u), 240.0])
                     hist.append(nose + rng.normal(0, 0.45, 2))
-                    tgt = hp.target(np.median(np.array(hist), axis=0), self.FACE, level)
+                    tgt = hp.target(li.nose_smooth(hist), self.FACE, level)
                     pos.append(m(f(tgt, t), t).copy())
                 pos = np.array(pos)
                 # Judge the distance moved: the first (noisy) frame sets the
@@ -625,11 +625,11 @@ class HeadPointerTests(unittest.TestCase):
                 hp = self.pointer()
                 mc, beta, start, stop, vmax = li.SENSITIVITY_LEVELS[level]
                 f, m = li.OneEuroFilter(mc, beta), li.CursorMotion(start, stop, vmax)
-                hist, pos = deque(maxlen=li.NOSE_MEDIAN_FRAMES), []
+                hist, pos = deque(maxlen=li.NOSE_FRAMES), []
                 for i in range(90):
                     t = i / FPS
                     hist.append(np.array([320.0, 240.0]) + rng.normal(0, 1.0, 2))
-                    tgt = hp.target(np.median(np.array(hist), axis=0), self.FACE, level)
+                    tgt = hp.target(li.nose_smooth(hist), self.FACE, level)
                     pos.append(m(f(tgt, t), t).copy())
                 moved += np.ptp(np.array(pos)[30:89], axis=0).max() >= 3
             self.assertLessEqual(moved, 4, f"level {level}: nudged in {moved}/30 rests")
@@ -1011,7 +1011,7 @@ class CalibrationTests(unittest.TestCase):
 
     def test_slow_blinks_fit_a_longer_tick_up_to_the_cap(self):
         closed = dict(eyes=((0.06, 0.06), (0.9, 0.9)))
-        for secs, want in ((0.45, 0.9 * 0.45), (0.7, li.BLINK_CALIBRATED_MAX_S)):
+        for secs, want in ((0.4, 0.9 * 0.4), (0.7, li.BLINK_CALIBRATED_MAX_S)):
             with self.subTest(secs):
                 slow = [(0.6, {}), (secs, closed)] * 3 + [(0.6, {})]
                 cal = self.run_cal(self.head_script() + slow + self.SMILE)
@@ -1032,7 +1032,7 @@ class CalibrationTests(unittest.TestCase):
         blink = [(0.6, {}), (0.1, self.RAMP_DOWN), (0.5, self.SHUT), (0.167, self.RAMP_UP)]
         cal = self.run_cal(self.head_script() + blink * 3 + [(0.6, {})] + self.SMILE)
         res = cal.results()
-        self.assertAlmostEqual(res["blink_tick_s"], 0.9 * 14 / FPS, delta=0.01)
+        self.assertAlmostEqual(res["blink_tick_s"], min(0.9 * 14 / FPS, li.BLINK_CALIBRATED_MAX_S), delta=0.01)
         old = float(np.clip(0.9 * np.median([b[2] for b in cal.blinks]), li.BLINK_MIN_S, 0.65))
         self.assertGreater(old, 0.6)                          # what 1.5.9 saved
 
@@ -1108,11 +1108,11 @@ class CalibrationTests(unittest.TestCase):
         hp = li.HeadPointer(1920, 1080)
         blink = li.BlinkDetector(None, 0.55, 0.70, 0.2, 1.5, 0.6)
         gestures = li.FaceGestures()
-        cal = {"blink_tick_s": 0.4}
+        cal = {"blink_tick_s": 0.33}
         li.apply_calibration(cal, hp, blink, gestures, timing=False)
         self.assertEqual(blink.min_s, 0.2)
         li.apply_calibration(cal, hp, blink, gestures)
-        self.assertEqual(blink.min_s, 0.4)
+        self.assertEqual(blink.min_s, 0.33)
         li.apply_calibration({"blink_tick_s": 0.6}, hp, blink, gestures)
         self.assertEqual(blink.min_s, li.BLINK_CALIBRATED_MAX_S)
         # 1.5.9's value (measured over the whole closure) isn't used.
@@ -1315,13 +1315,13 @@ class CursorMotionTests(unittest.TestCase):
         f, m = li.OneEuroFilter(mc, beta), li.CursorMotion(start, stop, vmax)
         hp = li.HeadPointer(1920, 1080)
         hp.reset(np.array([200.0, 540.0]))
-        hist, xs = deque(maxlen=li.NOSE_MEDIAN_FRAMES), []
+        hist, xs = deque(maxlen=li.NOSE_FRAMES), []
         secs = min(0.4 / speed_fw, 2.5)
         for i in range(int((4 + secs) * FPS)):
             t = i / FPS
             nose = np.array([400.0 - min(max(t - 2, 0), secs) * speed_fw * 95, 240.0])
             hist.append(nose + rng.normal(0, 0.45, 2))
-            pos = m(f(hp.target(np.median(np.array(hist), axis=0), 95.0, level, t), t), t).copy()
+            pos = m(f(hp.target(li.nose_smooth(hist), 95.0, level, t), t), t).copy()
             m.pos = pos
             xs.append(pos[0])
         xs = np.array(xs)
@@ -3375,6 +3375,9 @@ class BlinkTestButtonTests(unittest.TestCase):
                 self.halt.wait(10)
 
         class FakeMeshes:
+            def expect_preload(self):
+                pass
+
             def preload(self):
                 pass
 
@@ -3476,6 +3479,51 @@ class CameraRetryTests(unittest.TestCase):
         self.assertIn("Working again after", loud[-1])
         self.assertIn("Could not open camera", loud[0])
         self.assertEqual(st.read().hint, "")                      # the hint is gone once it works
+
+
+class StartupTests(unittest.TestCase):
+    """What happens between the website's Connect and a moving cursor."""
+
+    def test_a_worker_waits_for_the_preload(self):
+        """1.5.11 built a second face mesh when the camera opened (~2 s) before the
+        preload (~3 s) was done; the two loads slowed each other down."""
+        made = []
+
+        class SlowMesh:
+            def __init__(self):
+                time.sleep(0.3)
+                made.append(self)
+
+            def close(self):
+                pass
+
+        saved, li.fe.FaceMeshBackend = li.fe.FaceMeshBackend, SlowMesh
+        try:
+            holder = li.MeshHolder()
+            holder.expect_preload()
+            threading.Thread(target=holder.preload, daemon=True).start()
+            mesh = holder.take()
+        finally:
+            li.fe.FaceMeshBackend = saved
+        self.assertEqual(len(made), 1)
+        self.assertIs(mesh, made[0])
+
+    def test_matplotlib_waits_until_something_uses_it(self):
+        """MediaPipe's drawing helpers import matplotlib.pyplot (~0.6 s of every
+        start); EyeSync never plots, so a stand-in takes its place."""
+        mine = lambda k: k == "matplotlib" or k.startswith("matplotlib.")   # noqa: E731
+        saved = {k: v for k, v in sys.modules.items() if mine(k)}
+        for k in saved:
+            del sys.modules[k]
+        try:
+            fe._defer_matplotlib()
+            import matplotlib.pyplot as plt                     # what the helpers do
+            self.assertEqual(type(plt).__name__, "Deferred")
+            self.assertEqual(type(sys.modules["matplotlib"]).__name__, "Deferred")
+        finally:
+            for k in [k for k in sys.modules if mine(k)]:
+                del sys.modules[k]
+            sys.modules.update(saved)
 
 
 class RecordingFileTests(unittest.TestCase):

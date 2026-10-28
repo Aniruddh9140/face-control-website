@@ -204,7 +204,7 @@ again").
 3. **Click**, in one of two ways (Settings → **Click by**):
    - **Blink** (the default): close both eyes and listen. A short high **tick**
      (about ⅓ second by default; after calibrating, fitted to your slow
-     blinks, at most about half a second) means "open now and it clicks";
+     blinks, at most 0.35 s) means "open now and it clicks";
      open your eyes and it left-clicks. No tick, no click, so
      ordinary quick blinks are ignored - and while your head is moving
      (reading, looking around) the tick comes a little later (at least about
@@ -329,8 +329,9 @@ What it changes:
   switches to speed 1 afterwards; the higher speeds are still faster.
 - **Blink clicks:** fitted to how far and how long your eyes close (with or
   without glasses). The tick comes at 90% of the time your slow blinks
-  stayed shut - so the very blinks you showed click - between ⅓ and about
-  half a second; the double tick always a second after it. EyeSync also
+  stayed shut - so the very blinks you showed click - between 0.30 and
+  0.35 s (1.5.10-1.5.11: up to 0.45 s, which made clicking slow); the double
+  tick always a second after it. EyeSync also
   learns how your open eyes look at each screen edge, so looking there is
   never taken as a blink. (1.5.9 timed the whole blink, opening included,
   and allowed up to 0.65 s: its tick could come after your eyes had begun

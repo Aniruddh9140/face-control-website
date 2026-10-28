@@ -138,6 +138,9 @@ def pyinstaller_args(ver: str) -> list[str]:
         # imports tools/record_blinks.py (1.5.8 and 1.5.9 were built without it).
         "--paths", str(HERE / "tools"),
         "--hidden-import", "record_blinks",
+        # Only MediaPipe's drawing helpers import matplotlib, and face_engine
+        # stands in for it (_defer_matplotlib): a smaller, faster exe (1.5.12).
+        "--exclude-module", "matplotlib",
         # Native/runtime data used by the vision, audio and local speech stack.
         "--collect-all", "mediapipe",
         "--collect-all", "pywhispercpp",
