@@ -882,7 +882,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 
       <div class="ticker" aria-hidden="true">
         <div class="ticker-track">
-          <span>Blink to click</span><span>Hold to the double tick for a right click</span><span>Smile to pause</span><span>Tilt your head to scroll</span><span>Close your eyes and talk to type</span><span>Look, nudge, and the cursor jumps there</span>
+          <span>Blink to click</span><span>Hold to the double tick for a right click</span><span>Smile to pause</span><span>Tilt your head to scroll</span><span>Close your eyes and talk to type</span>
           <span>Calibrated in 30 seconds</span><span>Your camera picture stays on your PC</span><span>Free for Windows 10 and 11</span>
         </div>
       </div>
@@ -905,12 +905,12 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
           <article class="feature">
             <span class="feature-mark" data-tone="danger" aria-hidden="true"></span>
             <h3>Steer with your head</h3>
-            <p>Small head movements move the real mouse across your whole screen. Blink to click, or keep your eyes closed until the double tick for a right click. Tilt your head to scroll. Going far? Look at the spot, nudge your head, and the cursor jumps there. To type, close your eyes for 2.5 s and just talk.</p>
+            <p>Small head movements move the real mouse across your whole screen. Blink to click, or keep your eyes closed until the double tick for a right click. Tilt your head to scroll. To type, close your eyes for 2.5 s and just talk.</p>
           </article>
           <article class="feature">
             <span class="feature-mark" aria-hidden="true"></span>
             <h3>Every setting in reach</h3>
-            <p>Pause, recenter, change the speed or how you click, right from the dashboard. Changes you make on the PC show up here instantly.</p>
+            <p>Pause, recenter, change the speed or how you click, right from the dashboard. Changes you make on the PC show up here instantly. The EyeSync window can also open, resize and move Windows' on-screen keyboard by voice.</p>
           </article>
           <article class="feature">
             <span class="feature-mark" data-tone="warn" aria-hidden="true"></span>
@@ -1024,7 +1024,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
           <li class="step">
             <span class="step-n" aria-hidden="true">3</span>
             <h3>Calibrate, every time</h3>
-            <p>Press Calibrate EyeSync and follow the dots on your screen. EyeSync learns your range of movement, your blink and your smile. It takes half a minute, and we suggest doing it every time you start using EyeSync.</p>
+            <p>Press Calibrate EyeSync, then point your head at each dot on your screen and hold still until it moves on. EyeSync learns how you move. It takes about half a minute, and we suggest doing it every time you start using EyeSync.</p>
           </li>
         </ol>
         <p class="hint"><span aria-hidden="true">*</span> You'll need Windows 10 or 11, a webcam, and Chrome, Edge or Firefox on the same computer.</p>
@@ -1040,7 +1040,6 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
             <li>Your password is sent only to Supabase over HTTPS and kept as a bcrypt hash. The password itself is never saved, and no one else can read your account's data.</li>
             <li>Cursor positions travel only from EyeSync to this page, and are never stored.</li>
             <li>Voice typing runs on your PC, offline. What you say is typed there and never sent to this website.</li>
-            <li>For gaze jump, EyeSync works out where you look on your PC. Where you look is never sent to this website.</li>
             <li>No cookies, no analytics, no third-party scripts. Even the fonts are bundled in.</li>
           </ul>
           <div class="row">
@@ -1441,14 +1440,14 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
         <div>
           <p class="eyebrow">Calibration</p>
           <h1 id="cal-title" tabindex="-1">Tune it to you.</h1>
-          <p class="lede">Calibrate EyeSync to fit the head pointer to the way you move, blink and smile. We suggest calibrating every time you start using EyeSync: your light, your seat and how you sit change from one time to the next. The accuracy test then shows how well the cursor reaches targets.</p>
+          <p class="lede">Calibrate EyeSync to fit the head pointer to the way you move. We suggest calibrating every time you start using EyeSync: your light, your seat and how you sit change from one time to the next. The accuracy test then shows how well the cursor reaches targets.</p>
         </div>
       </div>
 
       <section class="panel panel-strong" aria-labelledby="escal-title">
         <div class="panel-head"><h2 id="escal-title">Calibrate EyeSync</h2><span class="tag">Every time · about 30 s</span></div>
-        <p>A full-screen guide opens on your PC, on top of this page, with dots to look at. It moves on by itself, so you don't need to click anything. Press Esc or its Cancel button to stop. The result is saved on your PC.</p>
-        <p><strong>Calibrate eyes</strong> (EyeSync 1.3.0 and newer, about 20 s) teaches EyeSync where you look, for gaze jump: look at each of 9 dots on your PC screen with your eyes, keeping your head natural. Do it again if gaze jumps land off target.</p>
+        <p>A full-screen guide opens on your PC, on top of this page, with dots on it. Point your head at each dot and hold still until it moves on; you don't need to click anything. EyeSync 2 uses 9 dots and takes 30 to 45 seconds. Press Esc or its Cancel button to stop. The result is saved on your PC.</p>
+        <p><strong>Calibrate eyes</strong> (only EyeSync 1.3 to 1.5, which have gaze jump; about 20 s) teaches EyeSync where you look, for gaze jump: look at each of 9 dots on your PC screen with your eyes, keeping your head natural. Do it again if gaze jumps land off target.</p>
         <div class="js-escal-slot"></div>
       </section>
 
@@ -1549,14 +1548,16 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
         <section class="panel" aria-labelledby="dl-update-title">
           <h2 id="dl-update-title">Updating</h2>
           <p>Download the new <span class="mono">EyeSync.exe</span>, open it and click <strong>Update</strong>. Your settings and calibration are kept. The dashboard tells you when a new version is out.</p>
+          <p><strong>Coming from EyeSync 1?</strong> EyeSync 2 is a new edition. First remove the old one: Windows <strong>Settings</strong> → <strong>Apps</strong> → <strong>Installed apps</strong> → <strong>EyeSync</strong> → <strong>Uninstall</strong>. Then open the new <span class="mono">EyeSync.exe</span> and calibrate again.</p>
         </section>
         <section class="panel" aria-labelledby="dl-remove-title">
           <h2 id="dl-remove-title">Removing</h2>
-          <p>Windows <strong>Settings</strong> → <strong>Apps</strong> → <strong>Installed apps</strong> → <strong>EyeSync</strong> → <strong>Uninstall</strong>.</p>
+          <p><strong>EyeSync 2:</strong> press <strong>Quit EyeSync</strong> on the dashboard, end <strong>EyeSync</strong> in Task Manager, then delete the folder <span class="mono">%LOCALAPPDATA%\Programs\EyeSync-Brahmastra</span> (paste that into File Explorer's address bar).</p>
+          <p><strong>EyeSync 1:</strong> Windows <strong>Settings</strong> → <strong>Apps</strong> → <strong>Installed apps</strong> → <strong>EyeSync</strong> → <strong>Uninstall</strong>.</p>
         </section>
         <section class="panel" aria-labelledby="dl-privacy-title">
           <h2 id="dl-privacy-title">Privacy</h2>
-          <p>The camera picture is processed on your PC and never uploaded. So is your voice: voice typing works offline and types on your PC. Where you look, for gaze jump, is worked out on your PC too. EyeSync only talks to this website and to apps you give its API key.</p>
+          <p>The camera picture is processed on your PC and never uploaded. So is your voice: voice typing works offline and types on your PC. EyeSync only talks to this website.</p>
         </section>
       </div>
     </section>
@@ -1580,7 +1581,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
         </section>
         <section class="panel" aria-labelledby="why-answer-title">
           <h2 id="why-answer-title">Our answer</h2>
-          <p>EyeSync turns an ordinary webcam into a mouse. Small head movements steer the cursor, a blink clicks, and simple face gestures, your eyes and your voice do the rest: right click, scroll, jump across the screen, type and pause, all without touching anything.</p>
+          <p>EyeSync turns an ordinary webcam into a mouse. Small head movements steer the cursor, a blink clicks, and simple face gestures, your eyes and your voice do the rest: right click, scroll, type and pause, all without touching anything.</p>
           <p>It's free, it needs nothing but a webcam, and the camera picture never leaves your PC. We wanted something anyone could start using today, with what they already have.</p>
           <div class="row"><a class="btn btn-primary" href="#download">Download EyeSync</a></div>
         </section>
@@ -2800,6 +2801,7 @@ function sanitizeStatus(m) {
     step: CAL_STEPS.includes(cal.step) || GAZE_STEPS.includes(cal.step) ? cal.step : '',
     stepText: shortText(cal.text),
     progress: typeof cal.progress === 'number' && Number.isFinite(cal.progress) ? clamp(cal.progress, 0, 1) : 0,
+    nineDots: typeof cal.capture_progress === 'number',   // EyeSync 2: progress runs over all 9 dots
     hint: shortText(m.hint),
     hardwareMouse: m.hardware_mouse === true,
     voice: sanitizeVoice(m.voice),
@@ -3221,9 +3223,11 @@ function renderEscal() {
   const s = EyeSync.status, on = EyeSync.connected;
   const running = on && s.calibrating;
   const eyes = EyeSync.calKind === 'gaze';
-  const steps = eyes ? GAZE_STEPS : CAL_STEPS;
-  const at = running ? steps.indexOf(s.step) : -1;
+  const nine = running && !eyes && s.nineDots;            // EyeSync 2's head calibration
+  const steps = eyes || nine ? GAZE_STEPS : CAL_STEPS;
+  const at = !running ? -1 : nine ? Math.min(8, Math.floor(s.progress * 9)) : steps.indexOf(s.step);
   const pct = !running ? 0
+    : nine ? Math.round(s.progress * 100)
     : eyes ? (at < 0 ? 0 : Math.round(((at + s.progress) / GAZE_STEPS.length) * 100))
     : at >= 8 ? 100 : at <= 0 ? 0 : Math.round(((at - 1 + s.progress) / 7) * 100);
   const g = on ? s.gaze : null;
@@ -3245,9 +3249,9 @@ function renderEscal() {
     $('.js-escal-bar', box).setAttribute('aria-label', eyes ? 'Eye calibration progress' : 'Calibration progress');
     $('.js-escal-bar', box).setAttribute('aria-valuenow', String(pct));
     $('.js-escal-fill', box).style.width = pct + '%';
-    $('.js-escal-steps', box).hidden = eyes || (running && !EyeSync.calKind);    // started on the PC: wait for its steps
-    $('.js-escal-dots', box).hidden = !eyes;
-    $$(eyes ? '.js-escal-dots li' : '.js-escal-steps li', box).forEach((li) => {
+    $('.js-escal-steps', box).hidden = eyes || nine || (running && !EyeSync.calKind);    // started on the PC: wait for its steps
+    $('.js-escal-dots', box).hidden = !(eyes || nine);
+    $$(eyes || nine ? '.js-escal-dots li' : '.js-escal-steps li', box).forEach((li) => {
       const i = steps.indexOf(li.dataset.step);
       li.dataset.state = i < at ? 'done' : i === at ? 'now' : '';
     });
@@ -3262,7 +3266,11 @@ function renderUpdate() {
   const s = EyeSync.status, r = Release.data;
   const show = !!(EyeSync.connected && s.version && r && isNewer(r.version, s.version));
   $('#update-notice').hidden = !show;
-  if (show) $('#update-text').textContent = `EyeSync ${r.version} is available (you have ${s.version}). To update, download the new EyeSync.exe and open it. Your settings and calibration are kept.`;
+  const edition = (v) => Number(String(v).split('.')[0]);
+  if (show) $('#update-text').textContent = edition(r.version) > edition(s.version)
+    // A new edition installs beside the old one, and the old uninstaller would undo its Windows set-up
+    ? `EyeSync ${r.version} is available (you have ${s.version}). It's a new edition: first uninstall your old EyeSync (Windows Settings, Apps, Installed apps, EyeSync, Uninstall), then download the new EyeSync.exe, open it and calibrate again.`
+    : `EyeSync ${r.version} is available (you have ${s.version}). To update, download the new EyeSync.exe and open it. Your settings and calibration are kept.`;
 }
 // EyeSync clicks by itself (blinks, or its own dwell), so the website's dwell stays off while it's
 // connected: otherwise one look could press a button twice. The saved choice is kept for other trackers.
@@ -4041,7 +4049,6 @@ const Mascot = {
     'Need to scroll? Tilt your head towards a shoulder and hold it. Straighten up to stop.',
     'Cursor drifted? Pull your mouth to your left for 1.5 seconds to recenter it.',
     'Need to type? Click into a text box, close both eyes for 2.5 seconds, then just talk.',
-    'Long way to go? Turn on gaze jump, look at the spot and nudge your head towards it.',
     'Press “Try it with your head” and steer the little screen yourself.',
     'Your camera picture never leaves your PC. Promise.',
     'Grab a window by its title bar to move it. Double-click to put it back.',
@@ -4267,7 +4274,7 @@ function bindForms() {
   $('#cam-toggle').addEventListener('change', (e) => { if (e.target.checked) Camera.start(); else Camera.off(); renderEyeSync(); });
   $('#es-show-camera').addEventListener('click', () => { Camera.start(); renderEyeSync(); $('#cam-panel').scrollIntoView({ block: 'nearest' }); });
   document.addEventListener('click', (e) => {    // the "Calibrate EyeSync" blocks are cloned from a template
-    if (e.target.closest('.js-escal-start')) { if (EyeSync.calibrate('head')) toast('Follow the dots on your PC screen. The guide moves on by itself.', 'ok'); }
+    if (e.target.closest('.js-escal-start')) { if (EyeSync.calibrate('head')) toast('Point your head at each dot on your PC screen and hold still until it moves on.', 'ok'); }
     else if (e.target.closest('.js-escal-eyes-start')) { if (EyeSync.calibrate('gaze')) toast('Look at each dot on your PC screen with your eyes, keeping your head natural. The guide moves on by itself.', 'ok'); }
     else if (e.target.closest('.js-escal-cancel')) EyeSync.send('calibrate', 'cancel');
   });
