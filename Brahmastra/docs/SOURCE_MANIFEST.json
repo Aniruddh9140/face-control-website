@@ -1,0 +1,27 @@
+{
+  "voice_typing.py": {
+    "source": "E:\\EyeSync\\voice_typing.py",
+    "sha256": "2f8b78ed0d279d06a15d8b819c90a0807d2cdda2cfb4eea4ac6d107f106f5f74"
+  },
+  "desktop.py": {
+    "source": "E:\\EyeSync\\desktop.py",
+    "sha256": "9c93b7537adeb8fa1cf86db8c23fd66ad78da2981df3ee8190bc1d906369adb9"
+  },
+  "face_engine.py": {
+    "source": "E:\\EyeSync\\face_engine.py",
+    "sha256": "b57dc63f80abf51acd5dda97f299e785204edd0a7153a19b0286924f6fa8614c"
+  },
+  "app_paths.py": {
+    "source": "E:\\EyeSync\\app_paths.py",
+    "sha256": "46180e9253f1836ea82b83ae8190a8f2a592638968bd78375541ae072e1b98ec",
+    "integration_change": "Added EYESYNC_DATA_DIR override and separated APP_DIR resource paths from persistent EXE data."
+  },
+  "THIRD_PARTY_NOTICES.md": {
+    "source": "E:\\EyeSync\\THIRD_PARTY_NOTICES.md",
+    "sha256": "04b3b3901599f21bece46edb8dcd78a6ebbbf171e32226183cb3871ae1fd9b72"
+  },
+  "voice_commands.py": {
+    "source": "E:\\rudra12345\\Face-Controlled-Operating-System-main\\Face-Controlled-Operating-System-main\\voice_commands.py",
+    "sha256": "5904ea832848f21b89e35264f9b52fbc45978890619c6c1b0055b5bb573757d7"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "voice_engine_source": "E:/EyeSync/voice_typing.py",
+  "voice_engine_sha256": "2f8b78ed0d279d06a15d8b819c90a0807d2cdda2cfb4eea4ac6d107f106f5f74",
+  "voice_engine_unchanged": true,
+  "voice_bar_source": "E:/EyeSync/main_window.py",
+  "voice_bar_source_sha256": "0c369a9ffc074873a4b06a58d206a4dcd8f22ebd080629a90403c3988532a4e9",
+  "voice_bar_symbols": [
+    "VoiceOverlay",
+    "show_without_focus",
+    "_work_area"
+  ],
+  "integration_modules": [
+    "improved_voice.py",
+    "voice_capture.py",
+    "voice_overlay.py",
+    "control_engine.py",
+    "eyesync_app.py"
+  ],
+  "original_shortcut": "Ctrl+Alt+Shift+F5",
+  "additional_shortcut": "Ctrl+Alt+Shift+F8"
+}

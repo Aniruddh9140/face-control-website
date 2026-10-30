@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+tests/__pycache__/
+data/*
+!data/.gitkeep
+*.log
+docs/dashboard-connected.jpg
+build/
+release/
+*.spec
+models/*.bin
+models/*.task
+models/*.download

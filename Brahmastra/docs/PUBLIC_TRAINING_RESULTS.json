@@ -1,0 +1,146 @@
+{
+  "dataset": "BIWI fast.ai RGB repack",
+  "python": "3.15.0 (tags/v3.15.0:d220409, Oct  9 2026, 11:55:56) [MSC v.1951 64 bit (AMD64)]",
+  "stride": 5,
+  "input_resolution": [
+    320,
+    240
+  ],
+  "domain_degrees": {
+    "yaw": [
+      -50,
+      50
+    ],
+    "pitch": [
+      -40,
+      40
+    ]
+  },
+  "attempted": 3145,
+  "no_face": 161,
+  "outside_domain": 769,
+  "usable": 2215,
+  "split_counts": {
+    "train": 1584,
+    "validation": 299,
+    "test": 332
+  },
+  "split_subjects": {
+    "train": [
+      "F01",
+      "F03",
+      "F05",
+      "F06",
+      "M01",
+      "M03",
+      "M05",
+      "M06",
+      "M08",
+      "M09",
+      "M11",
+      "M12",
+      "M13"
+    ],
+    "validation": [
+      "F02",
+      "M02",
+      "M07"
+    ],
+    "test": [
+      "F04",
+      "M04",
+      "M10",
+      "M14"
+    ]
+  },
+  "trials": [
+    {
+      "quadratic": false,
+      "strength": 0.1,
+      "yaw_mae_deg": 3.4738790821841166,
+      "pitch_mae_deg": 3.3945063759869956,
+      "mean_mae_deg": 3.4341927290855563,
+      "p90_vector_error_deg": 9.874831817537485
+    },
+    {
+      "quadratic": false,
+      "strength": 1.0,
+      "yaw_mae_deg": 3.4686727638281534,
+      "pitch_mae_deg": 3.438729059427463,
+      "mean_mae_deg": 3.453700911627808,
+      "p90_vector_error_deg": 9.35961883758323
+    },
+    {
+      "quadratic": false,
+      "strength": 10.0,
+      "yaw_mae_deg": 3.463007100215577,
+      "pitch_mae_deg": 3.4936229646834294,
+      "mean_mae_deg": 3.478315032449504,
+      "p90_vector_error_deg": 9.202704912000177
+    },
+    {
+      "quadratic": false,
+      "strength": 100.0,
+      "yaw_mae_deg": 3.4932863456021566,
+      "pitch_mae_deg": 3.397393008096936,
+      "mean_mae_deg": 3.445339676849547,
+      "p90_vector_error_deg": 9.546796942192039
+    },
+    {
+      "quadratic": true,
+      "strength": 0.1,
+      "yaw_mae_deg": 2.9362428911289014,
+      "pitch_mae_deg": 4.198143607775563,
+      "mean_mae_deg": 3.5671932494522323,
+      "p90_vector_error_deg": 10.860241950179395
+    },
+    {
+      "quadratic": true,
+      "strength": 1.0,
+      "yaw_mae_deg": 2.8871804158789387,
+      "pitch_mae_deg": 4.211072683240765,
+      "mean_mae_deg": 3.5491265495598525,
+      "p90_vector_error_deg": 10.730700163692275
+    },
+    {
+      "quadratic": true,
+      "strength": 10.0,
+      "yaw_mae_deg": 2.9143921859701574,
+      "pitch_mae_deg": 4.111944987539665,
+      "mean_mae_deg": 3.513168586754912,
+      "p90_vector_error_deg": 10.362547331367761
+    },
+    {
+      "quadratic": true,
+      "strength": 100.0,
+      "yaw_mae_deg": 3.167565908988199,
+      "pitch_mae_deg": 3.602350538289349,
+      "mean_mae_deg": 3.3849582236387743,
+      "p90_vector_error_deg": 9.354455534836958
+    }
+  ],
+  "selected": {
+    "quadratic": true,
+    "strength": 100.0,
+    "yaw_mae_deg": 3.167565908988199,
+    "pitch_mae_deg": 3.602350538289349,
+    "mean_mae_deg": 3.3849582236387743,
+    "p90_vector_error_deg": 9.354455534836958
+  },
+  "test": {
+    "yaw_mae_deg": 2.559495828084409,
+    "pitch_mae_deg": 3.597013434153483,
+    "mean_mae_deg": 3.078254631118946,
+    "p90_vector_error_deg": 8.205584176498776
+  },
+  "constant_baseline": {
+    "yaw_mae_deg": 17.651280822755496,
+    "pitch_mae_deg": 13.61720154258041,
+    "mean_mae_deg": 15.634241182667953,
+    "p90_vector_error_deg": 46.514302861009796
+  },
+  "acceptance_passed": true,
+  "note": "Person-separated internal benchmark, not screen-pointer accuracy or an official BIWI leaderboard result.",
+  "model_sha256": "d7861e7f74bb81a62b231b80df32853ffe5f240b5cbad1d0129d8f17c53f670a",
+  "model_file": "biwi_head_pose.npz"
+}

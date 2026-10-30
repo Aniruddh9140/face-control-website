@@ -1,0 +1,9 @@
+# Brahmastra uses the same locally installed versions as EyeSync.
+# A ready-to-run isolated environment is included in .venv on this computer.
+opencv-contrib-python>=4.8,<6
+mediapipe>=0.10.14,<2
+numpy>=1.24,<3
+pillow>=10,<13
+pywhispercpp>=1.5.1,<2
+sounddevice>=0.4.6,<1
+websockets>=13,<18

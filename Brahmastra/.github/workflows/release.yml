@@ -1,0 +1,219 @@
+name: Build and release EyeSync
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Publish a GitHub Release and refresh website metadata'
+        type: boolean
+        required: true
+        default: false
+      tag:
+        description: 'Existing vX.Y.Z tag; required when publishing manually'
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: eyesync-release
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    env:
+      RELEASE_TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+      PUBLISH: ${{ github.event_name == 'push' || inputs.publish }}
+    steps:
+      - name: Check out the requested source
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - name: Set up Python 3.15 x64
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.15'
+          architecture: x64
+          cache: pip
+          cache-dependency-path: |
+            requirements-python315.txt
+            requirements-build.txt
+
+      - name: Check publish tag matches the source version
+        shell: pwsh
+        run: |
+          @'
+          import os, re
+          from version import VERSION
+          if os.environ.get('PUBLISH', '').lower() == 'true':
+              tag = os.environ.get('RELEASE_TAG', '')
+              if not re.fullmatch(r'v\d+\.\d+\.\d+', tag) or tag != f'v{VERSION}':
+                  raise SystemExit(f'Publishing requires an existing v{VERSION} tag matching version.py; received {tag!r}')
+          print(f'Building EyeSync {VERSION} with Python 3.15')
+          '@ | python -
+
+      - name: Install verified runtime and build dependencies
+        run: >-
+          python -m pip install --only-binary=:all: -r requirements-python315.txt -r requirements-build.txt
+
+      - name: Fetch and verify the release models
+        run: python training/fetch_release_models.py
+
+      - name: Run source regressions
+        run: python -m unittest discover -s tests -q
+
+      - name: Build the single executable and metadata
+        run: python build_exe.py --output release
+
+      - name: Run the executable's self-test
+        shell: pwsh
+        run: |
+          @'
+          from pathlib import Path
+          import subprocess
+          exe = Path('release/EyeSync.exe').resolve()
+          report = Path('release/frozen-selftest.txt').resolve()
+          subprocess.run([str(exe), '--selftest', str(report)], check=True, timeout=900)
+          if not report.is_file():
+              raise SystemExit('Frozen self-test produced no report')
+          print(report.read_text(encoding='utf-8'))
+          '@ | python -
+
+      - name: Check frozen dashboard start, quit and restart
+        run: python tests/check_frozen_release.py release/EyeSync.exe
+
+      - name: Retain the tested release files
+        uses: actions/upload-artifact@v4
+        with:
+          name: EyeSync-windows-x64-${{ github.run_number }}
+          path: release/*
+          if-no-files-found: error
+          retention-days: 14
+          overwrite: true
+
+  publish:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.publish)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pages: write
+      actions: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+      PAGES_WORKFLOW: ${{ vars.EYESYNC_PAGES_WORKFLOW }}
+    steps:
+      - name: Check out the website's default branch
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+
+      - name: Download the tested build
+        uses: actions/download-artifact@v4
+        with:
+          name: EyeSync-windows-x64-${{ github.run_number }}
+          path: release
+
+      - name: Determine the existing Pages configuration
+        shell: bash
+        run: |
+          gh api "repos/${GITHUB_REPOSITORY}/pages" > release/pages-config.json
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          config = json.loads(Path('release/pages-config.json').read_text())
+          mode = config.get('build_type', 'legacy')
+          source = config.get('source') or {}
+          if mode == 'legacy':
+              if source.get('branch') != os.environ['DEFAULT_BRANCH']:
+                  raise SystemExit('This workflow expects branch-based Pages to use the default branch. Adjust the workflow for a separate publishing branch.')
+              site = source.get('path', '/')
+              if site not in ('/', '/docs'):
+                  raise SystemExit(f'Unsupported Pages source folder: {site}')
+          elif mode == 'workflow':
+              if not os.environ.get('PAGES_WORKFLOW'):
+                  raise SystemExit('Set repository variable EYESYNC_PAGES_WORKFLOW to the existing Pages workflow filename. It must accept workflow_dispatch.')
+              site = os.environ.get('EYESYNC_PAGES_SOURCE') or '/'
+              if site not in ('/', '/docs'):
+                  raise SystemExit('EYESYNC_PAGES_SOURCE must be / or /docs')
+          else:
+              raise SystemExit(f'Unsupported Pages build type: {mode}')
+          root = Path('.' if site == '/' else 'docs')
+          if not (root / 'index.html').is_file():
+              raise SystemExit(f'No website index.html under {root}; copy the AI source into the website repository without replacing its website files.')
+          with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8') as output:
+              output.write(f'PAGES_MODE={mode}\nSITE_ROOT={root.as_posix()}\n')
+          PY
+        env:
+          EYESYNC_PAGES_SOURCE: ${{ vars.EYESYNC_PAGES_SOURCE }}
+
+      - name: Verify release files and prepare website metadata
+        shell: bash
+        run: |
+          python - <<'PY'
+          import hashlib, json, os, re
+          from pathlib import Path
+          folder = Path('release')
+          info = json.loads((folder / 'latest.json').read_text())
+          tag = os.environ['RELEASE_TAG']
+          if not re.fullmatch(r'v\d+\.\d+\.\d+', tag) or info.get('version') != tag[1:]:
+              raise SystemExit('Release tag and metadata version differ')
+          exe = folder / 'EyeSync.exe'
+          if info.get('file') != exe.name or info.get('size') != exe.stat().st_size:
+              raise SystemExit('Release executable metadata is inconsistent')
+          if info.get('sha256') != hashlib.sha256(exe.read_bytes()).hexdigest():
+              raise SystemExit('Release executable checksum does not match metadata')
+          for name in ('SHA256SUMS.txt', 'release.md'):
+              if not (folder / name).is_file():
+                  raise SystemExit(f'Missing release asset: {name}')
+          destination = Path(os.environ['SITE_ROOT']) / 'downloads' / 'latest.json'
+          if destination.exists():
+              previous = json.loads(destination.read_text())
+              def version(value):
+                  return tuple(int(n) for n in value.split('.'))
+              if version(previous.get('version', '0.0.0')) > version(info['version']):
+                  raise SystemExit('Refusing to replace newer website metadata with an older release')
+          destination.parent.mkdir(parents=True, exist_ok=True)
+          destination.write_text(json.dumps(info, indent=2)+'\n', encoding='utf-8')
+          PY
+
+      - name: Publish the versioned GitHub Release assets
+        shell: bash
+        run: |
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" release/EyeSync.exe release/latest.json release/SHA256SUMS.txt release/release.md --repo "$GITHUB_REPOSITORY" --clobber
+            gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --notes-file release/release.md --latest
+          else
+            gh release create "$RELEASE_TAG" release/EyeSync.exe release/latest.json release/SHA256SUMS.txt release/release.md --repo "$GITHUB_REPOSITORY" --verify-tag --title "EyeSync ${RELEASE_TAG#v}" --notes-file release/release.md --latest
+          fi
+
+      - name: Commit only download metadata to the website
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- "$SITE_ROOT/downloads/latest.json"
+          if ! git diff --cached --quiet; then
+            git commit -m "Update EyeSync download metadata for $RELEASE_TAG"
+            git push origin "HEAD:$DEFAULT_BRANCH"
+          fi
+
+      - name: Refresh the existing GitHub Pages site
+        shell: bash
+        run: |
+          if [ "$PAGES_MODE" = legacy ]; then
+            gh api --method POST "repos/${GITHUB_REPOSITORY}/pages/builds"
+          else
+            gh workflow run "$PAGES_WORKFLOW" --repo "$GITHUB_REPOSITORY" --ref "$DEFAULT_BRANCH"
+          fi
+          printf '%s\n' 'Pages refresh requested. Check the Pages deployment run for the final live-site result.'

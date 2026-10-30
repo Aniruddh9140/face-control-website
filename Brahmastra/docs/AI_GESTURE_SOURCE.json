@@ -1,0 +1,14 @@
+{
+  "source": "E:\\EyeSync\\live_inference.py",
+  "sha256": "62851a22edc71c78df42d47b070296ad221437cf1fff20f0df885315db4de2b7",
+  "detectors": [
+    "PoseBins",
+    "BlinkDetector",
+    "FaceGestures",
+    "TiltScroll"
+  ],
+  "method": "VisionWorker._close_gesture",
+  "integration": "gesture_adapter.py",
+  "default_profile": "eyesync",
+  "legacy_profile": "face_os"
+}
