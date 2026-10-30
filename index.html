@@ -1557,7 +1557,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
         </section>
         <section class="panel" aria-labelledby="dl-privacy-title">
           <h2 id="dl-privacy-title">Privacy</h2>
-          <p>The camera picture is processed on your PC and never uploaded. So is your voice: voice typing works offline and types on your PC. EyeSync only talks to this website.</p>
+          <p>The camera picture is processed on your PC and never uploaded. So is your voice: voice typing works offline and types on your PC. EyeSync only talks to this website, apart from the optional Accurate voice mode, which downloads its speech model once from Hugging Face.</p>
         </section>
       </div>
     </section>
@@ -1713,7 +1713,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 
 <template id="tpl-cookies">
   <div class="policy">
-    <p class="meta">Version 1.6 · Last updated 18 October 2026</p>
+    <p class="meta">Version 1.7 · Last updated 30 October 2026</p>
     <p>EyeSync sets no HTTP cookies and loads nothing from other websites. It does use your browser's local storage and session storage, which privacy laws such as the EU ePrivacy Directive and UK PECR treat the same way as cookies. This policy lists every item it stores and why.</p>
     <h2>What is stored on your device</h2>
     <div class="table-wrap">
@@ -1733,7 +1733,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
     <h2>Cursor, camera, eye and voice data</h2>
     <p>Cursor positions travel from EyeSync (or other tracker software) on your own computer to this page over a local WebSocket (localhost or 127.0.0.1 only). They are processed in memory to draw the cursor and are never stored or sent anywhere else. Only a summary of your last accuracy test is saved: on this device with preference storage on, and in your account.</p>
     <p>If you turn on the camera view, EyeSync sends small camera pictures to this page the same way. They are shown on the page and are never stored, uploaded or logged. They stop when you turn the camera view off or leave the Dashboard.</p>
-    <p>Voice typing is done by EyeSync on your PC, offline. What you say is typed into the program you're using there and is never sent to this page; the page only learns whether voice typing is on, and whether EyeSync is listening or typing.</p>
+    <p>Voice typing is done by EyeSync on your PC, offline. What you say is typed into the program you're using there and is never sent to this page; the page only learns whether voice typing is on, and whether EyeSync is listening or typing. If you turn on Accurate mode in the EyeSync window, EyeSync downloads its speech model once from Hugging Face, which may log technical data such as your IP address; your speech still stays on your PC.</p>
     <p>Gaze jump works out where you look from the camera picture, on your PC. Where you look is never sent to this page; the page only learns whether gaze jump is on, when your eyes were last calibrated and roughly how accurate that calibration is.</p>
     <p>The home page's live head demo uses your camera only after you press “Try it with your head” and your browser asks for permission. The face tracking runs in your browser, from files served by this site; camera pictures are never stored, uploaded or logged, and the camera turns off when you press Stop or leave the page.</p>
     <h2>Hosting</h2>
@@ -1817,7 +1817,7 @@ dialog.modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 const APP = 'EyeSync';
 const CONSENT_VERSION = 1;
 const TERMS_VERSION = '1.3';
-const COOKIE_POLICY_VERSION = '1.6';
+const COOKIE_POLICY_VERSION = '1.7';
 const SESSION_IDLE_MS = 30 * 60 * 1000;          // sign-in for this tab only
 const REMEMBER_MS = 30 * 24 * 60 * 60 * 1000;    // "Keep me signed in": 30 days since last use
 const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1']);  // keep in sync with the CSP connect-src
@@ -2326,8 +2326,9 @@ const portOf = (url) => { try { return new URL(url).port; } catch { return ''; }
 const isEyeSyncUrl = (url) => EYESYNC_PORTS.includes(Number(portOf(url)));
 const eyeSyncUrl = (port, ask = '') => `ws://localhost:${port}${ask ? `/?${ask}=1` : ''}`;
 // Close codes: 4000 = EyeSync was closed by the user, 4002 = its standby is starting it, 4003 = the
-// answer to a probe. Other 4xxx codes (EyeSync's 4001) and 1008 mean the server refused this page.
-const isRefusal = (code) => code === 1008 || (code >= 4000 && code < 5000 && ![4000, 4002, 4003].includes(code));
+// answer to a probe, 4004 = this page fell behind and should reconnect. Other 4xxx codes (EyeSync's
+// 4001) and 1008 mean the server refused this page.
+const isRefusal = (code) => code === 1008 || (code >= 4000 && code < 5000 && ![4000, 4002, 4003, 4004].includes(code));
 
 class GazeLink extends EventTarget {
   #ws = null; #url = ''; #want = false; #retry = 0; #timer = 0; #opened = false; #deadline = 0;
