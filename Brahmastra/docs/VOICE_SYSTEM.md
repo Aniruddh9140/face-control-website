@@ -42,6 +42,15 @@ The upstream core source remains unchanged. Improvements live in subclasses and
 integration modules, allowing its SHA256 and original speech regression tests to
 remain valid. All files are in Desktop/Brahmastra; E:/EyeSync is untouched.
 
+## Spoken Enter
+
+Normal dictation uses `DictationComposer` in `improved_voice.py`. A final “enter”,
+“press enter”, “hit enter”, or “press return” types preceding text first, then sends
+a Return key press/release. A separate “enter” also works. It needs no command panel.
+The existing target-change, cancellation, and partial-write guards still apply.
+Submitting clears composition history so undo cannot erase a previously submitted
+message. “Please enter your name” remains literal text; “new line” remains Shift+Enter.
+
 ## Verification
 
 On the included Windows x64 Python 3.15 environment:

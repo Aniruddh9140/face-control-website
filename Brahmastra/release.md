@@ -1,8 +1,16 @@
-# EyeSync 2.0.4 for Windows x64
+# EyeSync 2.0.5 for Windows x64
 
 EyeSync combines local head-controlled pointer movement, blink/wink clicks,
 head-tilt scrolling, facial shortcuts, offline voice typing, and the on-screen
 keyboard command panel. It connects to the existing [EyeSync dashboard](https://aniruddh9140.github.io/face-control-website/#dashboard).
+
+## Enter during normal voice typing
+
+Say “hello enter” to type “hello” and press Enter, or dictate first and say
+“enter” separately. No command box is needed. This submits searches, messages,
+or forms in apps such as Chrome when their focused field uses Enter to submit.
+“New line” still inserts a line break. Submission clears dictation history;
+focus-change, cancellation, and partial-input safeguards remain active.
 
 ## Personal calibration fit
 

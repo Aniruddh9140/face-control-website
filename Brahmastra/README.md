@@ -141,7 +141,11 @@ mistakes, especially on Indian English accents, but each phrase takes 7–30 sec
 depending on how busy the PC is. It downloads 190 MB once; speech itself still stays
 on this PC. Say a short phrase and wait for the text before the next one.
 
-Say **new line**, **delete that**, or **stop listening** as separate phrases.
+During normal voice typing, say **enter** to press Enter in the focused app—no command
+box is needed. Say **hello enter** to type “hello” and press Enter, or dictate first
+and say **enter** after a pause. In Chrome this submits the search, message, or form
+when that field uses Enter to submit. **New line** inserts a line break instead.
+Say **delete that** or **stop listening** as separate phrases.
 When the EyeSync window has focus, normal dictation returns to the previously
 used application. Mouth click gestures are suppressed throughout listening and
 recognition so speaking does not trigger right clicks. Head steering remains available.

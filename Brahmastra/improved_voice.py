@@ -8,6 +8,7 @@ from __future__ import annotations
 import logging
 import math
 import queue
+import re
 import threading
 import time
 
@@ -19,6 +20,25 @@ import voice_typing as vt
 from voice_capture import Microphone
 
 log = logging.getLogger('eyesync.voice')
+
+
+class DictationComposer(vt.Composer):
+    """Allow a spoken Enter after text in ordinary dictation."""
+    ENTER_END = re.compile(
+        r'(?:^|[\s,;:]+)(?:press\s+enter|hit\s+enter|press\s+return|enter)[\s.!?,;:]*$',
+        re.IGNORECASE,
+    )
+
+    def plan(self, raw):
+        text = vt.clean(raw)
+        enter = self.ENTER_END.search(text)
+        ops = super().plan(text[:enter.start()] if enter else raw)
+        if enter:
+            ops.append(('key', 'enter'))
+        if ops and ops[-1] == ('key', 'enter'):
+            # Submitted text must not be joined to or undone in the next field.
+            self.reset()
+        return ops
 
 
 class ReliableTypist(vt.Typist):
@@ -68,6 +88,7 @@ class ImprovedVoiceTyping(vt.VoiceTyping):
         if kwargs.get('typist') is None and vt.sys.platform == 'win32':
             kwargs['typist'] = ReliableTypist()
         super().__init__(state, **kwargs)
+        self.composer = DictationComposer()
         self.shutdown = threading.Event()
         self._live_mic = None
         self._phrase_context = None

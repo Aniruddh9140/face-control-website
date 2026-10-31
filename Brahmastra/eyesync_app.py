@@ -176,7 +176,7 @@ class App:
         self.voice_button = ttk.Button(row, text="Start voice typing", style="Accent.TButton", command=self.toggle_voice)
         self.voice_button.pack(side="left")
         ttk.Button(row, text="Stop listening", command=lambda: vt.request(self.controller.state, False, "stop button")).pack(side="left", padx=8)
-        self.transcript = tk.StringVar(value="Click a text field in another app, then speak.\nSay “new line”, “delete that”, or “stop listening”.")
+        self.transcript = tk.StringVar(value="Click a text field in another app, then speak.\nSay “enter” to submit, “new line”, “delete that”, or “stop listening”.")
         ttk.Label(voice, textvariable=self.transcript, wraplength=450, style="Muted.TLabel").pack(anchor="w", pady=(12, 0))
         commands = self.card(right, "Voice command panel", "Speak or type an exact phrase. Commands use the same offline speech engine.")
         commands.pack(fill="both", expand=True, pady=(16, 0))

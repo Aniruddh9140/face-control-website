@@ -132,6 +132,47 @@ class ImprovedVoiceTests(unittest.TestCase):
             voice._run_session("test")
         self.assertIn("OSError: Fake startup error", " ".join(logs.output))
 
+    def test_enter_in_normal_dictation_types_text_before_return(self):
+        for words in ("Hello enter", "Hello, enter.", "Hello press enter!", "Hello hit enter", "Hello press return"):
+            with self.subTest(words=words):
+                voice, _, _, typist, _ = self.voice(ce.RoutedVoiceTyping, text=words)
+                self.assertFalse(voice.command_mode)
+                voice._phrase(self.audio)
+                self.assertEqual(typist.ops, [('text', 'Hello'), ('key', 'enter')])
+                events = vt.key_events(typist.ops)
+                self.assertEqual(events[-2:], [(vt.VK_RETURN, 0, 0), (vt.VK_RETURN, 0, vt.KEYEVENTF_KEYUP)])
+                self.assertEqual(voice.composer.typed, [])
+
+    def test_separate_enter_submits_prior_text_and_clears_undo(self):
+        voice, _, rec, typist, _ = self.voice(text="Hello.")
+        voice._phrase(self.audio)
+        rec.text = "Enter."
+        voice._phrase(self.audio)
+        self.assertEqual(typist.ops, [('text', 'Hello.'), ('key', 'enter')])
+        rec.text = "Delete that."
+        voice._phrase(self.audio)
+        self.assertEqual(len(typist.ops), 2)
+        rec.text = "Next message."
+        voice._phrase(self.audio)
+        self.assertEqual(typist.ops[-1], ('text', 'Next message.'))
+
+    def test_enter_within_sentence_is_literal_text(self):
+        voice, _, _, typist, _ = self.voice(text="Please enter your name.")
+        voice._phrase(self.audio)
+        self.assertEqual(typist.ops, [('text', 'Please enter your name.')])
+
+    def test_changed_target_cannot_receive_inline_enter(self):
+        voice, _, rec, typist, tracker = self.voice(text="Hello enter")
+        rec.on_recognize = lambda: setattr(tracker, 'window', 202)
+        self.assertTrue(voice._phrase(self.audio))
+        self.assertEqual(typist.ops, [])
+
+    def test_cancelled_recognition_cannot_submit_inline_enter(self):
+        voice, _, rec, typist, _ = self.voice(text="Hello enter")
+        rec.on_recognize = voice.stop_session.set
+        self.assertTrue(voice._phrase(self.audio))
+        self.assertEqual(typist.ops, [])
+
     def test_cancelled_recognition_never_types(self):
         voice, _, rec, typist, _ = self.voice()
         rec.on_recognize = voice.stop_session.set
