@@ -1,8 +1,15 @@
-# EyeSync 2.0.5 for Windows x64
+# EyeSync 2.0.6 for Windows x64
 
 EyeSync combines local head-controlled pointer movement, blink/wink clicks,
 head-tilt scrolling, facial shortcuts, offline voice typing, and the on-screen
 keyboard command panel. It connects to the existing [EyeSync dashboard](https://aniruddh9140.github.io/face-control-website/#dashboard).
+
+## Camera selection
+
+Choose your built-in or external USB camera from the dropdown above the preview.
+Stop the current camera before switching, then click Start camera to preview the
+selected device. The choice is remembered, with separate personal calibration
+files per camera. Existing Camera 0 calibration is retained.
 
 ## Enter during normal voice typing
 

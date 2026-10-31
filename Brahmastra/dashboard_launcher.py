@@ -25,7 +25,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--standby", action="store_true")
     parser.add_argument("--url")
-    parser.add_argument("--camera", type=int, default=0)
+    parser.add_argument("--camera", type=int, default=None)
     parser.add_argument("--ws-ports", type=int, nargs="+", default=[8765, 8080])
     parser.add_argument("--dashboard-test-mode", action="store_true")
     args = parser.parse_args()
@@ -62,8 +62,9 @@ def main():
                 return 0
             minimized = how == "website"
         pythonw = ROOT / ".venv" / "Scripts" / "pythonw.exe"
-        command = ([sys.executable, "--engine"] if app_paths.FROZEN else [str(pythonw), str(ROOT / "eyesync_app.py")]) + ["--camera", str(args.camera),
-                   "--ws-ports", *(str(p) for p in args.ws_ports)]
+        command = ([sys.executable, "--engine"] if app_paths.FROZEN else [str(pythonw), str(ROOT / "eyesync_app.py")]) + ["--ws-ports", *(str(p) for p in args.ws_ports)]
+        if args.camera is not None:
+            command += ["--camera", str(args.camera)]
         if minimized:
             command.append("--minimized")
         if args.dashboard_test_mode:

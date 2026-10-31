@@ -33,6 +33,22 @@ POINTS = [(0.5, 0.5)] + [(x, y) for y in (0.12, 0.5, 0.88)
                          for x in (0.12, 0.5, 0.88) if (x, y) != (0.5, 0.5)]
 
 
+CAMERA_CHOICE_PATH = app_paths.DATA_DIR / "data" / "camera.txt"
+
+
+def saved_camera():
+    try:
+        index = int(CAMERA_CHOICE_PATH.read_text().strip())
+        return index if 0 <= index <= 9 else 0
+    except (OSError, ValueError):
+        return 0
+
+
+def pointer_path(camera):
+    name = "pointer.npz" if camera == 0 else f"pointer-camera-{camera}.npz"
+    return app_paths.DATA_DIR / "data" / name
+
+
 @dataclass
 class Snapshot:
     running: bool = False
@@ -243,7 +259,7 @@ class Controller:
         self.state = State()
         self.screen = tuple(screen)
         self.state.update(x=screen[0] / 2, y=screen[1] / 2)
-        self.camera = camera
+        self.camera = saved_camera() if camera is None else camera
         self.mouse_factory = mouse_factory
         self.commands = queue.Queue()
         self.events = queue.Queue()
@@ -252,7 +268,7 @@ class Controller:
         self.emergency = threading.Event()
         self.enable_requested = threading.Event()
         self.voice = None
-        self.model_path = app_paths.DATA_DIR / "data" / "pointer.npz"
+        self.model_path = pointer_path(self.camera)
         self.mouse = None
         self.model = None
         self.dragging = False
@@ -277,6 +293,25 @@ class Controller:
         self.dwell_fired = False
         self.position_history = deque(maxlen=120)
         self.tilt_held = False
+
+    def select_camera(self, index):
+        if type(index) is not int or not 0 <= index <= 9:
+            raise ValueError("Choose a camera from 0 to 9.")
+        if self.thread is not None and self.thread.is_alive():
+            raise ValueError("Stop the camera before changing it.")
+        CAMERA_CHOICE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        temporary = CAMERA_CHOICE_PATH.with_suffix(".tmp")
+        temporary.write_text(str(index), encoding="utf-8")
+        temporary.replace(CAMERA_CHOICE_PATH)
+        self.camera = index
+        self.model_path = pointer_path(index)
+        self.model = None
+        self.enable_requested.clear()
+        self.state.update(calibrated=False, calibrated_date="", pointer_mode="untrained",
+                          calibration_quality="", calib_step="", calibration_text="",
+                          calibration_progress=0, capture_progress=0, enabled=False,
+                          mouse_requested=False, paused=True,
+                          hint=f"Camera {index} selected. Start camera to check its preview.")
 
     def start_voice_service(self):
         if self.voice is None:

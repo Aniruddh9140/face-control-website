@@ -222,3 +222,13 @@ To restore the previous Windows launch registration, run
 For a different Windows computer, install 64-bit Python 3.15, create
 a fresh `.venv`, install `requirements-python315.txt`, and retain the `models` folder.
 The included environment is specific to this computer; it is not a portable executable.
+
+## Camera selection
+
+In the EyeSync window, stop the camera, choose a camera from the dropdown above
+the preview, then click **Start camera**. Check the preview to identify your
+built-in or external USB camera; Windows assigns their numbers. The selection is
+saved for the next launch. Each camera has its own personal calibration. After
+switching, calibrate that camera before enabling the personal pointer. If a device
+is unplugged or does not open, select another camera; the app does not silently
+switch devices. Recalibrate if Windows changes device numbering after reconnecting.

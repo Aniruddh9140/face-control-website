@@ -36,7 +36,7 @@ PHRASES = [
 
 
 class App:
-    def __init__(self, root, camera=0, smoke=False, dashboard_ports=(8765, 8080), dashboard_test=False):
+    def __init__(self, root, camera=None, smoke=False, dashboard_ports=(8765, 8080), dashboard_test=False):
         self.root = root
         self.smoke = smoke
         self.dashboard_test = dashboard_test
@@ -121,6 +121,17 @@ class App:
 
         camera = self.card(left, "Face navigation", "Head movement steers. Facial gestures click.")
         camera.pack(fill="both", expand=True)
+        camera_row = ttk.Frame(camera, style="Card.TFrame")
+        camera_row.pack(fill="x", pady=(0, 8))
+        ttk.Label(camera_row, text="Camera").pack(side="left", padx=(0, 8))
+        self.camera_choice = tk.StringVar(value=f"Camera {self.controller.camera}")
+        self.camera_selector = ttk.Combobox(camera_row, textvariable=self.camera_choice,
+                                           values=[f"Camera {i}" for i in range(10)],
+                                           state="readonly", width=15)
+        self.camera_selector.pack(side="left")
+        self.camera_selector.bind("<<ComboboxSelected>>", self.choose_camera)
+        ttk.Label(camera, text="Choose your built-in or USB camera by its preview. Stop before switching.",
+                  style="Muted.TLabel", wraplength=440).pack(anchor="w", pady=(0, 8))
         preview_box = tk.Frame(camera, bg="#080d18", height=180)
         preview_box.pack(fill="x")
         preview_box.pack_propagate(False)
@@ -198,6 +209,13 @@ class App:
         ttk.Label(commands, textvariable=self.command_status, foreground=ACCENT, wraplength=450).pack(anchor="w", pady=(10, 0))
         tk.Label(shell, text="LOCAL PROCESSING    ·    Camera and microphone start on request    ·    No external mouse hardware",
                  bg=BG, fg=MUTED, font=("Segoe UI", 9)).pack(anchor="w", pady=(16, 0))
+
+    def choose_camera(self, _event=None):
+        try:
+            self.controller.select_camera(int(self.camera_choice.get().split()[-1]))
+        except (ValueError, OSError) as exc:
+            self.camera_choice.set(f"Camera {self.controller.camera}")
+            self.controller.state.update(hint=str(exc))
 
     def start_camera(self):
         if not self.smoke and not self.dashboard_test:
@@ -321,7 +339,9 @@ class App:
         self.command_status.set(snap.command_result)
         camera = f"{snap.fps:.0f} FPS" if snap.running else "CAMERA OFF"
         self.camera_status.set(f"{camera}   ·   {'FACE FOUND' if snap.face else 'NO FACE'}   ·   POINTER {'ON' if snap.enabled else 'PAUSED'}   ·   WEB {snap.dashboard_clients}")
-        self.start_button.configure(state="disabled" if self.controller.thread and self.controller.thread.is_alive() else "normal")
+        camera_busy = bool(self.controller.thread and self.controller.thread.is_alive())
+        self.start_button.configure(state="disabled" if camera_busy else "normal")
+        self.camera_selector.configure(state="disabled" if camera_busy else "readonly")
         self.enable_button.configure(text="Enable pointer" if snap.calibrated or snap.pointer_mode == "public" else "Train & enable pointer",
                                      state="normal" if snap.running and self.overlay is None else "disabled")
         self.voice_status.set({"": "Microphone off", "starting": "Starting microphone…", "listening": "Listening…", "hearing": "Hearing speech…", "working": "Recognizing locally…", "error": "Voice needs attention"}.get(snap.voice, snap.voice))
@@ -421,7 +441,7 @@ class App:
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--camera", type=int, default=0)
+    parser.add_argument("--camera", type=int, default=None)
     parser.add_argument("--ui-smoke", action="store_true", help="Show UI without camera, microphone, hotkeys or input")
     parser.add_argument("--smoke-seconds", type=float, default=0)
     parser.add_argument("--minimized", action="store_true")
