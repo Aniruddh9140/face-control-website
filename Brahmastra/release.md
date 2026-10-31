@@ -1,8 +1,15 @@
-# EyeSync 2.0.3 for Windows x64
+# EyeSync 2.0.4 for Windows x64
 
 EyeSync combines local head-controlled pointer movement, blink/wink clicks,
 head-tilt scrolling, facial shortcuts, offline voice typing, and the on-screen
 keyboard command panel. It connects to the existing [EyeSync dashboard](https://aniruddh9140.github.io/face-control-website/#dashboard).
+
+## Personal calibration fit
+
+- Compare face-center and whole-box ridge fits using withheld calibration targets.
+- Face-size variation can no longer force rejection when the center fit passes existing quality checks.
+- Preserve the existing calibration file format and rejection thresholds.
+- Log the reason when calibration cannot be saved.
 
 ## Calibration result fix
 

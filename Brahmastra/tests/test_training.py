@@ -76,6 +76,22 @@ class TrainingTests(unittest.TestCase):
         self.assertLess(float(np.quantile(np.linalg.norm(prediction - target, axis=1), .95)), .03)
         self.assertLess(model.validation_error, .04)
 
+    def test_face_size_changes_do_not_reject_consistent_small_head_motion(self):
+        target = np.asarray(ce.POINTS)
+        rng = np.random.default_rng(2)
+        center = .35 + target * .05 + rng.normal(0, .003, (9, 2))
+        size = .2 + rng.normal(0, .03, (9, 2))
+        x = np.c_[center - size / 2, center + size / 2]
+        model = ce.PointerModel.fit(x, target, (320, 240), (1920, 1080))
+        self.assertLess(model.validation_error, .10)
+        mean, scale, _, _, coef = ce.PointerModel._ridge(x, target, .2, True)
+        for half_size in (.06, .1, .14):
+            box = np.r_[center[0] - half_size, center[0] + half_size]
+            result = np.r_[1, (box - mean) / scale] @ coef
+            if half_size == .06:
+                reference = result
+            np.testing.assert_allclose(result, reference, atol=1e-10)
+
     def test_scrambled_targets_are_rejected(self):
         x, y = self.samples()
         y = y[np.random.default_rng(87).permutation(9)]

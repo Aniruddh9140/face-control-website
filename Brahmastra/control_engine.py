@@ -107,13 +107,22 @@ class PointerModel:
         self.validation_error = None
 
     @staticmethod
-    def _ridge(x, y, strength):
+    def _ridge(x, y, strength, center_only=False):
         mean, scale = x.mean(axis=0), np.maximum(x.std(axis=0), 0.003)
         z = (x - mean) / scale
         design = np.c_[np.ones(len(x)), z]
-        penalty = np.eye(5) * strength
+        fit_design = design
+        if center_only:
+            center = (x[:, :2] + x[:, 2:]) / 2
+            center_scale = np.maximum(center.std(axis=0), .003)
+            fit_design = np.c_[np.ones(len(x)), (center - center.mean(axis=0)) / center_scale]
+        penalty = np.eye(fit_design.shape[1]) * strength
         penalty[0, 0] = 0
-        coef = np.linalg.solve(design.T @ design + penalty, design.T @ y)
+        coef = np.linalg.solve(fit_design.T @ fit_design + penalty, fit_design.T @ y)
+        if center_only:
+            # Express the center map in the existing four-feature file format.
+            slopes = np.tile(coef[1:] / (2 * center_scale[:, None]), (2, 1))
+            coef = np.vstack([coef[:1], slopes * scale[:, None]])
         return mean, scale, z, design, coef
 
     @classmethod
@@ -127,18 +136,19 @@ class PointerModel:
         # Leave each target out, including its normalization statistics. Select
         # regularization on predictions of unseen dots, not training residuals.
         candidates = []
-        for strength in (.02, .2, 2.0):
-            errors = []
-            for index in range(len(x)):
-                keep = np.arange(len(x)) != index
-                mean, scale, _, _, coef = cls._ridge(x[keep], y[keep], strength)
-                predicted = np.r_[1, (x[index] - mean) / scale] @ coef
-                errors.append(np.linalg.norm((predicted - y[index]) * screen) / min(screen))
-            candidates.append((float(np.mean(errors)), strength, np.asarray(errors)))
-        _, strength, errors = min(candidates, key=lambda item: item[0])
+        for center_only in (True, False):
+            for strength in (.02, .2, 2.0):
+                errors = []
+                for index in range(len(x)):
+                    keep = np.arange(len(x)) != index
+                    mean, scale, _, _, coef = cls._ridge(x[keep], y[keep], strength, center_only)
+                    predicted = np.r_[1, (x[index] - mean) / scale] @ coef
+                    errors.append(np.linalg.norm((predicted - y[index]) * screen) / min(screen))
+                candidates.append((float(np.mean(errors)), strength, center_only, np.asarray(errors)))
+        _, strength, center_only, errors = min(candidates, key=lambda item: item[0])
         if np.median(errors) > .16 or np.quantile(errors, .9) > .28:
             raise ValueError("Training positions were inconsistent. Retry with small, steady head movements toward each dot.")
-        mean, scale, z, design, coef = cls._ridge(x, y, strength)
+        mean, scale, z, design, coef = cls._ridge(x, y, strength, center_only)
         residuals = y - design @ coef
         # A small smooth residual correction follows the source's hybrid design.
         model = cls(mean, scale, coef, z, residuals, camera, screen)
@@ -480,6 +490,7 @@ class Controller:
                                                       calibration_quality=f"Withheld-dot median error: {new_model.validation_error * 100:.1f}% of shorter screen edge (training check).",
                                                       hint="Training saved. Enable pointer when ready.")
                                 except (ValueError, OSError) as exc:
+                                    log.warning("Calibration was not saved: %s", exc)
                                     self.state.update(calibration_text=str(exc), calibration_progress=0, capture_progress=0,
                                                       hint=str(exc))
                                 calibration = None
