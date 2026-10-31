@@ -436,6 +436,10 @@ class BlinkDetector:
     def reset(self) -> None:
         """Forget any in-progress closure (e.g. the face was lost)."""
         self.closed_since = None
+        self._last_frame_at = None
+        self.cued = 0
+        self.shut = False
+        self.cue = ''
         self.wink_eye = None
         self.head_moved = self.deferred = False
         self.history.clear()
@@ -485,6 +489,16 @@ class BlinkDetector:
         click_fired, just_closed). click_fired is "" (none), "left" or "right".
         """
         self.cue = ''
+        previous = getattr(self, '_last_frame_at', None)
+        valid = (np.isfinite(left) and left > 0 and np.isfinite(right) and right > 0
+                 and np.isfinite(now) and (scores is None or np.all(np.isfinite(scores))))
+        if not valid:
+            self.reset()
+            return (False, '', False)
+        if previous is not None and (now <= previous or now - previous > 0.2):
+            # Missing frames cannot prove that a deliberate closure was held.
+            self.reset()
+        self._last_frame_at = now
         self.history.append((left, right))
         l, r = np.median(np.array(self.history), axis=0)
         sc = None

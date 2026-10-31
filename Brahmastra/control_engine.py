@@ -506,7 +506,14 @@ class Controller:
                             roll=fe.head_roll(landmarks, frame.shape[1], frame.shape[0]),
                             winks_ok=fe.eyes_level_ratio(landmarks, frame.shape[1], frame.shape[0]) > .7,
                             head=nose / face_px)
-                        self._track(values, now, gesture_frame)
+                        try:
+                            self._track(values, now, gesture_frame)
+                        except OSError as exc:
+                            log.warning("Mouse input unavailable; pointer paused: %s", exc)
+                            self.enable_requested.clear()
+                            self.state.update(enabled=False, paused=True,
+                                              hint="Windows blocked mouse input. Resume when your desktop is available.")
+                            self._reset_detectors()
                 # Latest frame only; the GUI never blocks the camera thread.
                 with self.state.lock:
                     self.state.preview = cv2.cvtColor(cv2.flip(frame, 1), cv2.COLOR_BGR2RGB)
