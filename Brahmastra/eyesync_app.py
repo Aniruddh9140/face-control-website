@@ -360,7 +360,7 @@ class App:
             elif kind in ("calibration_done", "stopped"):
                 self.hide_calibration()
                 current = self.controller.state.read()
-                if kind == "calibration_done" and current.calib_step == "done" and current.mouse_requested and not current.paused:
+                if kind == "calibration_done" and current.calib_step == "done" and current.calibration_progress == 1 and current.mouse_requested and not current.paused:
                     self.controller.request_enable()
             elif kind.startswith("dashboard_"):
                 self.dashboard_event(kind, value)

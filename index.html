@@ -2861,7 +2861,8 @@ const EyeSync = {
         const saved = s.gaze && prev.gaze && (s.gaze.calibrated !== prev.gaze.calibrated || s.gaze.errorPx !== prev.gaze.errorPx);
         if (s.step === 'done') toast(s.stepText || 'Your eyes are calibrated.', saved ? 'ok' : 'info');
         else toast('Eye calibration cancelled. EyeSync keeps your previous eye calibration.');
-      } else if (s.step === 'done') { this.calibratedNow = true; toast(s.stepText || 'EyeSync is calibrated.', 'ok'); }
+      } else if (s.step === 'done' && s.progress === 1) { this.calibratedNow = true; toast(s.stepText || 'EyeSync is calibrated.', 'ok'); }
+      else if (s.step === 'done') toast(s.stepText || 'Calibration failed. Try again.', 'error');   // EyeSync 2.0.3+: failed, previous settings kept
       else toast('Calibration cancelled. EyeSync keeps its previous settings.');
     }
     renderEyeSync();

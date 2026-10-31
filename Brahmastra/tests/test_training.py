@@ -137,7 +137,7 @@ class TrainingTests(unittest.TestCase):
         self.assertTrue(c.mouse.move.called)
         self.assertGreaterEqual(c.mouse.move.call_args.args[0], 603)
 
-    def run_training_worker(self, folder, valid):
+    def run_training_worker(self, folder, valid, late_cancel=False):
         c = ce.Controller((1920, 1080), mouse_factory=Mock)
         c.model_path = Path(folder) / "pointer.npz"
         x, _ = self.samples()
@@ -158,10 +158,24 @@ class TrainingTests(unittest.TestCase):
         mouse = Mock()
         c.mouse_factory = lambda: mouse
         put = c.events.put
+        completed = [False]
         def event(item):
             put(item)
             if item[0] == "calibration_done":
-                c.worker_stop.set()
+                completed[0] = True
+                c.training_result = c.state.read()
+                if late_cancel:
+                    c.request("cancel_calibration")
+                else:
+                    c.worker_stop.set()
+        if late_cancel:
+            def read(**kwargs):
+                if completed[0]:
+                    c.training_result = c.state.read()
+                    c.worker_stop.set()
+                    return False, None
+                return True, np.zeros((240, 320, 3), np.uint8)
+            camera.read.side_effect = read
         c.events.put = event
         c.request("calibrate")
         with patch.object(ce.fe, "open_camera", return_value=camera), \
@@ -193,6 +207,16 @@ class TrainingTests(unittest.TestCase):
             c = self.run_training_worker(folder, valid=False)
             self.assertEqual(path.read_bytes(), original)
             self.assertIn("Move your head", c.state.read().hint)
+            self.assertEqual(c.training_result.calib_step, "done")
+            self.assertEqual(c.state.read().calibration_text, c.state.read().hint)
+            self.assertLess(c.state.read().calibration_progress, 1)
+
+    def test_delayed_cancel_cannot_overwrite_saved_calibration(self):
+        with tempfile.TemporaryDirectory() as folder:
+            c = self.run_training_worker(folder, valid=True, late_cancel=True)
+            self.assertEqual(c.training_result.calib_step, "done")
+            self.assertEqual(c.state.read().calibration_text, "Head calibration saved.")
+            self.assertEqual(c.state.read().calibration_progress, 1)
 
 
 if __name__ == "__main__":

@@ -427,7 +427,7 @@ class Controller:
                         calibration, features = StableCapture(time.monotonic()), []
                         point_index = 0
                         self.events.put(("calibration_point", (0, POINTS[0])))
-                    elif name == "cancel_calibration":
+                    elif name == "cancel_calibration" and calibration is not None:
                         calibration = None
                         self.state.update(calib_step="", enabled=False, calibration_text="Calibration cancelled.",
                                           calibration_progress=0, capture_progress=0, hint="Calibration cancelled. Previous model kept.")
@@ -438,7 +438,7 @@ class Controller:
                 now = time.monotonic()
                 if calibration and calibration.expired(now):
                     calibration = None
-                    self.state.update(calib_step="", enabled=False, capture_progress=0,
+                    self.state.update(calib_step="done", enabled=False, capture_progress=0,
                                       calibration_text="Training timed out. No new profile saved.",
                                       hint="Training timed out waiting for a steady, visible face. Check camera and lighting, then retry. Previous model kept.")
                     self.events.put(("calibration_done", None))
@@ -471,20 +471,19 @@ class Controller:
                             features.append(captured)
                             point_index += 1
                             if point_index == len(POINTS):
-                                saved = False
                                 try:
                                     new_model = PointerModel.fit(features, POINTS, camera_size, self.screen)
                                     new_model.save(self.model_path)
                                     self.model = new_model
-                                    saved = True
                                     self.state.update(calibrated=True, pointer_mode="personal", calibrated_date=date.today().isoformat(),
                                                       calibration_text="Head calibration saved.", calibration_progress=1,
                                                       calibration_quality=f"Withheld-dot median error: {new_model.validation_error * 100:.1f}% of shorter screen edge (training check).",
                                                       hint="Training saved. Enable pointer when ready.")
                                 except (ValueError, OSError) as exc:
-                                    self.state.update(hint=str(exc))
+                                    self.state.update(calibration_text=str(exc), calibration_progress=0, capture_progress=0,
+                                                      hint=str(exc))
                                 calibration = None
-                                self.state.update(calib_step="done" if saved else "")
+                                self.state.update(calib_step="done")
                                 self.events.put(("calibration_done", None))
                                 self._reset_detectors()
                             else:

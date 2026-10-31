@@ -1,8 +1,14 @@
-# EyeSync 2.0.2 for Windows x64
+# EyeSync 2.0.3 for Windows x64
 
 EyeSync combines local head-controlled pointer movement, blink/wink clicks,
 head-tilt scrolling, facial shortcuts, offline voice typing, and the on-screen
 keyboard command panel. It connects to the existing [EyeSync dashboard](https://aniruddh9140.github.io/face-control-website/#dashboard).
+
+## Calibration result fix
+
+- Failed calibration shows its validation error instead of being reported as cancelled.
+- Late cancellation cannot overwrite a completed calibration.
+- Pointer control resumes automatically only after successful training.
 
 ## Local stability update
 
